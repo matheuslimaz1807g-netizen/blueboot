@@ -23,7 +23,10 @@ services:
     restart: unless-stopped
     env_file: .env.personal
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bluebot}:${POSTGRES_PASSWORD:-bluebot_secret}@postgres:5432/${POSTGRES_DB:-bluebot}
+      - DATABASE_URL=postgresql+asyncpg://bluebot:bluebot_secret@postgres:5432/bluebot
+      - POSTGRES_USER=bluebot
+      - POSTGRES_PASSWORD=bluebot_secret
+      - POSTGRES_DB=bluebot
     expose:
       - "8000"
     command: >
