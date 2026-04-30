@@ -73,13 +73,19 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             ir_para_produto.click()
             print("[DEBUG] Clicou em 'Ir para produto'.")
             time.sleep(6) 
+            
+            # 🚀 TROCA DE ABA: Se abriu uma nova aba, pula para ela
+            if len(driver.window_handles) > 1:
+                driver.switch_to.window(driver.window_handles[-1])
+                print(f"[DEBUG] Trocado para nova aba do produto. Titulo: {driver.title}")
+            
         except Exception as e:
             print(f"[ERROR] Falha ao entrar no produto: {e}")
             driver.save_screenshot("/app/sessions/erro_navegacao.png")
             return None
 
         # 3. Compartilhar
-        print(f"[DEBUG] Título da página: {driver.title}")
+        print(f"[DEBUG] Título da página atual: {driver.title}")
         try:
             print("[DEBUG] Buscando botão 'Compartilhar'...")
             xpath_comp = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartilhar')] | //div[contains(@role, 'button') and contains(., 'Compartilhar')]"
@@ -90,10 +96,10 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             time.sleep(3)
         except Exception as e:
             driver.save_screenshot("/app/sessions/erro_compartilhar.png")
-            print(f"[ERROR] Falha ao clicar em 'Compartilhar': {e}")
+            print(f"[ERROR] Falha ao clicar em 'Compartilhar'. Detalhes: {e}")
             return None
 
-        # 4. Copiar Link (XPATH FORNECIDO PELO USUÁRIO)
+        # 4. Copiar Link (XPATH DO USUARIO)
         print("[DEBUG] Buscando botão 'Copiar link' via XPATH direto...")
         try:
             xpath_copy_user = "/html/body/div[1]/nav/div/div[3]/div[2]/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button"
@@ -101,7 +107,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             copiar_botao.click()
             print("[DEBUG] Clicou em 'Copiar link'.")
         except Exception as e:
-            print(f"[DEBUG] Falha no XPATH direto, tentando busca por texto como reserva: {e}")
+            print(f"[DEBUG] Falha no XPATH direto de Copiar: {e}")
             try:
                 driver.find_element(By.XPATH, "//button[contains(., 'Copiar link')]").click()
             except: pass
@@ -110,13 +116,14 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
 
         # 5. Captura Final
         link_afiliado = get_linux_clipboard() if os.name != 'nt' else __import__('pyperclip').paste()
-        if not link_afiliado or "mercadolivre.com.br" not in link_afiliado:
+        if not link_afiliado or "mercadolivre.com.br" not in link_afiliado and "meli.la" not in link_afiliado:
             try:
-                link_afiliado = driver.find_element(By.XPATH, "//input[contains(@value, 'mercadolivre.com.br')]").get_attribute("value")
+                # Tenta ler do input meli.la se existir
+                link_afiliado = driver.find_element(By.XPATH, "//input[contains(@value, 'meli.la') or contains(@value, 'mercadolivre.com.br')]").get_attribute("value")
             except: pass
 
         print(f"[DEBUG] Link Final: {link_afiliado}")
-        return link_afiliado if link_afiliado and "mercadolivre.com.br" in link_afiliado else None
+        return link_afiliado if link_afiliado and ("mercadolivre.com.br" in link_afiliado or "meli.la" in link_afiliado) else None
 
     except Exception as e:
         print(f"[ERROR] Erro Geral ML: {e}")
