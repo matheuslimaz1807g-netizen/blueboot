@@ -64,6 +64,10 @@ class BotRunner:
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def start(self, config: dict) -> None:
+        """
+        # FUTURE: multi-tenant: accept tenant_id in config to isolate sessions.
+        Ex: self._tenant_id = config.get("tenant_id", "default")
+        """
         with self._lock:
             if self._status_val == "running":
                 return

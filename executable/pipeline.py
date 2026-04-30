@@ -17,6 +17,7 @@ import httpx
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 
 from affiliates import aliexpress, mercadolivre, shopee
+from utils import expandir_link_async
 
 # ── Text patterns ─────────────────────────────────────────────────────────────
 
@@ -150,14 +151,7 @@ def extract_promotion_data(raw_text: str, cleaned_text: str, image_path: Optiona
         "telegramLink": telegramLink,
     }
 
-async def _expand_link(url: str) -> str:
-    async with httpx.AsyncClient(follow_redirects=True, timeout=8) as client:
-        try:
-            r = await client.get(url)
-            return str(r.url)
-        except Exception:
-            return url
-
+# Removido _expand_link local, importado de utils.py
 
 def _sanitize_detected_url(url: str) -> str:
     """Remove wrappers commonly used in Telegram formatting around URLs."""
@@ -213,7 +207,7 @@ async def processar_mensagem(
             sanitized = _sanitize_detected_url(r_url)
             if sanitized not in expanded_map:
                 try:
-                    exp = await _expand_link(sanitized)
+                    exp = await expandir_link_async(sanitized)
                     expanded_map[sanitized] = exp
                 except:
                     expanded_map[sanitized] = sanitized
@@ -314,6 +308,7 @@ async def processar_mensagem(
                 image_path = None
 
         # ── Step 4.5: Extract promotion data and send to web API ────────────
+        # FUTURE: multi-tenant: include tenant_id in webhook payload
         promotion_data = extract_promotion_data(raw_text, text, image_path, expanded_map, converted_links)
         if promotion_data and config.get("send_to_web_api", True):
             web_api_url = config.get("web_api_url", "http://localhost:3000/api/promotions")

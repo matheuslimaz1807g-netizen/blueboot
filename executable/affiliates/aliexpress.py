@@ -12,17 +12,10 @@ from typing import Optional
 
 import httpx
 
+from utils import expandir_link_async
+
+
 ALI_API_URL = "https://api-sg.aliexpress.com/sync"
-
-
-def _expand_link_sync(url: str) -> str:
-    """Synchronous URL expander (called from async context via thread pool)."""
-    import requests
-    try:
-        r = requests.get(url, allow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
-        return r.url
-    except Exception:
-        return url
 
 
 def _extract_product_id(url: str) -> Optional[str]:
@@ -58,10 +51,7 @@ async def convert(
         for link in links:
             # Expand shortened links
             if "a.aliexpress.com" in link or len(link) < 80:
-                import asyncio
-                expanded = await asyncio.get_event_loop().run_in_executor(
-                    None, _expand_link_sync, link
-                )
+                expanded = await expandir_link_async(link)
             else:
                 expanded = link
 

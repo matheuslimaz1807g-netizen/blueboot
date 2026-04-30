@@ -12,12 +12,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
 
-
-async def expand_url(url: str) -> str:
-    async with httpx.AsyncClient(follow_redirects=True, timeout=10) as client:
-        resp = await client.get(url)
-        return str(resp.url)
-
+from utils import expandir_link_async
 
 def _inject_params(url: str) -> str:
     parsed = urlparse(url)
@@ -73,7 +68,7 @@ async def convert(original_link: str) -> str:
     is_short = "s.shopee.com.br" in original_link or len(original_link) < 80
 
     if is_short:
-        expanded = await expand_url(original_link)
+        expanded = await expandir_link_async(original_link)
     else:
         expanded = original_link
 
