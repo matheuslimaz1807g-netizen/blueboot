@@ -65,10 +65,9 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             time.sleep(1)
         except: pass
 
-        # 2. Clicar em "Ir para produto" (Obrigatório)
+        # 2. Clicar em "Ir para produto"
         print("[DEBUG] Buscando botão 'Ir para produto'...")
         try:
-            # Tenta múltiplos seletores (Case-insensitive)
             xpath_ir = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')] | //span[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')] | /html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]"
             ir_para_produto = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_ir)))
             ir_para_produto.click()
@@ -94,15 +93,18 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             print(f"[ERROR] Falha ao clicar em 'Compartilhar': {e}")
             return None
 
-        # 4. Copiar Link
-        print("[DEBUG] Buscando botão 'Copiar link'...")
+        # 4. Copiar Link (XPATH FORNECIDO PELO USUÁRIO)
+        print("[DEBUG] Buscando botão 'Copiar link' via XPATH direto...")
         try:
-            xpath_copy = "//button[contains(., 'Copiar link')] | //span[contains(., 'Copiar link')] | /html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button"
-            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_copy)))
+            xpath_copy_user = "/html/body/div[1]/nav/div/div[3]/div[2]/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button"
+            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_copy_user)))
             copiar_botao.click()
             print("[DEBUG] Clicou em 'Copiar link'.")
         except Exception as e:
-            print(f"[DEBUG] Falha ao clicar em 'Copiar link': {e}")
+            print(f"[DEBUG] Falha no XPATH direto, tentando busca por texto como reserva: {e}")
+            try:
+                driver.find_element(By.XPATH, "//button[contains(., 'Copiar link')]").click()
+            except: pass
         
         time.sleep(4)
 
