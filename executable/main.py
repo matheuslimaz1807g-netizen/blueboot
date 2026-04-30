@@ -87,8 +87,9 @@ DASHBOARD_HTML = """
                 <strong>Plataformas:</strong> Telegram {% if wpp %} + WhatsApp{% endif %}
             </div>
             <div style="margin-left: auto; text-align: right;">
-                <strong>Mensagens Processadas:</strong> {{ stats.get('processed', 0) }}<br>
-                <strong>Links Convertidos:</strong> {{ stats.get('converted', 0) }}
+                <strong>Mensagens Processadas:</strong> {{ stats.get('today_processed', 0) }}<br>
+                <strong>Envios Telegram:</strong> {{ stats.get('today_telegram', 0) }}<br>
+                <strong>Envios WhatsApp:</strong> {{ stats.get('today_whatsapp', 0) }}
             </div>
         </div>
 
@@ -139,9 +140,9 @@ def create_app(mode: str, initial_config: dict):
             version=VERSION,
             mode=mode,
             status=_runner.status() if _runner else "stopped",
-            stats=_runner.get_stats() if _runner else {},
             logs=list(_logs),
-            wpp=initial_config.get("send_whatsapp", False)
+            wpp=initial_config.get("send_whatsapp", False),
+            stats=_runner.get_stats() if _runner else {}
         )
 
     @app.route("/api/status")
