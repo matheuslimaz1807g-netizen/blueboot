@@ -282,13 +282,14 @@ class BotRunner:
             # processa em background com create_task para não perder mensagens
             # enquanto o Selenium está rodando.
             async def polling_loop() -> None:
+                self._log("info", "🚀 Loop de Polling iniciado!")
                 last_heartbeat = time.time()
                 while not self._stop_event.is_set():
                     await asyncio.sleep(_POLL_INTERVAL)
 
                     # Heartbeat a cada 60 segundos
                     if time.time() - last_heartbeat > 60:
-                        self._log("info", f"Bot ativo. Monitorando {len(resolved_chats)} fontes via polling...")
+                        self._log("info", f"💓 Heartbeat: Bot monitorando {len(resolved_chats)} fontes...")
                         last_heartbeat = time.time()
 
                     for entity in resolved_chats:
@@ -296,7 +297,14 @@ class BotRunner:
                             break
                         try:
                             last_seen = self._last_seen_by_chat.get(entity.id, 0)
-                            msgs = await self._client.get_messages(entity, limit=10)
+                            # Timeout de 10s para não travar o loop se o Telegram oscilar
+                            msgs = await asyncio.wait_for(
+                                self._client.get_messages(entity, limit=10),
+                                timeout=15
+                            )
+
+                            if not msgs:
+                                continue
 
                             # Filtra só mensagens novas, em ordem cronológica
                             new_msgs = [
@@ -304,14 +312,15 @@ class BotRunner:
                                 if m.id > last_seen
                             ]
 
+                            if new_msgs:
+                                self._log("info", f"[{entity.id}] Encontradas {len(new_msgs)} novas mensagens.")
+
                             for message in new_msgs:
                                 msg_id = message.id
-
-                                # Deduplicação extra
                                 if not self._remember_message(entity.id, msg_id):
                                     continue
 
-                                self._log("info", f"[{entity.id}/{msg_id}] Nova mensagem capturada via polling.")
+                                self._log("info", f"[{entity.id}/{msg_id}] Nova mensagem capturada.")
 
                                 # Atualiza watermark imediatamente
                                 with self._lock:
@@ -319,9 +328,11 @@ class BotRunner:
                                         self._last_seen_by_chat.get(entity.id, 0), msg_id
                                     )
 
-                                # Processa em background — não bloqueia o polling
+                                # Processa em background
                                 asyncio.create_task(process_message_and_update_stats(message))
 
+                        except asyncio.TimeoutError:
+                            self._log("warning", f"[Polling] Timeout ao consultar {getattr(entity, 'id', '?')}")
                         except Exception as exc:
                             entity_name = getattr(entity, "title", None) or getattr(entity, "id", "?")
                             self._log("warning", f"[Polling] Falha ao consultar {entity_name}: {exc}")
