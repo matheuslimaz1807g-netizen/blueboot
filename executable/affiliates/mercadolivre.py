@@ -52,25 +52,21 @@ def gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         time.sleep(1)
         service = Service(ChromeDriverManager().install())
     else:
-        # 🚨 LINUX / VPS DOCKER (Usa Chromium headless com perfil persistente)
-        options.binary_location = "/usr/bin/chromium"
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--headless=new") # VPS não tem tela, precisa ser headless
-        options.add_argument("--window-size=1920,1080")
+        # 🚨 LINUX / VPS DOCKER (Conecta no container remoto com VNC)
+        # O perfil é persistido no volume do próprio container do Chrome, então
+        # não passamos --user-data-dir aqui via options (o container já gerencia)
+        options.add_argument("--start-maximized")
+        # Sem --headless aqui, pois queremos ver a tela no VNC se precisarmos logar
         
-        # Perfil persistente dentro do volume mapeado do Docker
-        user_data_dir = "/app/sessions/ml_profile"
-        options.add_argument(f"--user-data-dir={user_data_dir}")
-        
-        service = Service("/usr/bin/chromedriver")
-
-    try:
-        driver = webdriver.Chrome(service=service, options=options)
-    except Exception as e:
-        print(f"[ERROR] ML ChromeDriver init failed: {e}")
-        return None
+        try:
+            # Conecta ao node do Selenium no Docker Compose
+            driver = webdriver.Remote(
+                command_executor="http://chrome:4444/wd/hub",
+                options=options
+            )
+        except Exception as e:
+            print(f"[ERROR] Remote Chrome init failed: {e}")
+            return None
 
     try:
         driver.get(url)
