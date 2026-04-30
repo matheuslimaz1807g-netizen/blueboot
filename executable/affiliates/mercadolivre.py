@@ -61,6 +61,8 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         options.add_argument("--disable-gpu")
         # Removido --headless=new para rodar como navegador real na tela virtual (Xvfb) e evitar block
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--disable-extensions")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
         user_data_dir = "/app/brave_profile"

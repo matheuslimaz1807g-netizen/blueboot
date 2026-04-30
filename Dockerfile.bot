@@ -19,6 +19,8 @@ RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir
 
 # Copia o código do bot
 COPY executable/ .
+# Remove arquivos de configuração locais que possam ter sido copiados, forçando o uso do env do Docker
+RUN rm -f .env .env.local
 
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions

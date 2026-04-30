@@ -1,9 +1,5 @@
 """
 config_loader.py — Gerenciador de configurações do BlueBot.
-
-Suporta:
-- Modo Local/Pessoal: Lê diretamente do arquivo .env.
-- Modo Gerenciado: Busca configurações da API remota via chave de licença.
 """
 from __future__ import annotations
 
@@ -15,7 +11,6 @@ import requests
 import urllib3
 from dotenv import load_dotenv
 
-# Ignora avisos de SSL para conexões locais/desenvolvimento
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 _API_BASE_DEFAULT: str = "https://api.bluebot.com.br"
@@ -32,15 +27,15 @@ def get_api_base() -> str:
 
 def load_config_from_env() -> dict:
     """
-    Carrega as configurações a partir das variáveis de ambiente (.env).
-    Utilizado no modo Pessoal/VPS sem painel centralizado.
+    Carrega as configurações. 
+    Prioriza variáveis já definidas no sistema (Docker) e usa .env apenas como fallback.
     """
-    # Garante que o .env seja lido
-    load_dotenv(dotenv_path=".env", override=True)
-    
-    # Prioriza .env.local se existir
-    if Path(".env.local").exists():
-        load_dotenv(dotenv_path=".env.local", override=True)
+    # Se já temos API_ID no ambiente (via Docker env_file), não sobrescrevemos com arquivos locais
+    if not os.getenv("API_ID"):
+        if Path(".env").exists():
+            load_dotenv(dotenv_path=".env", override=False)
+        if Path(".env.local").exists():
+            load_dotenv(dotenv_path=".env.local", override=False)
 
     return {
         "api_id": os.getenv("API_ID", ""),
@@ -69,9 +64,6 @@ def load_config_from_env() -> dict:
 
 
 def fetch_remote_config(license_key: str, machine_id: str) -> dict:
-    """
-    Busca a configuração na API remota usando a licença.
-    """
     try:
         resp = requests.get(
             f"{get_api_base()}/config/{license_key}",
@@ -81,18 +73,11 @@ def fetch_remote_config(license_key: str, machine_id: str) -> dict:
         )
         resp.raise_for_status()
         return resp.json()
-    except requests.HTTPError as exc:
-        if exc.response is not None and exc.response.status_code == 404:
-            raise ConfigLoadError("Configuração não definida no painel remoto.")
+    except Exception as exc:
         raise ConfigLoadError(f"Erro ao carregar config remota: {exc}")
-    except requests.RequestException as exc:
-        raise ConfigLoadError(f"Sem conexão com servidor de licenças: {exc}")
 
 
 def push_remote_config(license_key: str, machine_id: str, config: dict) -> dict:
-    """
-    Envia a configuração local para o servidor remoto.
-    """
     try:
         resp = requests.put(
             f"{get_api_base()}/config/{license_key}",
@@ -103,5 +88,5 @@ def push_remote_config(license_key: str, machine_id: str, config: dict) -> dict:
         )
         resp.raise_for_status()
         return resp.json()
-    except requests.RequestException as exc:
+    except Exception as exc:
         raise ConfigLoadError(f"Erro ao salvar config remota: {exc}")
