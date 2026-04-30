@@ -277,114 +277,62 @@ class BotRunner:
                     with self._lock:
                         self._stats["errors_24h"] += 1
 
-            # ── Loop de polling ───────────────────────────────────────────────
-            # Igual ao código simples que funcionava — get_messages a cada 10s,
-            # processa em background com create_task para não perder mensagens
-            # enquanto o Selenium está rodando.
-            async def polling_loop() -> None:
-                self._log("info", "🚀 Loop de Polling iniciado!")
-                last_heartbeat = time.time()
-                while not self._stop_event.is_set():
-                    await asyncio.sleep(_POLL_INTERVAL)
-
-                    # Heartbeat a cada 60 segundos
+            # ── Loop de polling (Tarefa Principal) ────────────────────────────
+            self._log("info", "🚀 Motor de busca (Polling) iniciado!")
+            last_heartbeat = time.time()
+            
+            while not self._stop_event.is_set():
+                try:
+                    # Heartbeat
                     if time.time() - last_heartbeat > 60:
                         self._log("info", f"💓 Heartbeat: Bot monitorando {len(resolved_chats)} fontes...")
                         last_heartbeat = time.time()
 
                     for entity in resolved_chats:
-                        if self._stop_event.is_set():
-                            break
+                        if self._stop_event.is_set(): break
+                        
+                        last_seen = self._last_seen_by_chat.get(entity.id, 0)
+                        
+                        # Busca mensagens com timeout
                         try:
-                            last_seen = self._last_seen_by_chat.get(entity.id, 0)
-                            # Timeout de 10s para não travar o loop se o Telegram oscilar
                             msgs = await asyncio.wait_for(
                                 self._client.get_messages(entity, limit=10),
                                 timeout=15
                             )
+                        except asyncio.TimeoutError:
+                            self._log("warning", f"[Polling] Timeout em {getattr(entity, 'id', '?')}")
+                            continue
 
-                            if not msgs:
-                                continue
+                        if not msgs: continue
 
-                            # Filtra só mensagens novas, em ordem cronológica
-                            new_msgs = [
-                                m for m in reversed(msgs)
-                                if m.id > last_seen
-                            ]
-
-                            if new_msgs:
-                                self._log("info", f"[{entity.id}] Encontradas {len(new_msgs)} novas mensagens.")
-
+                        new_msgs = [m for m in reversed(msgs) if m.id > last_seen]
+                        
+                        if new_msgs:
+                            self._log("info", f"[{entity.id}] +{len(new_msgs)} mensagens novas!")
                             for message in new_msgs:
-                                msg_id = message.id
-                                if not self._remember_message(entity.id, msg_id):
-                                    continue
-
-                                self._log("info", f"[{entity.id}/{msg_id}] Nova mensagem capturada.")
-
-                                # Atualiza watermark imediatamente
+                                if not self._remember_message(entity.id, message.id): continue
+                                
+                                self._log("info", f"[{entity.id}/{message.id}] Processando...")
+                                
+                                # Atualiza cursor
                                 with self._lock:
-                                    self._last_seen_by_chat[entity.id] = max(
-                                        self._last_seen_by_chat.get(entity.id, 0), msg_id
-                                    )
+                                    self._last_seen_by_chat[entity.id] = max(self._last_seen_by_chat.get(entity.id, 0), message.id)
 
-                                # Processa em background
+                                # Processa (em background para não travar a próxima busca)
                                 asyncio.create_task(process_message_and_update_stats(message))
 
-                        except asyncio.TimeoutError:
-                            self._log("warning", f"[Polling] Timeout ao consultar {getattr(entity, 'id', '?')}")
-                        except Exception as exc:
-                            entity_name = getattr(entity, "title", None) or getattr(entity, "id", "?")
-                            self._log("warning", f"[Polling] Falha ao consultar {entity_name}: {exc}")
-
-            # ── Reconector automático ─────────────────────────────────────────
-            async def reconnect_watchdog() -> None:
-                attempts = 0
-                while not self._stop_event.is_set():
-                    await asyncio.sleep(30)
-                    if self._stop_event.is_set():
-                        break
-
+                    # Se a conexão cair, o client.get_messages vai falhar e cair aqui
                     if not self._client.is_connected():
-                        attempts += 1
-                        if attempts > _RECONNECT_MAX_ATTEMPTS:
-                            self._log("error", "[Watchdog] Máximo de tentativas atingido. Encerrando.")
-                            with self._lock:
-                                self._status_val = "error"
-                            self._stop_event.set()
-                            break
+                        self._log("warning", "Conexão perdida. Tentando reconectar...")
+                        await self._client.connect()
+                        await asyncio.sleep(5)
+                    
+                    # Espera o intervalo de 10 segundos
+                    await asyncio.sleep(_POLL_INTERVAL)
 
-                        with self._lock:
-                            self._status_val = "reconnecting"
-
-                        self._log("warning", f"[Watchdog] Conexão perdida. Tentativa {attempts}/{_RECONNECT_MAX_ATTEMPTS} em {_RECONNECT_INTERVAL}s...")
-                        await asyncio.sleep(_RECONNECT_INTERVAL)
-
-                        try:
-                            await self._client.connect()
-                            if await self._client.is_user_authorized():
-                                with self._lock:
-                                    self._status_val = "running"
-                                attempts = 0
-                                self._log("success", "[Watchdog] Reconectado com sucesso.")
-                            else:
-                                self._log("error", "[Watchdog] Reconectado mas sessão expirou.")
-                                with self._lock:
-                                    self._status_val = "error"
-                                self._stop_event.set()
-                        except Exception as exc:
-                            self._log("warning", f"[Watchdog] Falha ao reconectar: {exc}")
-                    else:
-                        attempts = 0
-
-            polling_task = asyncio.create_task(polling_loop())
-            watchdog_task = asyncio.create_task(reconnect_watchdog())
-
-            await self._stop_event.wait()
-
-            polling_task.cancel()
-            watchdog_task.cancel()
-            await asyncio.gather(polling_task, watchdog_task, return_exceptions=True)
+                except Exception as exc:
+                    self._log("error", f"[Polling] Erro no ciclo: {exc}")
+                    await asyncio.sleep(10)
 
         except Exception as exc:
             self._log("error", f"[BotRunner] Exceção no cliente: {exc}")
