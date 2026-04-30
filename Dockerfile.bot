@@ -23,4 +23,4 @@ COPY executable/ .
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
 
-CMD sh -c "Xvfb :99 -screen 0 1920x1080x24 & export DISPLAY=:99 && python -u bot_runner_vps.py"
+CMD sh -c "Xvfb :99 -screen 0 1920x1080x24 & export DISPLAY=:99 && python -u main.py"

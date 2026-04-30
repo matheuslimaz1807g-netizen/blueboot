@@ -1,30 +1,61 @@
-# Node modules
-node_modules/
-Whatsapp/node_modules/
-
-# Sessões e cache
-Whatsapp/.wwebjs_auth/
-Whatsapp/.wwebjs_cache/
-
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Logs e temporários
-*.log
-*.tmp
-
-# Mac OS
-.DS_Store
-
-# Arquivos de ambiente
-.env
-
-# Executáveis e arquivos pesados gerados pelo PyInstaller
-*.exe
-*.session
-executable/BlueBot_Package/
-dist/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.env
+.env.local
+.env.personal
+config.json
+
+# Selenium / Drivers
+Drivers/
+chromedriver.exe
+geckodriver
+ghostdriver.log
+
+# Telegram Sessions
+*.session
+*.session-journal
+sessions/
+
+# WhatsApp Auth
+.wwebjs_auth/
+.wwebjs_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# BlueBot Specific Trash
+Affiliates/
+Screenshots/
+ApenasPromo.spec
+whatsapp_bridge.exe
+token.txt
+token_clean.txt
+ml_error_compartilhar.png
+erro_ml.png
+erro_ml.html
+ml_error_page.html
+node_modules
