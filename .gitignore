@@ -47,15 +47,27 @@ sessions/
 .vscode/
 .idea/
 
-# BlueBot Specific Trash
-Affiliates/
-Screenshots/
-ApenasPromo.spec
-whatsapp_bridge.exe
-token.txt
-token_clean.txt
-ml_error_compartilhar.png
-erro_ml.png
-erro_ml.html
-ml_error_page.html
+# BlueBot Specific Trash (Root only)
+/Affiliates/
+/Screenshots/
+/Drivers/
+/chromedriver.exe
+/bot.py
+/bot bkp.py
+/teste.py
+/id.py
+/check_licenses.py
+/token.txt
+/token_clean.txt
+/session.session
+/polling_session.session
+/start.bat
+/start_local.bat
+/ApenasPromo.spec
+/whatsapp_bridge.exe
+/*.session
+/ml_error_compartilhar.png
+/erro_ml.png
+/erro_ml.html
+/ml_error_page.html
 node_modules
