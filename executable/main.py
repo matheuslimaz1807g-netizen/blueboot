@@ -190,9 +190,16 @@ def main():
         
         start_heartbeat(license_key, mid, on_expired)
         
-        # 3. Carregar Configuração do .env
-        config = config_loader.load_config_from_env()
-        add_log("info", "Sistema de licenciamento ativo.")
+        # 3. Carregar Configuração (Prioriza Remota)
+        try:
+            add_log("info", "Buscando configurações remotas do painel...")
+            config = config_loader.fetch_remote_config(license_key, mid)
+            add_log("success", "Configurações remotas carregadas com sucesso!")
+        except Exception as e:
+            add_log("warning", f"Não foi possível carregar config remota ({e}). Usando .env local.")
+            config = config_loader.load_config_from_env()
+        
+        add_log("info", "Sistema de licenciamento e gestão remota ativo.")
         
     except Exception as e:
         add_log("error", f"Falha Crítica de Licença: {e}")
