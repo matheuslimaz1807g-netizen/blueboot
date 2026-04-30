@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% set active_page = "config" %}
+
+{% block title %}Configurações — Apenas Promo{% endblock %}
+
+{% block content %}
+<div class="flex-1 overflow-y-auto">
+  <header
+    class="sticky top-0 z-10 bg-card/80 backdrop-blur border-b border-border px-8 py-4 flex items-center justify-between">
+    <h2 class="text-lg font-semibold text-white">Configurações</h2>
+    <div id="save-status" class="text-sm text-muted"></div>
+  </header>
+
+  <div class="p-8 max-w-2xl space-y-8">
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl font-medium text-sm shadow-xl"></div>
+
+    <!-- ── Telegram ─────────────────────────────────────────────────────── -->
+    <section class="card space-y-5">
+      <h3 class="font-semibold text-white border-b border-border pb-3">📱 Telegram</h3>
+
+      <div class="field-group">
+        <label class="field-label">Número de telefone</label>
+        <input id="cfg-phone" type="text" placeholder="+5511999999999" class="field-input" />
+        <p class="text-xs text-muted mt-1">Com código do país. Ex: +5511912345678</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="field-group">
+          <label class="field-label">Telegram API ID</label>
+          <div class="relative">
+            <input id="cfg-api-id" type="password" placeholder="••••••••" class="field-input pr-12" />
+            <button type="button" onclick="togglePass('cfg-api-id', this)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition show-pass-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Telegram API Hash</label>
+          <div class="relative">
+            <input id="cfg-api-hash" type="password" placeholder="••••••••" class="field-input pr-12" />
+            <button type="button" onclick="togglePass('cfg-api-hash', this)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition show-pass-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Grupos de origem <span class="text-muted font-normal">(um por linha)</span></label>
+        <textarea id="cfg-sources" rows="4" placeholder="https://t.me/grupo1&#10;https://t.me/grupo2"
+          class="field-input resize-none"></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Destino Telegram</label>
+        <input id="cfg-dest-tg" type="text" placeholder="https://t.me/meucanal" class="field-input" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Delay entre mensagens: <span id="delay-val"
+            class="text-accent font-semibold">3s</span></label>
+        <input id="cfg-delay" type="range" min="1" max="60" value="3" class="w-full accent-indigo-500 cursor-pointer"
+          oninput="document.getElementById('delay-val').textContent = this.value + 's'" />
+        <div class="flex justify-between text-xs text-muted mt-1"><span>1s</span><span>60s</span></div>
+      </div>
+
+      <div class="toggle-group">
+        <label class="field-label">Habilitar envio para Telegram</label>
+        <label class="switch">
+          <input type="checkbox" id="cfg-enable-tg" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ── WhatsApp ────────────────────────────────────────────────────── -->
+    <section class="card space-y-5">
+      <h3 class="font-semibold text-white border-b border-border pb-3 flex items-center justify-between">
+        <span class="flex items-center space-x-2"><span>💬</span><span>WhatsApp</span></span>
+        <button type="button" onclick="window.location.href='/whatsapp'"
+          class="text-xs bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40 px-3 py-1 rounded">
+          Ver QR Code
+        </button>
+      </h3>
+      <div class="field-group">
+        <label class="field-label">Endpoint do Bot Node.js</label>
+        <input id="cfg-wpp" type="text" value="http://localhost:4000/send" disabled
+          class="field-input opacity-50 cursor-not-allowed" />
+        <p class="text-xs text-muted mt-1">Servidor nativo embutido gerenciado automaticamente.</p>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Grupos de Destino WhatsApp <span class="text-muted font-normal">(um por
+            linha)</span></label>
+        <textarea id="cfg-wpp-dest" rows="3" placeholder="Insira os nomes idênticos aos grupos"
+          class="field-input resize-none"></textarea>
+      </div>
+      <div class="toggle-group">
+        <label class="field-label">Habilitar envio para WhatsApp</label>
+        <label class="switch">
+          <input type="checkbox" id="cfg-enable-wpp" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ── Afiliados ──────────────────────────────────────────────────── -->
+    <section class="card space-y-5">
+      <h3 class="font-semibold text-white border-b border-border pb-3">🔗 Afiliados</h3>
+
+      <div class="field-group">
+        <label class="field-label">Shopee Token</label>
+        <div class="relative">
+          <input id="cfg-shopee" type="password" placeholder="••••••••" class="field-input pr-12" />
+          <button type="button" onclick="togglePass('cfg-shopee', this)"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="field-group">
+          <label class="field-label">AliExpress App Key</label>
+          <div class="relative">
+            <input id="cfg-ali-key" type="password" placeholder="••••••••" class="field-input pr-12" />
+            <button type="button" onclick="togglePass('cfg-ali-key', this)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition show-pass-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">App Secret</label>
+          <div class="relative">
+            <input id="cfg-ali-secret" type="password" placeholder="••••••••" class="field-input pr-12" />
+            <button type="button" onclick="togglePass('cfg-ali-secret', this)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition show-pass-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">AliExpress Tracking ID</label>
+        <input id="cfg-ali-tracking" type="text" placeholder="meutracking" class="field-input" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Mercado Livre Token</label>
+        <div class="relative">
+          <input id="cfg-ml" type="password" placeholder="••••••••" class="field-input pr-12" />
+
+          <div class="mt-3">
+            <button type="button" onclick="connectML()"
+              class="btn-secondary w-full py-2 text-xs flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Conectar Conta (Abrir Navegador)
+            </button>
+          </div>
+          <button type="button" onclick="togglePass('cfg-ml', this)"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition show-pass-btn">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <div class="toggle-group">
+          <label class="field-label">Converter links AliExpress</label>
+          <label class="switch">
+            <input type="checkbox" id="cfg-conv-ali" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-group">
+          <label class="field-label">Converter links Shopee</label>
+          <label class="switch">
+            <input type="checkbox" id="cfg-conv-shopee" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-group">
+          <label class="field-label">Converter links Mercado Livre</label>
+          <label class="switch">
+            <input type="checkbox" id="cfg-conv-ml" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+  </div>
+  </section>
+
+  <!-- ── Filtros ─────────────────────────────────────────────────────── -->
+  <section class="card space-y-5">
+    <h3 class="font-semibold text-white border-b border-border pb-3">🚫 Filtros</h3>
+    <div class="field-group">
+      <label class="field-label">Palavras-chave para ignorar</label>
+      <div id="tags-container"
+        class="flex flex-wrap gap-2 min-h-[44px] bg-surface border border-border rounded-xl px-3 py-2 cursor-text"
+        onclick="document.getElementById('tag-input').focus()">
+        <input id="tag-input" type="text" placeholder="Adicionar palavra..."
+          class="bg-transparent outline-none text-sm text-white placeholder-slate-500 flex-1 min-w-[120px]"
+          onkeydown="handleTagInput(event)" />
+      </div>
+      <p class="text-xs text-muted mt-1">Pressione Enter ou vírgula para adicionar</p>
+    </div>
+  </section>
+
+  <!-- Save button -->
+  <button onclick="saveConfig()" class="btn-primary w-full py-3 text-base font-semibold">
+    Salvar configurações
+  </button>
+</div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let _tags = [];
+
+  function togglePass(id, btn) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  function handleTagInput(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = e.target.value.trim().replace(',', '');
+      if (val && !_tags.includes(val)) {
+        _tags.push(val);
+        renderTags();
+      }
+      e.target.value = '';
+    }
+    if (e.key === 'Backspace' && e.target.value === '' && _tags.length) {
+      _tags.pop();
+      renderTags();
+    }
+  }
+
+  function removeTag(val) {
+    _tags = _tags.filter(t => t !== val);
+    renderTags();
+  }
+
+  function renderTags() {
+    const container = document.getElementById('tags-container');
+    const input = document.getElementById('tag-input');
+    // Remove old tag pills
+    container.querySelectorAll('.tag-pill').forEach(el => el.remove());
+    _tags.forEach(t => {
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.innerHTML = `${t}<button onclick="removeTag('${t}')" class="ml-1 text-slate-400 hover:text-white">✕</button>`;
+      container.insertBefore(pill, input);
+    });
+  }
+
+  async function loadConfig() {
+    try {
+      const res = await fetch('/api/config');
+      if (!res.ok) return;
+      const cfg = await res.json();
+
+      document.getElementById('cfg-phone').value = cfg.phone || '';
+      document.getElementById('cfg-sources').value = (cfg.sources || []).join('\n');
+      document.getElementById('cfg-dest-tg').value = cfg.destination_telegram || '';
+      document.getElementById('cfg-delay').value = cfg.delay_segundos || 3;
+      document.getElementById('delay-val').textContent = (cfg.delay_segundos || 3) + 's';
+      document.getElementById('cfg-wpp-dest').value = (cfg.wpp_destinations || []).join('\n');
+      document.getElementById('cfg-shopee').value = cfg.shopee_token || '';
+      document.getElementById('cfg-ali-key').value = cfg.ali_key || '';
+      document.getElementById('cfg-ali-secret').value = cfg.ali_secret || '';
+      document.getElementById('cfg-ali-tracking').value = cfg.ali_tracking || '';
+      document.getElementById('cfg-ml').value = cfg.ml_token || '';
+      document.getElementById('cfg-api-id').value = cfg.api_id || '';
+      document.getElementById('cfg-api-hash').value = cfg.api_hash || '';
+
+      document.getElementById('cfg-enable-tg').checked = cfg.send_telegram !== false;
+      document.getElementById('cfg-enable-wpp').checked = cfg.send_whatsapp !== false;
+      document.getElementById('cfg-conv-ali').checked = cfg.conv_ali !== false;
+      document.getElementById('cfg-conv-shopee').checked = cfg.conv_shopee !== false;
+      document.getElementById('cfg-conv-ml').checked = cfg.conv_ml !== false;
+
+      _tags = (cfg.filtros || {}).keywords || [];
+      renderTags();
+    } catch (e) { /* non-critical */ }
+  }
+
+  async function saveConfig() {
+    const payload = {
+      phone: document.getElementById('cfg-phone').value.trim(),
+      sources: document.getElementById('cfg-sources').value.trim().split('\n').filter(Boolean),
+      destination_telegram: document.getElementById('cfg-dest-tg').value.trim(),
+      delay_segundos: parseInt(document.getElementById('cfg-delay').value),
+      wpp_destinations: document.getElementById('cfg-wpp-dest').value.split('\n').map(s => s.trim()).filter(Boolean),
+      shopee_token: document.getElementById('cfg-shopee').value,
+      ali_key: document.getElementById('cfg-ali-key').value,
+      ali_secret: document.getElementById('cfg-ali-secret').value,
+      ali_tracking: document.getElementById('cfg-ali-tracking').value,
+      ml_token: document.getElementById('cfg-ml').value,
+      api_id: document.getElementById('cfg-api-id').value,
+      api_hash: document.getElementById('cfg-api-hash').value,
+      send_telegram: document.getElementById('cfg-enable-tg').checked,
+      send_whatsapp: document.getElementById('cfg-enable-wpp').checked,
+      conv_ali: document.getElementById('cfg-conv-ali').checked,
+      conv_shopee: document.getElementById('cfg-conv-shopee').checked,
+      conv_ml: document.getElementById('cfg-conv-ml').checked,
+      filtros: { keywords: _tags },
+    };
+ 
+    const r = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('Configurações salvas!', 'success');
+    } else {
+      showToast('Erro ao salvar: ' + (d.error || 'Erro desconhecido'), 'error');
+    }
+  }
+
+  async function connectML() {
+    showToast('Abrindo navegador Brave para login...', 'info');
+    const r = await fetch('/api/ml/login', { method: 'POST' });
+    const d = await r.json();
+    if (!d.ok) showToast('Erro: ' + (d.error || 'Falha ao abrir'), 'error');
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl font-medium text-sm shadow-xl ${type === 'success' ? 'bg-green-600 text-white' : (type === 'info' ? 'bg-blue-600 text-white' : 'bg-red-600 text-white')}`;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 3000);
+  }
+
+  loadConfig();
+</script>
+{% endblock %}

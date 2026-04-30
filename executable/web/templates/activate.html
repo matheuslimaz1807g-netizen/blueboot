@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ativar Licença — Apenas Promo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: '#0f172a',
+            card:    '#1e293b',
+            border:  '#334155',
+            accent:  '#6366f1',
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    .glow { box-shadow: 0 0 40px rgba(99, 102, 241, 0.15); }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+    .fade-in { animation: fadeIn 0.5s ease forwards; }
+    input:focus { outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.5); }
+  </style>
+</head>
+<body class="bg-surface text-slate-200 font-sans antialiased min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md fade-in">
+    <!-- Logo card -->
+    <div class="bg-card border border-border rounded-2xl p-8 glow">
+
+      <!-- Logo -->
+      <div class="flex flex-col items-center mb-8">
+        <div class="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mb-4 shadow-lg">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">Apenas Promo</h1>
+        <p class="text-slate-400 text-sm mt-1">Bot de automação de promoções</p>
+      </div>
+
+      <!-- Error banner -->
+      {% if error %}
+      <div id="error-banner"
+           class="mb-6 px-4 py-3 bg-red-900/40 border border-red-500/50 rounded-xl text-red-300 text-sm flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+        </svg>
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <!-- Dynamic error from JS -->
+      <div id="js-error" class="hidden mb-6 px-4 py-3 bg-red-900/40 border border-red-500/50 rounded-xl text-red-300 text-sm"></div>
+
+      <!-- Form -->
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-2">Chave de Licença</label>
+          <input
+            id="license-key"
+            type="text"
+            placeholder="APRO-XXXX-XXXX-XXXX"
+            maxlength="19"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+            class="w-full bg-surface border border-border rounded-xl px-4 py-3 text-white placeholder-slate-500
+                   text-center tracking-widest text-sm font-mono transition-all"
+            oninput="formatLicenseKey(this)"
+          />
+          <p class="text-slate-500 text-xs mt-2 text-center">Formato: APRO-XXXX-XXXX-XXXX</p>
+        </div>
+
+        <button
+          id="activate-btn"
+          onclick="activateLicense()"
+          class="w-full bg-accent hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl
+                 transition-all duration-200 flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+          </svg>
+          <span id="btn-text">Ativar</span>
+        </button>
+      </div>
+
+      <!-- Footer -->
+      <p class="text-center text-slate-600 text-xs mt-8">
+        Precisa de uma licença? Entre em contato com o suporte.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function formatLicenseKey(input) {
+      let v = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      let parts = [];
+      // First block is always "APRO"
+      if (v.length > 0) parts.push(v.substring(0, 4));
+      if (v.length > 4) parts.push(v.substring(4, 8));
+      if (v.length > 8) parts.push(v.substring(8, 12));
+      if (v.length > 12) parts.push(v.substring(12, 16));
+      input.value = parts.join('-');
+    }
+
+    async function activateLicense() {
+      const key = document.getElementById('license-key').value.trim();
+      const btn = document.getElementById('activate-btn');
+      const errBox = document.getElementById('js-error');
+      const btnText = document.getElementById('btn-text');
+
+      errBox.classList.add('hidden');
+
+      if (!key || key.length < 19) {
+        errBox.textContent = 'Insira a chave completa no formato APRO-XXXX-XXXX-XXXX.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.textContent = 'Validando...';
+      btn.classList.add('opacity-75');
+
+      try {
+        const res = await fetch('/api/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ license_key: key }),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          btnText.textContent = '✓ Ativado!';
+          btn.classList.replace('bg-accent', 'bg-green-600');
+          setTimeout(() => { window.location.href = '/'; }, 1200);
+        } else {
+          errBox.textContent = data.error || 'Licença inválida.';
+          errBox.classList.remove('hidden');
+          btn.disabled = false;
+          btnText.textContent = 'Ativar';
+          btn.classList.remove('opacity-75');
+        }
+      } catch (e) {
+        errBox.textContent = 'Erro de conexão. Verifique sua internet.';
+        errBox.classList.remove('hidden');
+        btn.disabled = false;
+        btnText.textContent = 'Ativar';
+        btn.classList.remove('opacity-75');
+      }
+    }
+
+    // Allow Enter key to submit
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') activateLicense();
+    });
+  </script>
+</body>
+</html>

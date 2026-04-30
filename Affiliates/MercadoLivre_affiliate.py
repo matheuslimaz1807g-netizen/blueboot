@@ -2,17 +2,6 @@
 mercadolivre_link_generator.py
 --------------------------------
 Automates the process of generating affiliate links on Mercado Livre using Selenium with Brave browser.
-
-This script:
-1. Opens a specified Mercado Livre product URL.
-2. Handles potential cookie banners.
-3. Navigates through UI elements to access the product page.
-4. Clicks the “Share” button.
-5. Copies the affiliate link to the clipboard.
-6. Returns the copied link as output.
-
-Developed for automation and affiliate marketing purposes.
-
 """
 
 from selenium import webdriver
@@ -21,39 +10,44 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 import pyperclip
 import time
-import os
-
 
 def gerar_link_mercadolivre(url: str) -> str | None:
     """
     Generates a Mercado Livre affiliate link using Selenium automation.
-
-    Args:
-        url (str): The Mercado Livre product URL.
-
-    Returns:
-        str | None: The affiliate link if successful, or None if an error occurs.
     """
-
     print("[DEBUG] Starting gerar_link_mercadolivre")
 
-    # Paths for Brave browser and ChromeDriver
-    brave_path = "/usr/bin/brave-browser"
-    chromedriver_path = os.path.join(os.path.dirname(__file__), "chromedriver")
-    user_data_dir = "/root/.config/BraveSoftware/Brave-Browser/ProfileBot"
+    # ==========================================
+    # 🚨 CAMINHOS PARA O BRAVE NO WINDOWS
+    # ==========================================
+    # Caminho do executável do Brave (Padrão Windows 64-bits)
+    brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+    
+    # Caminho do seu perfil logado (User Data) - Onde seus cookies estão
+    user_data_dir = r"C:\Users\mathe\AppData\Local\BraveSoftware\Brave-Browser\User Data"
 
-    # Browser configuration
+    # Configurações do Navegador
     options = Options()
     options.binary_location = brave_path
     options.add_argument("--no-sandbox")
-    options.add_argument("--user-data-dir=/root/.config/BraveSoftware/Brave-Browser")
-    options.add_argument("--profile-directory=Default")
     options.add_argument("--start-maximized")
+    
+    # 🔥 Usando o seu perfil logado para não pedir senha de novo
+    options.add_argument(f"--user-data-dir={user_data_dir}")
+    options.add_argument("--profile-directory=Default")
 
-    service = Service(executable_path=chromedriver_path)
-    driver = webdriver.Chrome(service=service, options=options)
+    try:
+        # Baixa e gerencia o ChromeDriver compatível automaticamente
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        print(f"[ERROR] Falha ao iniciar o ChromeDriver: {e}")
+        print("\n🚨 ATENÇÃO: O erro acima geralmente acontece porque o Brave já está aberto.")
+        print("Feche TODAS as janelas do Brave antes de rodar o bot para ele conseguir usar seu perfil!\n")
+        return None
 
     try:
         print(f"[DEBUG] Opening URL: {url}")
@@ -94,7 +88,7 @@ def gerar_link_mercadolivre(url: str) -> str | None:
             print("[DEBUG] Trying to click 'Share'")
             compartilhar_btn = WebDriverWait(driver, 30).until(
                 EC.element_to_be_clickable(
-                    (By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")
+                    (By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button")
                 )
             )
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
@@ -121,7 +115,7 @@ def gerar_link_mercadolivre(url: str) -> str | None:
             EC.element_to_be_clickable(
                 (
                     By.XPATH,
-                    "/html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button",
+                    "/html/body/div[1]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button",
                 )
             )
         )
@@ -141,4 +135,5 @@ def gerar_link_mercadolivre(url: str) -> str | None:
 
     finally:
         print("[DEBUG] Closing WebDriver session")
-        driver.quit()
+        if 'driver' in locals():
+            driver.quit()

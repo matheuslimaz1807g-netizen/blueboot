@@ -21,3 +21,10 @@ __pycache__/
 
 # Arquivos de ambiente
 .env
+
+# Executáveis e arquivos pesados gerados pelo PyInstaller
+*.exe
+*.session
+executable/BlueBot_Package/
+dist/
+build/

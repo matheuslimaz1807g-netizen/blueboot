@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Promotion {
+  id             String   @id @default(cuid())
+  originalTitle  String
+  seoTitle       String
+  slug           String   @unique
+  oldPrice       String?
+  newPrice       String
+  couponCode     String?
+  imageUrl       String
+  store          String
+  affiliateLink  String
+  telegramLink   String
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

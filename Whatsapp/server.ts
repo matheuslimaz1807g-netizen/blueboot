@@ -1,142 +1,122 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
-import qrcode from 'qrcode-terminal';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import qrcode from 'qrcode'; // Use raw qrcode gen instead of terminal
 
 dotenv.config();
 
-/**
- * Express app configuration
- * - Enables CORS
- * - Allows JSON bodies up to 10 MB (used for base64-encoded images)
- */
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-/**
- * @constant targetGroups
- * @description List of WhatsApp group names where messages will be sent.
- *              The bot will cache these groups on startup and only send messages to them.
- * @example ["Deals Group", "Promo Watchers"]
- */
-const targetGroups = [
-  ""
-];
+// Cache para armazenar os IDs encontrados (nome do grupo -> id do whatsapp)
+let allGroups: { name: string; id: string }[] = [];
+let statusVal: "disconnected" | "qr" | "connected" = "disconnected";
+let qrCodeBase64: string = "";
 
-/**
- * @constant groupsCache
- * @description Caches the IDs of target WhatsApp groups after client initialization,
- *              avoiding repeated lookups or API calls.
- */
-let groupsCache: { name: string; id: string }[] = [];
-
-/**
- * @constant client
- * @description WhatsApp client configured with local authentication (stores session on disk).
- *              Puppeteer is launched in sandbox-free mode for compatibility with minimal environments.
- */
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    headless: true, // Invisible, so it can run via python hidden process
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   },
 });
 
-/**
- * QR Code event handler
- * Triggered when WhatsApp Web needs a new authentication QR code.
- * Displays a small QR code directly in the terminal for convenience.
- */
-client.on('qr', (qr: string) => {
-  console.log('📱 QR CODE RECEIVED — scan it with WhatsApp:');
-  qrcode.generate(qr, { small: true });
+// --- EVENTOS DO WHATSAPP ---
+
+client.on('qr', async (qr: string) => {
+  statusVal = "qr";
+  try {
+      qrCodeBase64 = await qrcode.toDataURL(qr); // Returns data:image/png;base64,...
+  } catch (err) {
+      console.error("Erro gerando QR base64:", err);
+  }
 });
 
-/**
- * Ready event handler
- * Fired once the WhatsApp client has successfully authenticated and connected.
- * The bot caches the target group IDs so that message dispatch can be fast and efficient.
- */
-client.on('ready', async () => {
-  console.log('✅ WhatsApp client is ready and authenticated.');
-  const chats = await client.getChats();
+client.on('authenticated', () => {
+  statusVal = "connected";
+  qrCodeBase64 = "";
+});
 
-  // Filter and cache only the target groups specified in targetGroups[]
-  groupsCache = chats
-    .filter((c) => c.isGroup && targetGroups.includes(c.name))
+client.on('disconnected', () => {
+    statusVal = "disconnected";
+    qrCodeBase64 = "";
+});
+
+client.on('ready', async () => {
+  console.log('✅ WhatsApp conectado e pronto!');
+  statusVal = "connected";
+
+  // Busca todos os chats e guarda apenas grupos
+  const chats = await client.getChats();
+  allGroups = chats
+    .filter((c) => c.isGroup)
     .map((c) => ({ name: c.name, id: c.id._serialized }));
 
-  console.log('📋 Cached groups:');
-  groupsCache.forEach((g) => console.log(`- ${g.name}`));
+  console.log(`📋 Total de grupos monitorados: ${allGroups.length}`);
 });
 
 /**
- * Sends messages (text and optionally image) to all cached WhatsApp groups.
- * Each send operation is delayed slightly (1 second) to avoid being flagged as spam.
- *
- * @param text - The text message to send.
- * @param base64Image - Optional base64-encoded image.
- * @param mimeType - Optional MIME type (e.g. 'image/jpeg').
+ * Função para enviar mensagens para grupos dinâmicos
  */
-async function sendToGroups(text: string, base64Image?: string, mimeType?: string) {
-  if (groupsCache.length === 0) {
-    console.warn('⚠️ No groups loaded. Make sure the target group names exist.');
-    return;
+async function sendToGroups(text: string, base64Image?: string, mimeType?: string, targets: string[] = []) {
+  if (targets.length === 0) {
+    throw new Error('Nenhum grupo alvo especificado no payload da rota send.');
   }
 
-  for (const group of groupsCache) {
+  // Refresha a lista de grupos para garantir
+  if (allGroups.length === 0) {
+      const chats = await client.getChats();
+      allGroups = chats.filter((c) => c.isGroup).map((c) => ({ name: c.name, id: c.id._serialized }));
+  }
+
+  // Filtra os que demos match
+  const matchedGroups = allGroups.filter(g => targets.includes(g.name));
+  if (matchedGroups.length === 0) {
+      throw new Error(`Nenhum dos grupos (${targets.join(', ')}) foi encontrado no seu Whatsapp!`);
+  }
+
+  for (const group of matchedGroups) {
     try {
       if (base64Image && mimeType?.startsWith('image/')) {
-        // Send message with image attachment
         const media = new MessageMedia(mimeType, base64Image);
         await client.sendMessage(group.id, media, { caption: text });
       } else {
-        // Send plain text message
         await client.sendMessage(group.id, text);
       }
-      console.log(`📤 Message successfully sent to ${group.name}`);
+      console.log(`📤 Enviado com sucesso para: ${group.name}`);
     } catch (err: any) {
-      console.error(`❌ Error sending to ${group.name}:`, err);
+      console.error(`❌ Erro ao enviar para ${group.name}:`, err.message);
     }
 
-    // Wait 1s between sends to reduce risk of being flagged
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Delay de 1.5s entre grupos para evitar bloqueios
+    await new Promise((res) => setTimeout(res, 1500));
   }
 }
 
-/**
- * POST /send
- * --------------------------------------
- * Public API endpoint used to send a message (and optionally an image)
- * to all the groups in `targetGroups`.
- *
- * Expected JSON body:
- * ```json
- * {
- *   "text": "Your message content",
- *   "base64Image": "<optional base64 string>",
- *   "mimeType": "image/jpeg"
- * }
- * ```
- */
-app.post('/send', async (req: Request, res: Response) => {
-  const { text, base64Image, mimeType } = req.body;
+// --- ROTAS DA API ---
+
+app.get('/status', (req: Request, res: Response): void => {
+    res.json({
+        status: statusVal,
+        qr: qrCodeBase64
+    });
+});
+
+app.post('/send', async (req: Request, res: Response): Promise<void> => {
+  const { text, base64Image, mimeType, targets } = req.body;
+
   try {
-    await sendToGroups(text, base64Image, mimeType);
-    res.status(200).send({ status: 'ok' });
+    await sendToGroups(text, base64Image, mimeType, targets);
+    res.status(200).json({ status: 'ok', message: 'Mensagem enviada aos grupos.' });
   } catch (err: any) {
-    console.error('❌ Error sending message:', err);
-    res.status(500).send({ error: 'Error sending message' });
+    res.status(500).json({ error: err.message });
   }
 });
 
-/**
- * Initialize WhatsApp client and start Express server.
- * The bot will automatically reconnect using saved credentials from LocalAuth.
- */
+// --- INICIALIZAÇÃO ---
 const PORT = process.env.PORT || 4000;
 client.initialize();
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));

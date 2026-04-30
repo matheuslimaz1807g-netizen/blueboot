@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block title %}Dashboard — Apenas Promo{% endblock %}
+
+{% block content %}
+<div class="flex-1 overflow-y-auto">
+  <!-- Header -->
+  <header class="sticky top-0 z-10 bg-card/80 backdrop-blur border-b border-border px-8 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <h2 class="text-lg font-semibold text-white">Dashboard</h2>
+      <div id="status-badge" class="status-badge status-stopped">⏹ Parado</div>
+    </div>
+    <div class="flex gap-3">
+      <button id="start-btn"
+        onclick="botStart()"
+        class="btn-primary flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Iniciar Bot
+      </button>
+      <button id="stop-btn"
+        onclick="botStop()"
+        class="btn-danger hidden flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/>
+        </svg>
+        Parar Bot
+      </button>
+    </div>
+  </header>
+
+  <div class="p-8 space-y-8">
+    <!-- Stats grid -->
+    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="stat-card">
+        <div class="stat-icon bg-indigo-500/20 text-indigo-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+        </div>
+        <div class="stat-value" id="st-processed">—</div>
+        <div class="stat-label">Processadas hoje</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon bg-blue-500/20 text-blue-400">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+          </svg>
+        </div>
+        <div class="stat-value" id="st-telegram">—</div>
+        <div class="stat-label">Enviadas Telegram</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon bg-green-500/20 text-green-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+        </div>
+        <div class="stat-value" id="st-whatsapp">—</div>
+        <div class="stat-label">Enviadas WhatsApp</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon bg-red-500/20 text-red-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div class="stat-value" id="st-errors">—</div>
+        <div class="stat-label">Erros 24h</div>
+      </div>
+    </div>
+    
+    <!-- WhatsApp Connection Status -->
+    <div class="card flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-green-500/20 text-green-400 rounded-xl">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-white font-semibold">Status do WhatsApp</h3>
+          <p id="wpp-status-text" class="text-sm text-muted">Verificando conexão...</p>
+        </div>
+      </div>
+      <button onclick="window.location.href='/whatsapp'" class="btn-secondary py-2 px-4 text-sm font-medium">
+        Gerenciar Conexão
+      </button>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-white">Última atividade</h3>
+        <span class="text-xs text-muted">atualiza a cada 3s</span>
+      </div>
+      <div id="recent-logs" class="space-y-2 min-h-[120px]">
+        <p class="text-muted text-sm text-center py-6">Aguardando atividade...</p>
+      </div>
+    </div>
+
+    <!-- License info -->
+    <div class="card">
+      <h3 class="font-semibold text-white mb-3">Informações da licença</h3>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="text-muted">Plano</span>
+          <p id="lic-plan" class="text-white font-medium capitalize mt-1">—</p>
+        </div>
+        <div>
+          <span class="text-muted">Validade</span>
+          <p id="lic-expires" class="text-white font-medium mt-1">—</p>
+        </div>
+        <div>
+          <span class="text-muted">Versão</span>
+          <p id="lic-version" class="text-white font-medium mt-1">—</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OTP Auth Overlay -->
+<div id="auth-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-card border border-border rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <h3 class="text-lg font-bold text-white">Login Telegram</h3>
+    </div>
+    
+    <p class="text-sm text-slate-300">Autenticação necessária. Verifique o código enviado no aplicativo do Telegram.</p>
+    
+    <div id="auth-code-section" class="space-y-3 mt-4">
+      <input id="auth-code-input" type="text" placeholder="Código (ex: 12345)" class="field-input text-center tracking-widest font-mono text-lg" autofocus/>
+      <button onclick="submitAuthCode()" class="btn-primary w-full justify-center py-2.5">Autenticar Código</button>
+    </div>
+    
+    <div id="auth-pass-section" class="hidden space-y-3 mt-4">
+      <p class="text-sm text-red-300">Autenticação de Duas Etapas (2FA) exigida.</p>
+      <input id="auth-pass-input" type="password" placeholder="Senha" class="field-input"/>
+      <button onclick="submitAuthPass()" class="btn-primary w-full justify-center py-2.5">Autenticar Senha</button>
+    </div>
+    
+    <div id="auth-error" class="hidden px-3 py-2 bg-red-900/40 border border-red-500/40 rounded-lg text-red-300 text-sm text-center"></div>
+    
+    <button onclick="cancelAuth()" class="w-full pt-3 mt-2 text-sm text-muted hover:text-white transition border-t border-border">Cancelar Inicialização</button>
+  </div>
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function botStart() {
+    const btn = document.getElementById('start-btn');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-pulse">Iniciando...</span>';
+    
+    const res = await fetch('/api/bot/start', { method: 'POST' });
+    const d = await res.json();
+    if (!d.ok) {
+        alert('Erro: ' + (d.error || 'desconhecido'));
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+  }
+  async function botStop() {
+    const btn = document.getElementById('stop-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-pulse">Parando...</span>';
+    await fetch('/api/bot/stop', { method: 'POST' });
+  }
+
+  async function updateDashboard() {
+    const [statusRes, logsRes, wppRes] = await Promise.all([
+      fetch('/api/status'),
+      fetch('/api/logs'),
+      fetch('/api/whatsapp/status')
+    ]);
+    const status = await statusRes.json();
+    const logs   = await logsRes.json();
+    const wpp    = await wppRes.json();
+
+    // WhatsApp Connection Status Card
+    const wppText = document.getElementById('wpp-status-text');
+    if (wpp.status === 'connected') {
+        wppText.className = "text-sm text-emerald-400 font-medium";
+        wppText.textContent = "● Conectado e Pronto";
+    } else if (wpp.status === 'qr') {
+        wppText.className = "text-sm text-blue-400 font-medium";
+        wppText.textContent = "● Aguardando Leitura de QR Code";
+    } else {
+        wppText.className = "text-sm text-amber-400 font-medium";
+        wppText.textContent = "● Desconectado / Iniciando...";
+    }
+
+    // Status badge
+    const badge = document.getElementById('status-badge');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const authOverlay = document.getElementById('auth-overlay');
+
+    badge.className = 'status-badge';
+    if (status.status === 'running') {
+      badge.classList.add('status-running');
+      badge.textContent = '🟢 Rodando';
+      startBtn.classList.add('hidden');
+      stopBtn.classList.remove('hidden');
+      stopBtn.disabled = false;
+      stopBtn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/>
+        </svg> Parar Bot`;
+      authOverlay.classList.add('hidden');
+    } else if (status.status === 'waiting_code') {
+      badge.classList.add('status-error');
+      badge.textContent = '🔑 Requer Login';
+      startBtn.classList.add('hidden');
+      stopBtn.classList.remove('hidden');
+      stopBtn.disabled = false;
+      authOverlay.classList.remove('hidden');
+    } else if (status.status === 'error') {
+      badge.classList.add('status-error');
+      badge.textContent = '🔴 Erro';
+      startBtn.classList.remove('hidden');
+      startBtn.disabled = false;
+      startBtn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg> Iniciar Bot`;
+      stopBtn.classList.add('hidden');
+      authOverlay.classList.add('hidden');
+    } else {
+      badge.classList.add('status-stopped');
+      badge.textContent = '⏹ Parado';
+      startBtn.classList.remove('hidden');
+      startBtn.disabled = false;
+      startBtn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg> Iniciar Bot`;
+      stopBtn.classList.add('hidden');
+      authOverlay.classList.add('hidden');
+    }
+
+    // Stats
+    const s = status.stats || {};
+    document.getElementById('st-processed').textContent = s.today_processed ?? 0;
+    document.getElementById('st-telegram').textContent  = s.today_telegram ?? 0;
+    document.getElementById('st-whatsapp').textContent  = s.today_whatsapp ?? 0;
+    document.getElementById('st-errors').textContent    = s.errors_24h ?? 0;
+
+    // License
+    document.getElementById('lic-plan').textContent    = status.plan || '—';
+    document.getElementById('lic-version').textContent = status.version || '—';
+    if (status.license_expires) {
+      const d = new Date(status.license_expires);
+      document.getElementById('lic-expires').textContent = d.toLocaleDateString('pt-BR');
+    }
+
+    // Recent logs (last 5)
+    const recentBox = document.getElementById('recent-logs');
+    const recent = logs.slice(-5).reverse();
+    if (recent.length === 0) {
+      recentBox.innerHTML = '<p class="text-muted text-sm text-center py-6">Aguardando atividade...</p>';
+    } else {
+      recentBox.innerHTML = recent.map(l => `
+        <div class="flex items-start gap-3 py-2 border-b border-border last:border-0">
+          <span class="log-badge log-${l.nivel}">${l.nivel}</span>
+          <span class="text-slate-300 text-sm flex-1">${l.mensagem}</span>
+          <span class="text-muted text-xs shrink-0">${l.horario}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  async function submitAuthCode() {
+    const code = document.getElementById('auth-code-input').value;
+    if(!code) return;
+    document.getElementById('auth-error').classList.add('hidden');
+    
+    const r = await fetch('/api/bot/submit_code', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code})
+    });
+    const data = await r.json();
+    if(data.ok) {
+       document.getElementById('auth-overlay').classList.add('hidden');
+    } else if (data.requires_password) {
+       document.getElementById('auth-code-section').classList.add('hidden');
+       document.getElementById('auth-pass-section').classList.remove('hidden');
+    } else {
+       const err = document.getElementById('auth-error');
+       err.textContent = data.error || 'Código inválido';
+       err.classList.remove('hidden');
+    }
+  }
+  
+  async function submitAuthPass() {
+    const code = document.getElementById('auth-code-input').value;
+    const password = document.getElementById('auth-pass-input').value;
+    if(!password) return;
+    document.getElementById('auth-error').classList.add('hidden');
+    
+    const r = await fetch('/api/bot/submit_code', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code, password})
+    });
+    const data = await r.json();
+    if(data.ok) {
+       document.getElementById('auth-overlay').classList.add('hidden');
+    } else {
+       const err = document.getElementById('auth-error');
+       err.textContent = data.error || 'Senha incorreta';
+       err.classList.remove('hidden');
+    }
+  }
+  
+  function cancelAuth() {
+    botStop();
+    document.getElementById('auth-overlay').classList.add('hidden');
+  }
+
+  updateDashboard();
+  setInterval(updateDashboard, 3000);
+</script>
+{% endblock %}

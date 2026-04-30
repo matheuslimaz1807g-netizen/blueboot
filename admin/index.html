@@ -1,0 +1,1726 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel Admin — ApenasPromo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              surface: "#0f172a",
+              card: "#1e293b",
+              border: "#334155",
+              accent: "#6366f1",
+              accentHo: "#818cf8",
+              muted: "#94a3b8",
+            },
+            fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 9999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.625rem 0.875rem;
+        border-radius: 0.625rem;
+        color: #94a3b8;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: none;
+        cursor: pointer;
+      }
+      .nav-link:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+      }
+      .nav-link.active {
+        background: rgba(99, 102, 241, 0.15);
+        color: #818cf8;
+      }
+
+      .card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 1rem;
+        padding: 1.5rem;
+      }
+
+      .stat-card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        transition: border-color 0.2s;
+      }
+      .stat-card:hover {
+        border-color: #6366f1;
+      }
+      .stat-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.625rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1;
+      }
+      .stat-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        font-weight: 500;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1.25rem;
+        border-radius: 0.625rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: all 0.15s ease;
+        cursor: pointer;
+        border: none;
+        justify-content: center;
+      }
+      .btn-primary {
+        background: #6366f1;
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: #818cf8;
+      }
+      .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .btn-secondary {
+        background: transparent;
+        color: #94a3b8;
+        border: 1px solid #334155;
+      }
+      .btn-secondary:hover {
+        color: #fff;
+        border-color: #64748b;
+      }
+      .btn-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      .btn-danger:hover {
+        background: rgba(239, 68, 68, 0.25);
+      }
+      .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 0.375rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .badge-green {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+      }
+      .badge-red {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+      }
+      .badge-yellow {
+        background: rgba(234, 179, 8, 0.2);
+        color: #eab308;
+      }
+      .badge-blue {
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+      }
+      .badge-gray {
+        background: rgba(100, 116, 139, 0.2);
+        color: #94a3b8;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+      }
+      .field label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #cbd5e1;
+      }
+      .inp {
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 0.75rem;
+        padding: 0.625rem 1rem;
+        color: #fff;
+        font-size: 0.875rem;
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+      }
+      .inp::placeholder {
+        color: #475569;
+      }
+      .inp:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        outline: none;
+      }
+      select.inp {
+        cursor: pointer;
+      }
+      textarea.inp {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      .table-wrap {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 1rem;
+        overflow: hidden;
+      }
+      .table-wrap table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .table-wrap th {
+        padding: 0.75rem 1.25rem;
+        text-align: left;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        border-bottom: 1px solid #334155;
+        background: rgba(15, 23, 42, 0.3);
+      }
+      .table-wrap td {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+        border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      }
+      .table-wrap tr:last-child td {
+        border-bottom: none;
+      }
+      .table-wrap tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+      .modal-box {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 1.25rem;
+        width: 100%;
+        max-width: 32rem;
+        padding: 1.75rem;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      }
+      .modal-box h3 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 1.25rem;
+      }
+
+      .toast {
+        position: fixed;
+        top: 1.25rem;
+        right: 1.25rem;
+        z-index: 100;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      }
+      .toast-success {
+        background: #16a34a;
+        color: #fff;
+      }
+      .toast-error {
+        background: #dc2626;
+        color: #fff;
+      }
+
+      .empty-state {
+        padding: 3rem 1.25rem;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 0.875rem;
+      }
+      .section-title {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        margin-bottom: 0.75rem;
+      }
+
+      .day-chip {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        cursor: pointer;
+        padding: 0.375rem;
+        border-radius: 0.5rem;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+      .day-chip:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .day-chip.selected {
+        background: rgba(99, 102, 241, 0.2);
+        border-color: rgba(99, 102, 241, 0.5);
+        color: #a5b4fc;
+      }
+      .day-chip input {
+        display: none;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-surface text-slate-200 font-sans antialiased min-h-screen"
+    x-data="adminApp()"
+    x-init="init()"
+  >
+    <!-- Toast -->
+    <div
+      x-show="toast.show"
+      x-cloak
+      x-transition
+      class="toast"
+      :class="toast.type === 'success' ? 'toast-success' : 'toast-error'"
+      x-text="toast.msg"
+    ></div>
+
+    <!-- Login -->
+    <div
+      x-show="!loggedIn"
+      x-cloak
+      class="min-h-screen flex items-center justify-center p-4"
+    >
+      <div
+        class="w-full max-w-sm bg-card border border-border rounded-2xl p-8 space-y-6 shadow-2xl"
+      >
+        <div class="text-center">
+          <div
+            class="w-12 h-12 rounded-xl bg-accent mx-auto flex items-center justify-center mb-3 text-white font-bold text-lg"
+          >
+            AP
+          </div>
+          <h1 class="text-xl font-bold text-white">Painel Admin</h1>
+          <p class="text-muted text-sm mt-1">ApenasPromo — Acesso restrito</p>
+        </div>
+        <div
+          x-show="loginError"
+          class="px-4 py-3 bg-red-900/40 border border-red-500/40 rounded-xl text-red-300 text-sm"
+          x-text="loginError"
+        ></div>
+        <div class="space-y-4">
+          <div class="field">
+            <label>Usuário</label>
+            <input
+              class="inp"
+              x-model="loginForm.username"
+              @keydown.enter="doLogin()"
+              placeholder="admin"
+            />
+          </div>
+          <div class="field">
+            <label>Senha</label>
+            <input
+              class="inp"
+              type="password"
+              x-model="loginForm.password"
+              @keydown.enter="doLogin()"
+              placeholder="••••••"
+            />
+          </div>
+          <button
+            class="btn btn-primary w-full"
+            @click="doLogin()"
+            :disabled="loading"
+          >
+            <span x-text="loading ? 'Entrando...' : 'Entrar'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main app -->
+    <div x-show="loggedIn" x-cloak class="flex min-h-screen">
+      <!-- Sidebar -->
+      <aside class="w-64 bg-card border-r border-border flex flex-col shrink-0">
+        <div class="px-6 py-5 border-b border-border flex items-center gap-3">
+          <div
+            class="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center text-sm font-bold"
+          >
+            AP
+          </div>
+          <span class="font-semibold text-white text-sm tracking-wide"
+            >Admin</span
+          >
+        </div>
+        <nav class="flex-1 px-3 py-4 space-y-1">
+          <template x-for="tab in tabs" :key="tab.id">
+            <button
+              class="nav-link"
+              :class="activeTab === tab.id ? 'active' : ''"
+              @click="activeTab = tab.id; loadTab(tab.id)"
+            >
+              <span x-html="tab.icon"></span>
+              <span x-text="tab.label"></span>
+            </button>
+          </template>
+        </nav>
+        <div class="px-6 py-4 border-t border-border">
+          <button
+            class="text-xs text-muted hover:text-red-400 transition flex items-center gap-2"
+            @click="logout()"
+          >
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            Sair
+          </button>
+        </div>
+      </aside>
+
+      <!-- Content -->
+      <main class="flex-1 overflow-y-auto">
+        <!-- Licenses tab -->
+        <div x-show="activeTab === 'licenses'" class="p-8">
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <h2 class="text-2xl font-bold text-white">Licenças</h2>
+              <p class="text-sm text-muted mt-1">
+                Gerencie as chaves de licença dos clientes
+              </p>
+            </div>
+            <button class="btn btn-primary" @click="openNewLicenseModal()">
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Nova Licença
+            </button>
+          </div>
+
+          <!-- Stats -->
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div class="stat-card">
+              <div class="stat-icon bg-indigo-500/20 text-indigo-400">
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                  />
+                </svg>
+              </div>
+              <div class="stat-value" x-text="stats.total"></div>
+              <div class="stat-label">Total de Licenças</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon bg-green-500/20 text-green-400">
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div class="stat-value" x-text="stats.active"></div>
+              <div class="stat-label">Ativas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon bg-red-500/20 text-red-400">
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div class="stat-value" x-text="stats.inactive"></div>
+              <div class="stat-label">Inativas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon bg-blue-500/20 text-blue-400">
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+              </div>
+              <div class="stat-value" x-text="stats.online"></div>
+              <div class="stat-label">Online (1h)</div>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Chave</th>
+                  <th>Plano</th>
+                  <th>Status</th>
+                  <th>Máquina</th>
+                  <th>Expiração</th>
+                  <th>Heartbeat</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-if="licenses.length === 0">
+                  <tr>
+                    <td colspan="7" class="empty-state">
+                      Nenhuma licença cadastrada.
+                    </td>
+                  </tr>
+                </template>
+                <template x-for="lic in licenses" :key="lic.id">
+                  <tr>
+                    <td
+                      class="font-mono text-xs text-white font-medium"
+                      x-text="lic.key"
+                    ></td>
+                    <td>
+                      <span
+                        class="badge"
+                        :class="lic.plan === 'pro' ? 'badge-blue' : 'badge-gray'"
+                        x-text="lic.plan.toUpperCase()"
+                      ></span>
+                    </td>
+                    <td>
+                      <span
+                        class="badge"
+                        :class="lic.active ? 'badge-green' : 'badge-red'"
+                        x-text="lic.active ? 'ATIVA' : 'INATIVA'"
+                      ></span>
+                    </td>
+                    <td>
+                      <span
+                        class="text-xs font-mono"
+                        :class="lic.machine_id ? 'text-slate-300' : 'text-muted'"
+                        x-text="lic.machine_id ? lic.machine_id.substring(0,16)+'...' : '—'"
+                      ></span>
+                    </td>
+                    <td
+                      class="text-xs"
+                      x-text="fmtDate(lic.expires_at) || '—'"
+                    ></td>
+                    <td>
+                      <span
+                        class="badge"
+                        :class="heartbeatBadge(lic.last_heartbeat)"
+                        x-text="fmtRelative(lic.last_heartbeat) || 'Nunca'"
+                      ></span>
+                    </td>
+                    <td>
+                      <div class="flex gap-1.5">
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          @click="editLic(lic)"
+                          title="Editar"
+                        >
+                          <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          @click="viewConfig(lic)"
+                          title="Configurações"
+                        >
+                          <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                            />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          @click="viewLogs(lic)"
+                          title="Logs"
+                        >
+                          <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Versions tab -->
+        <div x-show="activeTab === 'versions'" class="p-8">
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <h2 class="text-2xl font-bold text-white">Versões</h2>
+              <p class="text-sm text-muted mt-1">
+                Gerencie as versões do executável
+              </p>
+            </div>
+            <button class="btn btn-primary" @click="showVersionModal = true">
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Publicar Versão
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Versão</th>
+                  <th>Status</th>
+                  <th>Publicada em</th>
+                  <th>Changelog</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-if="versions.length === 0">
+                  <tr>
+                    <td colspan="4" class="empty-state">
+                      Nenhuma versão publicada.
+                    </td>
+                  </tr>
+                </template>
+                <template x-for="v in versions" :key="v.version">
+                  <tr>
+                    <td
+                      class="font-mono text-white font-medium"
+                      x-text="v.version"
+                    ></td>
+                    <td>
+                      <span
+                        class="badge"
+                        :class="v.is_latest ? 'badge-green' : 'badge-yellow'"
+                        x-text="v.is_latest ? 'MAIS RECENTE' : 'ANTIGA'"
+                      ></span>
+                    </td>
+                    <td
+                      class="text-xs text-slate-300"
+                      x-text="fmtDate(v.released_at)"
+                    ></td>
+                    <td
+                      class="text-xs text-muted max-w-xs truncate"
+                      x-text="v.changelog || '—'"
+                    ></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Log viewer tab -->
+        <div x-show="activeTab === 'log_viewer'" class="p-8">
+          <div class="mb-8">
+            <h2 class="text-2xl font-bold text-white">Logs de Licença</h2>
+            <p class="text-sm text-muted mt-1">
+              Visualize os eventos de cada licença
+            </p>
+          </div>
+          <div x-show="!selectedLic" class="card text-center py-12">
+            <div class="text-muted flex flex-col items-center gap-3">
+              <svg
+                class="w-12 h-12 opacity-30"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
+              </svg>
+              <p>
+                Selecione uma licença na aba <strong>Licenças</strong> e clique
+                em <strong>"Logs"</strong>.
+              </p>
+            </div>
+          </div>
+          <div x-show="selectedLic">
+            <div class="card mb-6 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-10 h-10 rounded-lg bg-accent/20 text-accent flex items-center justify-center font-mono text-xs font-bold"
+                >
+                  <span x-text="selectedLic?.key?.substring(5,9)"></span>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-white">Licença</p>
+                  <p
+                    class="text-xs font-mono text-accent"
+                    x-text="selectedLic?.key"
+                  ></p>
+                </div>
+              </div>
+              <button
+                class="btn btn-secondary btn-sm"
+                @click="selectedLic = null; licLogs = []"
+              >
+                <svg
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                Fechar
+              </button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Horário</th>
+                    <th>Tipo</th>
+                    <th>Mensagem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-if="licLogs.length === 0">
+                    <tr>
+                      <td colspan="3" class="empty-state">
+                        Nenhum log registrado.
+                      </td>
+                    </tr>
+                  </template>
+                  <template x-for="l in licLogs" :key="l.id">
+                    <tr>
+                      <td
+                        class="font-mono text-xs text-slate-400"
+                        x-text="fmtDate(l.created_at)"
+                      ></td>
+                      <td>
+                        <span
+                          class="badge"
+                          :class="{'badge-blue': l.nivel==='info','badge-green': l.nivel==='success','badge-red': l.nivel==='error'}"
+                          x-text="l.nivel.toUpperCase()"
+                        ></span>
+                      </td>
+                      <td
+                        class="text-slate-300 break-all text-xs"
+                        x-text="l.mensagem"
+                      ></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- New License Modal -->
+    <div
+      x-show="showNewLicModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showNewLicModal = false"
+    >
+      <div class="modal-box" @click.stop>
+        <h3>Nova Licença</h3>
+        <div class="space-y-4">
+          <div class="field">
+            <label>Plano</label>
+            <select class="inp" x-model="newLicForm.plan">
+              <option value="basic">Basic</option>
+              <option value="pro">Pro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Duração (dias)</label>
+            <input
+              class="inp"
+              type="number"
+              min="1"
+              max="3650"
+              x-model="newLicForm.expires_days"
+            />
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-4">
+          <button class="btn btn-secondary" @click="showNewLicModal = false">
+            Cancelar
+          </button>
+          <button class="btn btn-primary" @click="createLicense()">
+            Gerar Licença
+          </button>
+        </div>
+        <div
+          x-show="generatedKey"
+          x-cloak
+          x-transition
+          class="mt-6 bg-surface border border-border rounded-xl p-5 text-center"
+        >
+          <p class="text-xs text-muted mb-2">Chave gerada:</p>
+          <div class="flex items-center justify-center gap-2">
+            <p
+              class="text-lg font-mono font-bold text-accent select-all"
+              x-text="generatedKey"
+            ></p>
+            <button
+              class="text-muted hover:text-white transition p-1"
+              @click="copyKey(generatedKey)"
+              title="Copiar"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z"
+                />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-muted mt-2">
+            Copie agora — não será exibida novamente.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit License Modal -->
+    <div
+      x-show="showEditLicModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showEditLicModal = false"
+    >
+      <div class="modal-box" @click.stop>
+        <h3>Editar Licença</h3>
+        <div class="space-y-4">
+          <div class="field">
+            <label>Plano</label>
+            <select class="inp" x-model="editLicForm.plan">
+              <option value="basic">Basic</option>
+              <option value="pro">Pro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select class="inp" x-model="editLicForm.active">
+              <option :value="true">Ativa</option>
+              <option :value="false">Inativa</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Renovar por (dias a partir de hoje)</label>
+            <input
+              class="inp"
+              type="number"
+              min="1"
+              x-model="editLicForm.expires_days"
+              placeholder="Deixe vazio para não alterar"
+            />
+          </div>
+
+          <!-- Schedule Rules -->
+          <div class="border-t border-border pt-4 mt-2">
+            <p class="section-title">Restrição de Horário</p>
+            <label class="flex items-center gap-2 cursor-pointer mb-3">
+              <input
+                type="checkbox"
+                x-model="editLicForm.schedule_enabled"
+                class="rounded border-border bg-surface text-accent focus:ring-accent"
+              />
+              <span class="text-sm text-slate-300"
+                >Ativar restrição de horário</span
+              >
+            </label>
+            <template x-if="editLicForm.schedule_enabled">
+              <div class="space-y-3">
+                <div>
+                  <label class="text-sm font-medium text-slate-300 block mb-2"
+                    >Dias da semana permitidos</label
+                  >
+                  <div class="grid grid-cols-7 gap-1">
+                    <template
+                      x-for="(label, idx) in ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']"
+                      :key="idx"
+                    >
+                      <label
+                        class="day-chip"
+                        :class="editLicForm.schedule_dias.includes(idx) ? 'selected' : ''"
+                      >
+                        <input
+                          type="checkbox"
+                          :value="idx"
+                          x-model="editLicForm.schedule_dias"
+                        />
+                        <span x-text="label"></span>
+                      </label>
+                    </template>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="field">
+                    <label>Hora início</label>
+                    <input
+                      class="inp"
+                      type="time"
+                      x-model="editLicForm.schedule_hora_inicio"
+                    />
+                  </div>
+                  <div class="field">
+                    <label>Hora fim</label>
+                    <input
+                      class="inp"
+                      type="time"
+                      x-model="editLicForm.schedule_hora_fim"
+                    />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Fuso horário</label>
+                  <select class="inp" x-model="editLicForm.schedule_timezone">
+                    <option value="America/Sao_Paulo">
+                      América/São Paulo (UTC-3)
+                    </option>
+                    <option value="America/New_York">
+                      América/Nova York (UTC-5)
+                    </option>
+                    <option value="America/Chicago">
+                      América/Chicago (UTC-6)
+                    </option>
+                    <option value="America/Denver">
+                      América/Denver (UTC-7)
+                    </option>
+                    <option value="America/Los_Angeles">
+                      América/Los Angeles (UTC-8)
+                    </option>
+                    <option value="Europe/London">
+                      Europa/Londres (UTC+0)
+                    </option>
+                    <option value="Europe/Lisbon">Europa/Lisboa (UTC+0)</option>
+                    <option value="Europe/Madrid">Europa/Madrid (UTC+1)</option>
+                    <option value="UTC">UTC</option>
+                  </select>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-4">
+          <button class="btn btn-secondary" @click="showEditLicModal = false">
+            Cancelar
+          </button>
+          <button class="btn btn-primary" @click="saveLicense()">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Config Modal -->
+    <div
+      x-show="showConfigModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showConfigModal = false"
+    >
+      <div class="modal-box max-w-2xl" @click.stop>
+        <h3>Configurações da Licença</h3>
+        <div x-show="!configData" class="text-center py-8 text-muted text-sm">
+          Carregando...
+        </div>
+        <template x-if="configData">
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="field">
+                <label>API ID</label>
+                <input
+                  class="inp"
+                  x-model="configData.api_id"
+                  placeholder="—"
+                />
+              </div>
+              <div class="field">
+                <label>API Hash</label>
+                <input
+                  class="inp"
+                  x-model="configData.api_hash"
+                  placeholder="—"
+                />
+              </div>
+            </div>
+            <div class="field">
+              <label>Telefone</label>
+              <input class="inp" x-model="configData.phone" placeholder="—" />
+            </div>
+            <div class="field">
+              <label>Grupos de origem (separados por vírgula)</label>
+              <input
+                class="inp"
+                x-model="configData.sources_str"
+                placeholder="https://t.me/grupo1,https://t.me/grupo2"
+              />
+            </div>
+            <div class="field">
+              <label>Destino Telegram</label>
+              <input
+                class="inp"
+                x-model="configData.destination_telegram"
+                placeholder="—"
+              />
+            </div>
+            <div class="field">
+              <label>Delay (segundos)</label>
+              <input
+                class="inp"
+                type="number"
+                min="1"
+                x-model="configData.delay_segundos"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="field">
+                <label>Shopee Token</label>
+                <input
+                  class="inp"
+                  x-model="configData.shopee_token"
+                  placeholder="—"
+                />
+              </div>
+              <div class="field">
+                <label>AliExpress App Key</label>
+                <input
+                  class="inp"
+                  x-model="configData.ali_key"
+                  placeholder="—"
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="field">
+                <label>AliExpress Secret</label>
+                <input
+                  class="inp"
+                  x-model="configData.ali_secret"
+                  placeholder="—"
+                />
+              </div>
+              <div class="field">
+                <label>AliExpress Tracking ID</label>
+                <input
+                  class="inp"
+                  x-model="configData.ali_tracking"
+                  placeholder="—"
+                />
+              </div>
+            </div>
+            <div class="field">
+              <label>Mercado Livre Token</label>
+              <input
+                class="inp"
+                x-model="configData.ml_token"
+                placeholder="—"
+              />
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  x-model="configData.send_telegram"
+                  class="rounded border-border bg-surface text-accent focus:ring-accent"
+                />
+                <span class="text-sm text-slate-300">Enviar Telegram</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  x-model="configData.send_whatsapp"
+                  class="rounded border-border bg-surface text-accent focus:ring-accent"
+                />
+                <span class="text-sm text-slate-300">Enviar WhatsApp</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  x-model="configData.conv_shopee"
+                  class="rounded border-border bg-surface text-accent focus:ring-accent"
+                />
+                <span class="text-sm text-slate-300">Shopee</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  x-model="configData.conv_ali"
+                  class="rounded border-border bg-surface text-accent focus:ring-accent"
+                />
+                <span class="text-sm text-slate-300">AliExpress</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  x-model="configData.conv_ml"
+                  class="rounded border-border bg-surface text-accent focus:ring-accent"
+                />
+                <span class="text-sm text-slate-300">Mercado Livre</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <div class="flex justify-end gap-3 pt-4">
+          <button class="btn btn-secondary" @click="showConfigModal = false">
+            Fechar
+          </button>
+          <button class="btn btn-primary" @click="saveConfig()">
+            Salvar Configurações
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Version Modal -->
+    <div
+      x-show="showVersionModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showVersionModal = false"
+    >
+      <div class="modal-box" @click.stop>
+        <h3>Publicar Nova Versão</h3>
+        <div class="space-y-4">
+          <div class="field">
+            <label>Versão (ex: 1.0.1)</label>
+            <input
+              class="inp"
+              x-model="versionForm.version"
+              placeholder="1.0.1"
+            />
+          </div>
+          <div class="field">
+            <label>Changelog</label>
+            <textarea
+              class="inp"
+              x-model="versionForm.changelog"
+              placeholder="Descreva as mudanças desta versão..."
+            ></textarea>
+          </div>
+          <div class="field">
+            <label>URL do download</label>
+            <input
+              class="inp"
+              x-model="versionForm.download_url"
+              placeholder="https://..."
+            />
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-4">
+          <button class="btn btn-secondary" @click="showVersionModal = false">
+            Cancelar
+          </button>
+          <button class="btn btn-primary" @click="publishVersion()">
+            Publicar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function adminApp() {
+        return {
+          // ── Auth ──────────────────────────────────────────────────────
+          loggedIn: false,
+          loading: false,
+          loginError: "",
+          loginForm: { username: "", password: "" },
+
+          // ── Tabs ──────────────────────────────────────────────────────
+          activeTab: "licenses",
+          tabs: [
+            {
+              id: "licenses",
+              label: "Licenças",
+              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>',
+            },
+            {
+              id: "versions",
+              label: "Versões",
+              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>',
+            },
+            {
+              id: "log_viewer",
+              label: "Logs",
+              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>',
+            },
+          ],
+
+          // ── Data ──────────────────────────────────────────────────────
+          licenses: [],
+          versions: [],
+          stats: { total: 0, active: 0, inactive: 0, online: 0 },
+          toast: { show: false, msg: "", type: "success" },
+
+          // ── New License ───────────────────────────────────────────────
+          showNewLicModal: false,
+          newLicForm: { plan: "basic", expires_days: 365 },
+          generatedKey: "",
+
+          // ── Edit License ──────────────────────────────────────────────
+          showEditLicModal: false,
+          editLicForm: {
+            id: null,
+            key: "",
+            plan: "basic",
+            active: true,
+            expires_days: null,
+            schedule_enabled: false,
+            schedule_dias: [1, 2, 3, 4, 5],
+            schedule_hora_inicio: "08:00",
+            schedule_hora_fim: "18:00",
+            schedule_timezone: "America/Sao_Paulo",
+          },
+
+          // ── Config ────────────────────────────────────────────────────
+          showConfigModal: false,
+          configLicKey: "",
+          configData: null,
+
+          // ── Logs ──────────────────────────────────────────────────────
+          selectedLic: null,
+          licLogs: [],
+
+          // ── Version ───────────────────────────────────────────────────
+          showVersionModal: false,
+          versionForm: { version: "", changelog: "", download_url: "" },
+
+          // ── Init ──────────────────────────────────────────────────────
+          init() {
+            const token = localStorage.getItem("admin_token");
+            if (token) {
+              this.loggedIn = true;
+              this.loadLicenses();
+              this.loadVersions();
+            }
+          },
+
+          // ── Auth methods ──────────────────────────────────────────────
+          async doLogin() {
+            this.loading = true;
+            this.loginError = "";
+            try {
+              const r = await fetch("/admin/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(this.loginForm),
+              });
+              const d = await r.json();
+              if (d.access_token) {
+                localStorage.setItem("admin_token", d.access_token);
+                this.loggedIn = true;
+                this.loadLicenses();
+                this.loadVersions();
+              } else {
+                this.loginError = d.detail || "Credenciais inválidas";
+              }
+            } catch (e) {
+              this.loginError = "Erro de conexão com o servidor";
+            }
+            this.loading = false;
+          },
+
+          logout() {
+            localStorage.removeItem("admin_token");
+            this.loggedIn = false;
+            this.licenses = [];
+            this.versions = [];
+          },
+
+          getHeaders() {
+            const t = localStorage.getItem("admin_token");
+            return {
+              "Content-Type": "application/json",
+              ...(t ? { Authorization: `Bearer ${t}` } : {}),
+            };
+          },
+
+          // ── Tab loading ──────────────────────────────────────────────
+          loadTab(tabId) {
+            if (tabId === "licenses") this.loadLicenses();
+            if (tabId === "versions") this.loadVersions();
+          },
+
+          // ── Licenses ─────────────────────────────────────────────────
+          async loadLicenses() {
+            try {
+              const r = await fetch("/admin/licenses", {
+                headers: this.getHeaders(),
+              });
+              const d = await r.json();
+              // API returns an array directly, not {licenses: [], stats: {}}
+              if (Array.isArray(d)) {
+                this.licenses = d;
+                const now = new Date();
+                const oneHourAgo = new Date(now.getTime() - 3600000);
+                this.stats = {
+                  total: d.length,
+                  active: d.filter((l) => l.active).length,
+                  inactive: d.filter((l) => !l.active).length,
+                  online: d.filter(
+                    (l) =>
+                      l.last_heartbeat &&
+                      new Date(l.last_heartbeat) > oneHourAgo,
+                  ).length,
+                };
+              } else {
+                this.licenses = d.licenses || [];
+                this.stats = d.stats || {
+                  total: 0,
+                  active: 0,
+                  inactive: 0,
+                  online: 0,
+                };
+              }
+            } catch (e) {
+              this.showToast("Erro ao carregar licenças", "error");
+            }
+          },
+
+          openNewLicenseModal() {
+            this.showNewLicModal = true;
+            this.generatedKey = "";
+            this.newLicForm = { plan: "basic", expires_days: 365 };
+          },
+
+          async createLicense() {
+            try {
+              const r = await fetch("/admin/licenses", {
+                method: "POST",
+                headers: this.getHeaders(),
+                body: JSON.stringify(this.newLicForm),
+              });
+              const d = await r.json();
+              if (d.key) {
+                this.generatedKey = d.key;
+                this.showToast("Licença gerada com sucesso!", "success");
+                this.loadLicenses();
+              } else {
+                this.showToast(d.detail || "Erro ao gerar licença", "error");
+              }
+            } catch (e) {
+              this.showToast("Erro de conexão", "error");
+            }
+          },
+
+          editLic(lic) {
+            const sr = lic.schedule_rules || {};
+            this.editLicForm = {
+              id: lic.id,
+              key: lic.key,
+              plan: lic.plan,
+              active: lic.active,
+              expires_days: null,
+              schedule_enabled: sr.enabled === true,
+              schedule_dias: Array.isArray(sr.dias_semana)
+                ? sr.dias_semana
+                : [1, 2, 3, 4, 5],
+              schedule_hora_inicio: sr.hora_inicio || "08:00",
+              schedule_hora_fim: sr.hora_fim || "18:00",
+              schedule_timezone: sr.timezone || "America/Sao_Paulo",
+            };
+            this.showEditLicModal = true;
+          },
+
+          async saveLicense() {
+            const body = {
+              plan: this.editLicForm.plan,
+              active: this.editLicForm.active,
+            };
+            if (this.editLicForm.expires_days) {
+              body.expires_days = parseInt(this.editLicForm.expires_days);
+            }
+            body.schedule_rules = {
+              enabled: this.editLicForm.schedule_enabled,
+              dias_semana: this.editLicForm.schedule_dias,
+              hora_inicio: this.editLicForm.schedule_hora_inicio,
+              hora_fim: this.editLicForm.schedule_hora_fim,
+              timezone: this.editLicForm.schedule_timezone,
+            };
+            try {
+              const r = await fetch(`/admin/licenses/${this.editLicForm.id}`, {
+                method: "PATCH",
+                headers: this.getHeaders(),
+                body: JSON.stringify(body),
+              });
+              const d = await r.json();
+              if (d.ok) {
+                this.showToast("Licença atualizada!", "success");
+                this.showEditLicModal = false;
+                this.loadLicenses();
+              } else {
+                this.showToast(d.detail || "Erro ao salvar", "error");
+              }
+            } catch (e) {
+              this.showToast("Erro de conexão", "error");
+            }
+          },
+
+          // ── Config ───────────────────────────────────────────────────
+          async viewConfig(lic) {
+            this.configLicKey = lic.key;
+            this.showConfigModal = true;
+            this.configData = null;
+            try {
+              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+                headers: this.getHeaders(),
+              });
+              const d = await r.json();
+              if (d && !d.detail) {
+                this.configData = {
+                  ...d,
+                  sources_str: Array.isArray(d.sources)
+                    ? d.sources.join(",")
+                    : "",
+                };
+              } else {
+                this.configData = {
+                  api_id: "",
+                  api_hash: "",
+                  phone: "",
+                  sources_str: "",
+                  destination_telegram: "",
+                  delay_segundos: 3,
+                  shopee_token: "",
+                  ali_key: "",
+                  ali_secret: "",
+                  ali_tracking: "",
+                  ml_token: "",
+                  send_telegram: true,
+                  send_whatsapp: false,
+                  conv_shopee: true,
+                  conv_ali: true,
+                  conv_ml: true,
+                };
+              }
+            } catch (e) {
+              this.showToast("Erro ao carregar configurações", "error");
+              this.showConfigModal = false;
+            }
+          },
+
+          async saveConfig() {
+            if (!this.configData || !this.configLicKey) return;
+            const cfg = { ...this.configData };
+            cfg.sources = cfg.sources_str
+              ? cfg.sources_str
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
+            delete cfg.sources_str;
+            // Find the license ID from the key
+            const lic = this.licenses.find((l) => l.key === this.configLicKey);
+            if (!lic) {
+              this.showToast("Licença não encontrada", "error");
+              return;
+            }
+            try {
+              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+                method: "PUT",
+                headers: this.getHeaders(),
+                body: JSON.stringify(cfg),
+              });
+              const d = await r.json();
+              if (d.ok) {
+                this.showToast("Configurações salvas!", "success");
+                this.showConfigModal = false;
+              } else {
+                this.showToast(d.detail || "Erro ao salvar", "error");
+              }
+            } catch (e) {
+              this.showToast("Erro de conexão", "error");
+            }
+          },
+
+          // ── Logs ─────────────────────────────────────────────────────
+          async viewLogs(lic) {
+            this.selectedLic = lic;
+            this.licLogs = [];
+            this.activeTab = "log_viewer";
+            try {
+              const r = await fetch(`/admin/licenses/${lic.id}/logs`, {
+                headers: this.getHeaders(),
+              });
+              const d = await r.json();
+              this.licLogs = d.logs || [];
+            } catch (e) {
+              this.showToast("Erro ao carregar logs", "error");
+            }
+          },
+
+          // ── Versions ─────────────────────────────────────────────────
+          async loadVersions() {
+            try {
+              const r = await fetch("/admin/versions", {
+                headers: this.getHeaders(),
+              });
+              const d = await r.json();
+              this.versions = d || [];
+            } catch (e) {
+              // silent
+            }
+          },
+
+          async publishVersion() {
+            try {
+              const r = await fetch("/admin/versions", {
+                method: "POST",
+                headers: this.getHeaders(),
+                body: JSON.stringify(this.versionForm),
+              });
+              const d = await r.json();
+              if (d.version) {
+                this.showToast("Versão publicada!", "success");
+                this.showVersionModal = false;
+                this.versionForm = {
+                  version: "",
+                  changelog: "",
+                  download_url: "",
+                };
+                this.loadVersions();
+              } else {
+                this.showToast(d.detail || "Erro ao publicar", "error");
+              }
+            } catch (e) {
+              this.showToast("Erro de conexão", "error");
+            }
+          },
+
+          // ── Helpers ──────────────────────────────────────────────────
+          showToast(msg, type = "success") {
+            this.toast = { show: true, msg, type };
+            setTimeout(() => {
+              this.toast.show = false;
+            }, 3500);
+          },
+
+          copyKey(key) {
+            navigator.clipboard.writeText(key).then(() => {
+              this.showToast("Chave copiada!", "success");
+            });
+          },
+
+          fmtDate(d) {
+            if (!d) return "";
+            const dt = new Date(d);
+            return dt.toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+          },
+
+          fmtRelative(d) {
+            if (!d) return null;
+            const now = new Date();
+            const dt = new Date(d);
+            const diff = (now - dt) / 1000;
+            if (diff < 60) return "Agora";
+            if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
+            return this.fmtDate(d);
+          },
+
+          heartbeatBadge(d) {
+            if (!d) return "badge-gray";
+            const diff = (new Date() - new Date(d)) / 1000;
+            if (diff < 3600) return "badge-green";
+            if (diff < 86400) return "badge-yellow";
+            return "badge-red";
+          },
+        };
+      }
+    </script>
+  </body>
+</html>
