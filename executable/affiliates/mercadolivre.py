@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pyperclip
-import undetected_chromedriver as uc
+from selenium_stealth import stealth
 
 from utils import fechar_brave, expandir_link_async
 
@@ -21,45 +21,40 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
     options = Options()
 
     if os.name == 'nt':
-        # 🚨 WINDOWS (Usa o Brave do Usuário)
+        # 🚨 WINDOWS (Brave)
         from webdriver_manager.chrome import ChromeDriverManager
         brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-        user_data_dir = r"C:\Users\mathe\AppData\Local\BraveSoftware\Brave-Browser\User Data"
-        
         options.binary_location = brave_path
         options.add_argument("--start-maximized")
-        options.add_argument(f"--user-data-dir={user_data_dir}")
+        options.add_argument(f"--user-data-dir=C:\\Users\\{os.getlogin()}\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data")
         options.add_argument("--profile-directory=Default")
-        
         fechar_brave()
         time.sleep(1)
         service = Service(ChromeDriverManager().install())
-        
-        try:
-            driver = webdriver.Chrome(service=service, options=options)
-        except Exception as e:
-            print(f"[ERROR] ML ChromeDriver init failed no Windows: {e}")
-            return None
+        driver = webdriver.Chrome(service=service, options=options)
     else:
-        # 🚨 LINUX / VPS DOCKER (Usa Undetected Chromedriver + Google Chrome Stable)
-        options.binary_location = "/usr/bin/google-chrome-stable"
+        # 🚨 LINUX / VPS DOCKER (Chromium + Stealth)
+        options.binary_location = "/usr/bin/chromium"
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-setuid-sandbox")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-default-browser-check")
         
-        # UC no Linux funciona melhor sem passar pasta de perfil se estiver dando erro de conexão
-        try:
-            driver = uc.Chrome(options=options, headless=False)
-        except Exception as e:
-            print(f"[ERROR] Undetected Chromedriver (Chrome) falhou: {e}")
-            return None
+        service = Service("/usr/bin/chromedriver")
+        driver = webdriver.Chrome(service=service, options=options)
+        
+        # Aplica o modo Stealth para não ser detectado como robô
+        stealth(driver,
+            languages=["pt-BR", "pt"],
+            vendor="Google Inc.",
+            platform="Win32",
+            webgl_vendor="Intel Inc.",
+            renderer="Intel Iris OpenGL Engine",
+            fix_hairline=True,
+        )
 
     try:
-        # INJEÇÃO DE COOKIES (Evita login manual na VPS)
+        # INJEÇÃO DE COOKIES
         ml_cookies_str = os.getenv("ML_COOKIES", "").strip()
         if ml_cookies_str:
             driver.get("https://www.mercadolivre.com.br/robots.txt")
@@ -68,13 +63,11 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
                 if not cookie_chunk or '=' not in cookie_chunk: continue
                 name, value = cookie_chunk.split('=', 1)
                 driver.add_cookie({
-                    'name': name.strip(),
-                    'value': value.strip(),
-                    'domain': '.mercadolivre.com.br'
+                    'name': name.strip(), 'value': value.strip(), 'domain': '.mercadolivre.com.br'
                 })
 
         driver.get(url)
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, 20)
         print(f"[DEBUG] ML carregou a página: {driver.title}")
 
         # 1: Fechar banner de cookies
@@ -94,7 +87,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
 
         # 3: Clicar em "Compartilhar"
         try:
-            compartilhar_btn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button")))
+            compartilhar_btn = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button")))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
             time.sleep(2)
@@ -124,7 +117,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         return None
 
     except Exception as e:
-        print(f"[ERROR] Erro durante o fluxo Selenium do ML: {e}")
+        print(f"[ERROR] Erro no fluxo Selenium: {e}")
         return None
     finally:
         try:
@@ -142,5 +135,5 @@ async def convert(url: str, ml_token: str = "") -> Optional[str]:
         result = await loop.run_in_executor(None, _gerar_link_mercadolivre_sync, url)
         return result
     except Exception as exc:
-        print(f"[ERROR] Execução do Selenium falhou: {exc}")
+        print(f"[ERROR] Execução falhou: {exc}")
         return None
