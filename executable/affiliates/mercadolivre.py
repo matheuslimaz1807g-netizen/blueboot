@@ -42,6 +42,9 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             return None
     else:
         # 🚨 LINUX / VPS DOCKER (Usa Brave oficial instalado no container)
+        from webdriver_manager.chrome import ChromeDriverManager
+        from webdriver_manager.core.os_manager import ChromeType
+        
         options.binary_location = "/usr/bin/brave-browser"
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -60,8 +63,13 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument("--profile-directory=Default")
         
-        # O chromedriver no Debian/Ubuntu fica em /usr/bin/chromedriver
-        service = Service("/usr/bin/chromedriver", log_path="/app/sessions/chromedriver.log")
+        # Usa o webdriver-manager para baixar o driver CORRETO para o Brave do Linux
+        try:
+            driver_path = ChromeDriverManager(chrome_type=ChromeType.BRAVE).install()
+            service = Service(driver_path, log_path="/app/sessions/chromedriver.log")
+        except Exception as e:
+            print(f"[ERROR] Falha ao baixar Chromedriver para Brave: {e}")
+            service = Service("/usr/bin/chromedriver", log_path="/app/sessions/chromedriver.log")
         
         try:
             driver = webdriver.Chrome(service=service, options=options)
