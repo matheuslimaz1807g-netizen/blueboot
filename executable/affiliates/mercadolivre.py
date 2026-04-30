@@ -65,50 +65,54 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             time.sleep(1)
         except: pass
 
-        # 2. Acessar Produto (Busca inteligente por classe de item social)
+        # 2. Acessar Produto (Busca inteligente)
         print("[DEBUG] Procurando produto na página de perfil...")
         try:
-            # Tenta clicar no primeiro item da lista de posts sociais
-            item_produto = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.social-profile-post, div[class*='post-container'], div.ui-pdp-container__row")))
+            item_produto = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.social-profile-post, div[class*='post-container'], div.ui-pdp-container__row, a[href*='/p/'], a[href*='/mlb-']")))
             item_produto.click()
-            print("[DEBUG] Produto clicado com seletor inteligente.")
+            print("[DEBUG] Produto clicado.")
             time.sleep(5)
         except:
-            # Fallback para o XPATH do GitHub se o inteligente falhar
+            print("[DEBUG] Tentando clicar via XPATH genérico de lista...")
             try:
-                acessar_produto = driver.find_element(By.XPATH, "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]")
-                acessar_produto.click()
-                print("[DEBUG] Produto clicado via XPATH GitHub.")
+                driver.find_element(By.XPATH, "//ul//div[contains(@class, 'container')] | //main//ul//li[1]").click()
                 time.sleep(5)
             except:
-                print("[DEBUG] Não foi necessário clicar ou elemento não encontrado. Continuando...")
+                print("[DEBUG] Continuando sem clicar...")
 
         print(f"[DEBUG] Título da página atual: {driver.title}")
 
-        # 3. Compartilhar
+        # 3. Compartilhar (Busca por TEXTO - Mais Robusto!)
         try:
-            # XPATH do GitHub
-            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
+            print("[DEBUG] Buscando botão 'Compartilhar' pelo texto...")
+            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Compartilhar')] | //div[contains(., 'Compartilhar') and @role='button']")))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
-            print("[DEBUG] Clicou em Compartilhar.")
+            print("[DEBUG] Clicou em Compartilhar pelo texto.")
             time.sleep(2)
         except Exception as e:
-            # Se falhar, tira print para debug
-            driver.save_screenshot("/app/sessions/erro_ml.png")
-            print(f"[ERROR] Falha ao clicar em Compartilhar. Print salvo em /app/sessions/erro_ml.png")
-            print(f"[ERROR] Mensagem: {e}")
-            return None
+            # Fallback para XPATH fixo do GitHub
+            try:
+                print("[DEBUG] Fallback para XPATH fixo de Compartilhar...")
+                driver.find_element(By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button").click()
+                time.sleep(2)
+            except:
+                driver.save_screenshot("/app/sessions/erro_ml.png")
+                print(f"[ERROR] Falha ao clicar em Compartilhar. Screenshot salvo.")
+                return None
 
-        # 4. Copiar Link
+        # 4. Copiar Link (Busca por TEXTO)
         try:
-            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')]")))
+            print("[DEBUG] Buscando botão 'Copiar link' pelo texto...")
+            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')] | //span[contains(., 'Copiar link')]")))
             copiar_botao.click()
+            print("[DEBUG] Clicou em Copiar Link pelo texto.")
         except:
-            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")))
-            copiar_botao.click()
+            print("[DEBUG] Fallback para XPATH fixo de Copiar...")
+            try:
+                driver.find_element(By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button").click()
+            except: pass
         
-        print("[DEBUG] Clicou em Copiar Link.")
         time.sleep(3)
 
         # 5. Captura Final
