@@ -65,6 +65,9 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         options.add_argument("--disable-extensions")
         options.add_argument("--remote-debugging-port=9222")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
+        options.add_argument("--no-sandbox")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
         # Pasta de perfil (Volume mapeado no Docker)
@@ -72,8 +75,9 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument("--profile-directory=Default")
         
-        # Tenta usar o driver do sistema
-        service = Service("/usr/bin/chromedriver")
+        # Tenta usar o driver do sistema com log de debug
+        log_path = "/app/sessions/chromedriver.log"
+        service = Service("/usr/bin/chromedriver", log_path=log_path)
         
         try:
             driver = webdriver.Chrome(service=service, options=options)
