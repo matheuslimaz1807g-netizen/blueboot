@@ -1,7 +1,7 @@
 import os
 import time
 import asyncio
-import json
+import subprocess
 from typing import Optional
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -13,9 +13,20 @@ from selenium_stealth import stealth
 
 from utils import fechar_brave, expandir_link_async
 
+def get_linux_clipboard():
+    """
+    Fallback para ler o clipboard no Linux usando xclip diretamente,
+    já que o pyperclip às vezes falha em containers.
+    """
+    try:
+        result = subprocess.run(['xclip', '-selection', 'clipboard', '-o'], capture_output=True, text=True, timeout=5)
+        return result.stdout.strip()
+    except:
+        return None
+
 def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
     """
-    Função síncrona que executa o Selenium para gerar o link do ML.
+    Gera link de afiliado seguindo a lógica do GitHub adaptada para VPS.
     """
     options = Options()
 
@@ -42,7 +53,6 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         service = Service("/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=options)
         
-        # Aplica o modo Stealth para não ser detectado como robô
         stealth(driver,
             languages=["pt-BR", "pt"],
             vendor="Google Inc.",
@@ -53,7 +63,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         )
 
     try:
-        # INJEÇÃO DE COOKIES
+        # INJEÇÃO DE COOKIES (Necessário se não houver login manual)
         ml_cookies_str = os.getenv("ML_COOKIES", "").strip()
         if ml_cookies_str:
             driver.get("https://www.mercadolivre.com.br/robots.txt")
@@ -61,67 +71,70 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
                 cookie_chunk = cookie_chunk.strip()
                 if not cookie_chunk or '=' not in cookie_chunk: continue
                 name, value = cookie_chunk.split('=', 1)
-                driver.add_cookie({
-                    'name': name.strip(), 'value': value.strip(), 'domain': '.mercadolivre.com.br'
-                })
+                driver.add_cookie({'name': name.strip(), 'value': value.strip(), 'domain': '.mercadolivre.com.br'})
 
+        print(f"[DEBUG] Abrindo URL: {url}")
         driver.get(url)
         wait = WebDriverWait(driver, 20)
-        print(f"[DEBUG] ML carregou a página: {driver.title}")
 
-        # 1: Fechar banner de cookies
+        # STEP 1: Fechar banner de cookies (Lógica do GitHub)
         try:
+            print("[DEBUG] Tentando fechar banner de cookies")
             cookie_banner = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "cookie-consent-banner-opt-out__container")))
             close_button = cookie_banner.find_element(By.TAG_NAME, "button")
             close_button.click()
             time.sleep(1)
-        except: pass
+        except:
+            print("[DEBUG] Banner de cookies não encontrado")
 
-        # 2: Clicar em "Acessar Produto"
+        # STEP 2: Clicar em "Acessar Produto" (XPATH do GitHub)
+        print("[DEBUG] Tentando clicar em 'Acessar produto'")
         try:
             acessar_produto = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]")))
             acessar_produto.click()
+            print("[DEBUG] Clicou em 'Acessar produto'")
             time.sleep(5)
-        except: pass
+        except Exception as e:
+            print(f"[WARNING] Falha ao clicar em acessar produto (pode já estar na página): {e}")
 
-        # 3: Clicar em "Compartilhar"
+        # STEP 3: Clicar em "Compartilhar" (XPATH do GitHub com retry)
         try:
-            compartilhar_btn = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button")))
+            print("[DEBUG] Tentando clicar em 'Compartilhar'")
+            compartilhar_btn = WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
+            print("[DEBUG] Clicou em 'Compartilhar'")
             time.sleep(2)
-        except Exception:
-            try:
-                compartilhar_btn = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
-                driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
-                compartilhar_btn.click()
-                time.sleep(2)
-            except Exception as e:
-                print(f"[ERROR] Falha ao clicar em 'Compartilhar': {e}")
-                return None
-
-        # 4: Extrair o link direto do input (Evita usar pyperclip/clipboard no Linux)
-        try:
-            # Espera o input que contém o link aparecer no modal de compartilhamento
-            link_input = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@value, 'mercadolivre.com.br')]")))
-            link_afiliado = link_input.get_attribute("value")
-            
-            if link_afiliado and "mercadolivre.com.br" in link_afiliado:
-                print(f"[DEBUG] Link extraído via DOM: {link_afiliado}")
-                return link_afiliado
         except Exception as e:
-            print(f"[DEBUG] Falha ao extrair link via DOM, tentando clique clássico: {e}")
-
-        # Fallback: Clicar em "Copiar Link" e tentar ler via JS
-        try:
-            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')]")))
-            copiar_botao.click()
+            print(f"[ERROR] Falha no primeiro clique de 'Compartilhar', tentando retry...")
+            time.sleep(5)
+            compartilhar_btn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
+            driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
+            compartilhar_btn.click()
+            print("[DEBUG] Clicou em 'Compartilhar' no retry")
             time.sleep(2)
-            
-            # Tenta pegar via JavaScript se o pyperclip falhar
-            link_afiliado = driver.execute_script("return navigator.clipboard.readText();")
-        except:
-            link_afiliado = None
+
+        # STEP 4: Clicar em "Copiar Link" (XPATH do GitHub)
+        print("[DEBUG] Tentando clicar em 'Copiar link'")
+        copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")))
+        copiar_botao.click()
+        print("[DEBUG] Clicou em 'Copiar link'")
+        time.sleep(3)
+
+        # STEP 5: Recuperar o link (Tenta xclip no Linux, pyperclip no Windows)
+        if os.name == 'nt':
+            import pyperclip
+            link_afiliado = pyperclip.paste()
+        else:
+            link_afiliado = get_linux_clipboard()
+            # Fallback se xclip falhar
+            if not link_afiliado:
+                try:
+                    link_input = driver.find_element(By.XPATH, "//input[contains(@value, 'mercadolivre.com.br')]")
+                    link_afiliado = link_input.get_attribute("value")
+                except: pass
+
+        print(f"[DEBUG] Link capturado: {link_afiliado}")
         
         if link_afiliado and "mercadolivre.com.br" in link_afiliado:
             return link_afiliado
@@ -129,7 +142,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         return None
 
     except Exception as e:
-        print(f"[ERROR] Erro no fluxo Selenium: {e}")
+        print(f"[ERROR] Erro no fluxo Selenium do ML: {e}")
         return None
     finally:
         try:
