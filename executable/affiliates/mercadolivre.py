@@ -94,6 +94,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
 
         driver.get(url)
         wait = WebDriverWait(driver, 15)
+        print(f"[DEBUG] ML carregou a página: {driver.title}")
 
         # 1: Fechar banner de cookies, se houver
         try:
