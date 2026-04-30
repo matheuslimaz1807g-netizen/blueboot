@@ -13,12 +13,13 @@ from app.schemas.schemas import (
     LicenseHeartbeatRequest,
     LicenseValidateRequest,
     LicenseValidateResponse,
+    MachineDiscoveryRequest,
     OkResponse,
     VersionOut,
 )
 from app.services import config_service, license_service
-from sqlalchemy import select
-from app.models.models import AppVersion, License
+from sqlalchemy import select, update
+from app.models.models import AppVersion, License, PendingMachine
 
 router = APIRouter()
 
@@ -34,6 +35,46 @@ async def validate_license(
     # Sign the response with HMAC to prevent MITM tampering
     signed = license_service._sign_response(result.model_dump(), body.machine_id)
     return signed
+
+
+@router.post("/license/discover", response_model=LicenseValidateResponse)
+async def discover_machine(
+    body: MachineDiscoveryRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    # 1. Verificar se esta máquina já possui uma licença vinculada
+    result = await db.execute(select(License).where(License.machine_id == body.machine_id))
+    lic = result.scalar_one_or_none()
+    
+    if lic and lic.active:
+        res = LicenseValidateResponse(
+            valid=True,
+            plan=lic.plan,
+            expires_at=lic.expires_at,
+            assigned_key=lic.key
+        )
+        return license_service._sign_response(res.model_dump(), body.machine_id)
+
+    # 2. Se não tem licença, registrar na lista de pendentes para o Admin ver
+    result = await db.execute(select(PendingMachine).where(PendingMachine.machine_id == body.machine_id))
+    pending = result.scalar_one_or_none()
+    
+    if not pending:
+        pending = PendingMachine(
+            machine_id=body.machine_id,
+            hostname=body.hostname,
+            platform=body.platform,
+            label=body.label
+        )
+        db.add(pending)
+    else:
+        pending.hostname = body.hostname
+        pending.platform = body.platform
+        pending.label = body.label
+    
+    await db.commit()
+    
+    return LicenseValidateResponse(valid=False, plan="", expires_at=None)
 
 
 @router.post("/license/heartbeat", response_model=OkResponse)

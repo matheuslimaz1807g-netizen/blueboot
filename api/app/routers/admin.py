@@ -5,14 +5,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, update, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_admin_user
 from app.core.security import create_access_token, verify_password, hash_password
 from app.core.config import get_settings
-from app.models.models import AppVersion, License, LogEntry, ClientConfig
+from app.models.models import AppVersion, License, LogEntry, ClientConfig, PendingMachine
 from app.schemas.schemas import (
     AdminLoginRequest,
     AdminLoginResponse,
@@ -23,6 +23,8 @@ from app.schemas.schemas import (
     LicensePatchRequest,
     LogEntryOut,
     OkResponse,
+    PendingMachineOut,
+    LinkMachineRequest,
     VersionIn,
     VersionOut,
 )
@@ -61,7 +63,7 @@ async def create_license(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_admin_user),
 ):
-    return await license_service.create_license(db, body.plan, body.expires_days)
+    return await license_service.create_license(db, body.plan, body.expires_days, body.note)
 
 
 @router.patch("/licenses/{license_id}", response_model=LicenseOut)
@@ -85,6 +87,8 @@ async def patch_license(
         values["expires_at"] = datetime.now(timezone.utc) + timedelta(days=body.expires_days)
     if body.schedule_rules is not None:
         values["schedule_rules"] = body.schedule_rules
+    if body.note is not None:
+        values["note"] = body.note
 
     if values:
         await db.execute(update(License).where(License.id == license_id).values(**values))
@@ -173,3 +177,51 @@ async def post_version(
     await db.commit()
     await db.refresh(v)
     return v
+
+
+# ── Pending Machines (Auto-Discovery) ──────────────────────────────────────────
+
+@router.get("/pending", response_model=list[PendingMachineOut])
+async def list_pending_machines(
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_admin_user),
+):
+    result = await db.execute(select(PendingMachine).order_by(desc(PendingMachine.last_seen)))
+    return result.scalars().all()
+
+
+@router.post("/link", response_model=OkResponse)
+async def link_machine_to_license(
+    body: LinkMachineRequest,
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_admin_user),
+):
+    # 1. Verificar se a licença existe
+    result = await db.execute(select(License).where(License.id == body.license_id))
+    lic = result.scalar_one_or_none()
+    if not lic:
+        raise HTTPException(status_code=404, detail="Licença não encontrada")
+
+    # 2. Atualizar a licença com o machine_id
+    await db.execute(
+        update(License)
+        .where(License.id == body.license_id)
+        .values(machine_id=body.machine_id)
+    )
+    
+    # 3. Remover da lista de pendentes
+    await db.execute(delete(PendingMachine).where(PendingMachine.machine_id == body.machine_id))
+    
+    await db.commit()
+    return OkResponse(message="Máquina vinculada com sucesso")
+
+
+@router.delete("/pending/{machine_id}", response_model=OkResponse)
+async def delete_pending_machine(
+    machine_id: str,
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_admin_user),
+):
+    await db.execute(delete(PendingMachine).where(PendingMachine.machine_id == machine_id))
+    await db.commit()
+    return OkResponse(message="Máquina removida da lista")

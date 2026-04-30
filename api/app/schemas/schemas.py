@@ -45,6 +45,29 @@ class LicenseValidateResponse(BaseModel):
     plan: str
     expires_at: datetime | None
     schedule_blocked: bool = False
+    assigned_key: str | None = None # Se o admin vinculou, retorna a chave aqui
+
+class MachineDiscoveryRequest(BaseModel):
+    machine_id: str
+    hostname: str | None = None
+    platform: str | None = None
+    label: str | None = None # Robot name from .env
+
+class PendingMachineOut(BaseModel):
+    id: uuid.UUID
+    machine_id: str
+    hostname: str | None
+    ip_address: str | None
+    platform: str | None
+    label: str | None
+    first_seen: datetime
+    last_seen: datetime
+
+    model_config = {"from_attributes": True}
+
+class LinkMachineRequest(BaseModel):
+    machine_id: str
+    license_id: uuid.UUID
 
 
 class LicenseOut(BaseModel):
@@ -57,6 +80,7 @@ class LicenseOut(BaseModel):
     created_at: datetime
     last_heartbeat: datetime | None
     schedule_rules: dict | None = None
+    note: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -146,6 +170,7 @@ class AdminLoginResponse(BaseModel):
 class LicenseCreateRequest(BaseModel):
     plan: str = Field(default="basic", pattern=r"^(basic|pro)$")
     expires_days: int = Field(default=30, ge=1, le=3650)
+    note: str | None = Field(default=None, max_length=256)
 
 
 class LicensePatchRequest(BaseModel):
@@ -153,6 +178,7 @@ class LicensePatchRequest(BaseModel):
     plan: str | None = Field(default=None, pattern=r"^(basic|pro)$")
     expires_days: int | None = Field(default=None, ge=1, le=3650)
     schedule_rules: dict | None = None
+    note: str | None = Field(default=None, max_length=256)
 
 
 # ── LogEntry ──────────────────────────────────────────────────────────────────

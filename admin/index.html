@@ -581,6 +581,55 @@
             </div>
           </div>
 
+          <!-- Novos Robôs (Discovery) -->
+          <template x-if="pendingMachines.length > 0">
+            <div class="card mb-6 border border-accent/30 bg-accent/5">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="p-2 bg-accent/20 rounded-lg text-accent">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <h3 class="text-white font-bold m-0">Novos Robôs Aguardando Aprovação</h3>
+              </div>
+              
+              <div class="table-wrap">
+                <table class="w-full">
+                  <thead>
+                    <tr class="bg-slate-800/50">
+                      <th class="text-xs text-slate-400">Identificação</th>
+                      <th class="text-xs text-slate-400">Hostname / SO</th>
+                      <th class="text-xs text-slate-400">IP / Último Sinal</th>
+                      <th class="text-xs text-slate-400 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="pm in pendingMachines" :key="pm.id">
+                      <tr class="border-b border-slate-700/30">
+                        <td class="py-3">
+                          <div class="text-white font-bold" x-text="pm.label || 'Sem Nome'"></div>
+                          <div class="text-[10px] font-mono text-slate-500" x-text="pm.machine_id"></div>
+                        </td>
+                        <td class="py-3">
+                          <div class="text-xs text-slate-300" x-text="pm.hostname"></div>
+                          <div class="text-[10px] text-slate-500" x-text="pm.platform"></div>
+                        </td>
+                        <td class="py-3">
+                          <div class="text-xs text-slate-300" x-text="pm.ip_address"></div>
+                          <div class="text-[10px] text-slate-500" x-text="fmtTime(pm.last_seen)"></div>
+                        </td>
+                        <td class="py-3 text-right">
+                          <button @click="openLinkModal(pm)" class="btn btn-blue py-1 px-3 text-[10px]">VINCULAR</button>
+                          <button @click="rejectMachine(pm.machine_id)" class="ml-2 text-slate-500 hover:text-red-400">
+                            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </template>
+
           <!-- Table -->
           <div class="table-wrap">
             <table>
@@ -598,13 +647,14 @@
               <tbody>
                 <template x-if="licenses.length === 0">
                   <tr>
-                    <td colspan="7" class="empty-state">
+                    <td colspan="8" class="empty-state">
                       Nenhuma licença cadastrada.
                     </td>
                   </tr>
                 </template>
                 <template x-for="lic in licenses" :key="lic.id">
                   <tr>
+                    <td class="text-xs font-medium text-white" x-text="lic.note || '—'"></td>
                     <td
                       class="font-mono text-xs text-white font-medium"
                       x-text="lic.key"
@@ -825,7 +875,7 @@
                   <span x-text="selectedLic?.key?.substring(5,9)"></span>
                 </div>
                 <div>
-                  <p class="text-sm font-medium text-white">Licença</p>
+                  <p class="text-sm font-medium text-white" x-text="selectedLic?.note || 'Licença sem nome'"></p>
                   <p
                     class="text-xs font-mono text-accent"
                     x-text="selectedLic?.key"
@@ -907,6 +957,10 @@
         <h3>Nova Licença</h3>
         <div class="space-y-4">
           <div class="field">
+            <label>Cliente (Nome)</label>
+            <input class="inp" type="text" x-model="newLicForm.note" placeholder="Ex: Cliente X" />
+          </div>
+          <div class="field">
             <label>Plano</label>
             <select class="inp" x-model="newLicForm.plan">
               <option value="basic">Basic</option>
@@ -981,6 +1035,10 @@
       <div class="modal-box" @click.stop>
         <h3>Editar Licença</h3>
         <div class="space-y-4">
+          <div class="field">
+            <label>Cliente (Nome)</label>
+            <input class="inp" type="text" x-model="editLicForm.note" />
+          </div>
           <div class="field">
             <label>Plano</label>
             <select class="inp" x-model="editLicForm.plan">
@@ -1337,14 +1395,17 @@
           ],
 
           // ── Data ──────────────────────────────────────────────────────
-          licenses: [],
+          pendingMachines: [],
+          showLinkModal: false,
+          selectedMachine: null,
+          targetLicenseId: "",
           versions: [],
           stats: { total: 0, active: 0, inactive: 0, online: 0 },
           toast: { show: false, msg: "", type: "success" },
 
           // ── New License ───────────────────────────────────────────────
           showNewLicModal: false,
-          newLicForm: { plan: "basic", expires_days: 365 },
+          newLicForm: { plan: "basic", expires_days: 30, note: "" },
           generatedKey: "",
 
           // ── Edit License ──────────────────────────────────────────────
@@ -1360,6 +1421,7 @@
             schedule_hora_inicio: "08:00",
             schedule_hora_fim: "18:00",
             schedule_timezone: "America/Sao_Paulo",
+            note: ""
           },
 
           // ── Config ────────────────────────────────────────────────────
@@ -1410,7 +1472,50 @@
             this.loading = false;
           },
 
-          logout() {
+          async loadPendingMachines() {
+            try {
+              const r = await fetch(`${this.apiBase}/pending`, { headers: this.getHeaders() });
+              if (r.ok) this.pendingMachines = await r.json();
+            } catch (e) {}
+          },
+
+          openLinkModal(machine) {
+            this.selectedMachine = machine;
+            this.targetLicenseId = "";
+            this.showLinkModal = true;
+          },
+
+          async linkMachine() {
+            try {
+              const r = await fetch(`${this.apiBase}/link`, {
+                method: 'POST',
+                headers: this.getHeaders(),
+                body: JSON.stringify({
+                  machine_id: this.selectedMachine.machine_id,
+                  license_id: this.targetLicenseId
+                })
+              });
+              if (r.ok) {
+                this.showToast("Máquina vinculada com sucesso!", "success");
+                this.showLinkModal = false;
+                this.loadLicenses();
+                this.loadPendingMachines();
+              }
+            } catch (e) {
+              this.showToast("Erro ao vincular máquina", "error");
+            }
+          },
+
+          async rejectMachine(machine_id) {
+            if (!confirm("Remover este robô da lista de espera?")) return;
+            try {
+              await fetch(`${this.apiBase}/pending/${machine_id}`, {
+                method: 'DELETE',
+                headers: this.getHeaders()
+              });
+              this.loadPendingMachines();
+            } catch (e) {}
+          },
             localStorage.removeItem("admin_token");
             this.loggedIn = false;
             this.licenses = [];
@@ -1508,6 +1613,8 @@
               schedule_hora_inicio: sr.hora_inicio || "08:00",
               schedule_hora_fim: sr.hora_fim || "18:00",
               schedule_timezone: sr.timezone || "America/Sao_Paulo",
+              note: lic.note || "",
+              machine_id: lic.machine_id || "Não vinculado",
             };
             this.showEditLicModal = true;
           },
@@ -1520,6 +1627,7 @@
             if (this.editLicForm.expires_days) {
               body.expires_days = parseInt(this.editLicForm.expires_days);
             }
+            body.note = this.editLicForm.note;
             body.schedule_rules = {
               enabled: this.editLicForm.schedule_enabled,
               dias_semana: this.editLicForm.schedule_dias,
@@ -1718,6 +1826,24 @@
             if (diff < 3600) return "badge-green";
             if (diff < 86400) return "badge-yellow";
             return "badge-red";
+          },
+
+          init() {
+            const t = localStorage.getItem("admin_token");
+            if (t) {
+              this.loggedIn = true;
+              this.loadLicenses();
+              this.loadVersions();
+              this.loadPendingMachines();
+              setInterval(() => {
+                this.loadLicenses();
+                this.loadPendingMachines();
+              }, 15000);
+            }
+          },
+
+          fmtTime(d) {
+            return this.fmtRelative(d);
           },
         };
       }

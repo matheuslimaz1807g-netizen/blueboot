@@ -46,6 +46,7 @@ class License(Base):
     schedule_rules: Mapped[dict | None] = mapped_column(
         JSONB, nullable=True, default=dict
     )
+    note: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     config: Mapped["ClientConfig | None"] = relationship(
         "ClientConfig", back_populates="license", uselist=False, cascade="all, delete-orphan"
@@ -138,3 +139,22 @@ class LogEntry(Base):
     )
 
     license: Mapped["License"] = relationship("License", back_populates="logs")
+
+
+class PendingMachine(Base):
+    __tablename__ = "pending_machines"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    machine_id: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
+    hostname: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    platform: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    first_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    last_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )

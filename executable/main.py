@@ -164,17 +164,47 @@ def main():
     # 1. Carregar Configuração
     api_base = os.getenv("APRO_API_BASE") or os.getenv("API_BASE_URL", "http://license_api:8000")
     license_key = os.getenv("LICENSE_KEY", "")
+    robot_label = os.getenv("ROBOT_LABEL", "") # Nome amigável que aparece no painel
+    
+    from license import get_machine_id, validate_license, start_heartbeat
+    import platform
+    import requests
+
+    mid = get_machine_id()
     
     if not license_key:
-        add_log("error", "CRÍTICO: LICENSE_KEY não configurada no .env!")
-        add_log("info", "O robô exige uma licença válida para funcionar.")
-        time.sleep(5)
-        sys.exit(1)
+        add_log("warning", "Nenhuma LICENSE_KEY encontrada. Entrando em modo de auto-descoberta...")
+        
+        while not license_key:
+            try:
+                # 1. Avisar o painel que este robô está aqui
+                resp = requests.post(
+                    f"{api_base}/license/discover",
+                    json={
+                        "machine_id": mid,
+                        "hostname": platform.node(),
+                        "platform": f"{platform.system()} {platform.release()}",
+                        "label": robot_label
+                    },
+                    timeout=10
+                )
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("valid") and data.get("assigned_key"):
+                        license_key = data.get("assigned_key")
+                        add_log("success", f"Licença vinculada pelo administrador! Chave: {license_key[:8]}")
+                        break
+                
+                add_log("info", f"Aguardando liberação no Painel Admin... (ID: {mid[:6]})")
+            except Exception as e:
+                add_log("error", f"Erro ao contatar servidor de licenças: {e}")
+            
+            # Espera 30 segundos antes de tentar de novo
+            time.sleep(30)
 
     # Modo Gerenciado Obrigatório
     mode = "Gerenciado"
-    from license import get_machine_id, validate_license, start_heartbeat
-    mid = get_machine_id()
     add_log("info", f"Validando licença {license_key[:8]}... (ID: {mid[:6]})")
     
     try:
