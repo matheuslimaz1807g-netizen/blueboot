@@ -1,29 +1,29 @@
 {
-    email seu-email@exemplo.com
+    email mathe@hostinger.com
 }
 
-# Substitua 'seu-dominio.com' pelo seu domínio real
-seu-dominio.com {
-    # Redireciona tudo da API
-    reverse_proxy license_api:8000
+srv1630892.hstgr.cloud {
+    # Redireciona a raiz para o admin
+    redir / /admin/ 301
 
-    # Serve os arquivos do Painel Admin
+    # Proxy para a API
+    reverse_proxy /license/* license_api:8000
+    reverse_proxy /config/* license_api:8000
+    reverse_proxy /version/* license_api:8000
+
+    # Painel Admin
     handle_path /admin* {
         root * /usr/share/caddy/admin
         file_server browse
         try_files {path} /index.html
     }
 
-    # Configurações de segurança
+    # Segurança
     header {
-        # HSTS (Força HTTPS por 1 ano)
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        # Proteção contra Clickjacking
         X-Frame-Options "SAMEORIGIN"
-        # Proteção contra Sniffing de conteúdo
         X-Content-Type-Options "nosniff"
     }
 
-    # Compressão Gzip/Zstd
     encode zstd gzip
 }
