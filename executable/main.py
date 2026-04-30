@@ -21,6 +21,7 @@ from flask import Flask, jsonify, redirect, render_template, render_template_str
 
 import config_loader
 from bot_runner import BotRunner
+from functools import wraps
 
 # ── Configurações Globais ──────────────────────────────────────────────────────
 VERSION = "2.0.0"
@@ -108,8 +109,30 @@ DASHBOARD_HTML = """
 
 def create_app(mode: str, initial_config: dict):
     app = Flask(__name__)
+    
+    # Credenciais do Painel
+    DASH_USER = os.getenv("DASHBOARD_USER", "admin")
+    DASH_PWD = os.getenv("DASHBOARD_PASSWORD", "admin123")
+
+    def check_auth(username, password):
+        return username == DASH_USER and password == DASH_PWD
+
+    def authenticate():
+        return ("Acesso negado. Por favor, faça login.", 401, {
+            'WWW-Authenticate': 'Basic realm="Login Requerido"'
+        })
+
+    def requires_auth(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            auth = request.authorization
+            if not auth or not check_auth(auth.username, auth.password):
+                return authenticate()
+            return f(*args, **kwargs)
+        return decorated
 
     @app.route("/")
+    @requires_auth
     def index():
         return render_template_string(
             DASHBOARD_HTML,
@@ -122,6 +145,7 @@ def create_app(mode: str, initial_config: dict):
         )
 
     @app.route("/api/status")
+    @requires_auth
     def status():
         return jsonify({
             "status": _runner.status() if _runner else "stopped",
