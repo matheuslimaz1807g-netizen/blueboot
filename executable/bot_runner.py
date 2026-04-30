@@ -282,8 +282,14 @@ class BotRunner:
             # processa em background com create_task para não perder mensagens
             # enquanto o Selenium está rodando.
             async def polling_loop() -> None:
+                last_heartbeat = time.time()
                 while not self._stop_event.is_set():
                     await asyncio.sleep(_POLL_INTERVAL)
+
+                    # Heartbeat a cada 60 segundos
+                    if time.time() - last_heartbeat > 60:
+                        self._log("info", f"Bot ativo. Monitorando {len(resolved_chats)} fontes via polling...")
+                        last_heartbeat = time.time()
 
                     for entity in resolved_chats:
                         if self._stop_event.is_set():
