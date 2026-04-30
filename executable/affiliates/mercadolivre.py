@@ -76,6 +76,24 @@ def gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             return None
 
     try:
+        # INJEÇÃO DE COOKIES (Evita login manual na VPS)
+        ml_cookies_str = os.getenv("ML_COOKIES", "").strip()
+        if ml_cookies_str:
+            print("[DEBUG] Injetando cookies do Mercado Livre...")
+            # Precisa estar no domínio para injetar
+            driver.get("https://www.mercadolivre.com.br/robots.txt")
+            
+            for cookie_chunk in ml_cookies_str.split(';'):
+                cookie_chunk = cookie_chunk.strip()
+                if not cookie_chunk or '=' not in cookie_chunk:
+                    continue
+                name, value = cookie_chunk.split('=', 1)
+                driver.add_cookie({
+                    'name': name.strip(),
+                    'value': value.strip(),
+                    'domain': '.mercadolivre.com.br'
+                })
+
         driver.get(url)
         wait = WebDriverWait(driver, 15)
 
