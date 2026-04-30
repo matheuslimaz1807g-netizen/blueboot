@@ -255,7 +255,7 @@ class BotRunner:
                     self._log("warning", f"[Polling] Falha ao iniciar cursor de {getattr(entity, 'id', '?')}: {exc}")
 
             # ── Processar mensagem e atualizar stats ──────────────────────────
-            async def process_message_and_update_stats(message) -> None:
+            async def _process_and_count(message) -> None:
                 try:
                     processed, tg_ok, wp_ok = await processar_mensagem(
                         message,
@@ -277,6 +277,8 @@ class BotRunner:
                     self._log("error", f"[BotRunner] Erro ao processar mensagem: {exc}")
                     with self._lock:
                         self._stats["errors_24h"] += 1
+
+            self._process_and_count = _process_and_count
 
             # ── Loop de polling (Tarefa Principal) ────────────────────────────
             self._log("info", "🚀 Motor de busca (Polling) iniciado!")
@@ -320,7 +322,7 @@ class BotRunner:
                                     self._last_seen_by_chat[entity.id] = max(self._last_seen_by_chat.get(entity.id, 0), message.id)
 
                                 # Processa (em background para não travar a próxima busca)
-                                asyncio.create_task(process_message_and_update_stats(message))
+                                asyncio.create_task(self._process_and_count(message))
 
                     # Se a conexão cair, o client.get_messages vai falhar e cair aqui
                     if not self._client.is_connected():
