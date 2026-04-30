@@ -1,5 +1,50 @@
 services:
 
+  # ── Banco de Dados (PostgreSQL) ───────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: bluebot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bluebot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bluebot_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-bluebot}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+
+  # ── API de Licenças (FastAPI) ──────────────────────────────────────────────
+  license_api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: bluebot_license_api
+    restart: unless-stopped
+    env_file: .env.personal
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bluebot}:${POSTGRES_PASSWORD:-bluebot_secret}@postgres:5432/${POSTGRES_DB:-bluebot}
+    expose:
+      - "8000"
+    depends_on:
+      - postgres
+
+  # ── Servidor Web & Proxy (Nginx) ──────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: bluebot_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./admin:/usr/share/nginx/html/admin:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      - license_api
+
   # ── Bot Python (Telegram + Afiliados) ─────────────────────────────────────
   bot:
     build:
@@ -15,6 +60,7 @@ services:
       - /root/.config/BraveSoftware/Brave-Browser:/app/brave_profile
     depends_on:
       - whatsapp
+      - license_api
 
   # ── WhatsApp Bridge (Node.js) ──────────────────────────────────────────────
   whatsapp:
@@ -24,7 +70,7 @@ services:
     container_name: bluebot_whatsapp
     restart: unless-stopped
     ports:
-      - "127.0.0.1:4000:4000"  # Só acessível internamente, não exposto à internet
+      - "127.0.0.1:4000:4000"
     volumes:
       - whatsapp_auth:/.wwebjs_auth
       - whatsapp_cache:/.wwebjs_cache
@@ -33,3 +79,4 @@ volumes:
   bot_sessions:
   whatsapp_auth:
   whatsapp_cache:
+  postgres_data:
