@@ -6,6 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
+    chromium \
+    chromium-driver \
+    xvfb \
+    xclip \
     && rm -rf /var/lib/apt/lists/*
 
 # Instala dependências Python
@@ -18,4 +22,4 @@ COPY executable/ .
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
 
-CMD ["python", "bot_runner_vps.py"]
+CMD ["xvfb-run", "-a", "python", "bot_runner_vps.py"]
