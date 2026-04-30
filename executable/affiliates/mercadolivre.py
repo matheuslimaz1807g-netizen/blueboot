@@ -51,21 +51,28 @@ def gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         fechar_brave()
         time.sleep(1)
         service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
     else:
-        # 🚨 LINUX / VPS DOCKER (Conecta no container remoto com VNC)
-        # O perfil é persistido no volume do próprio container do Chrome, então
-        # não passamos --user-data-dir aqui via options (o container já gerencia)
-        options.add_argument("--start-maximized")
-        # Sem --headless aqui, pois queremos ver a tela no VNC se precisarmos logar
+        # 🚨 LINUX / VPS DOCKER (Usa Chromium headless lendo a pasta do seu Brave)
+        options.binary_location = "/usr/bin/chromium"
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--headless=new") # VPS não tem tela, precisa ser headless
+        options.add_argument("--window-size=1920,1080")
         
+        # Mapeia a pasta original do seu servidor antigo para o Chromium do Docker ler!
+        user_data_dir = "/app/brave_profile"
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+        options.add_argument("--profile-directory=Default")
+        # ou "ProfileBot" se era o que estava no seu código original
+        # O Chrome Manager via service pega o chromedriver interno
+        service = Service("/usr/bin/chromedriver")
+
         try:
-            # Conecta ao node do Selenium no Docker Compose
-            driver = webdriver.Remote(
-                command_executor="http://chrome:4444/wd/hub",
-                options=options
-            )
+            driver = webdriver.Chrome(service=service, options=options)
         except Exception as e:
-            print(f"[ERROR] Remote Chrome init failed: {e}")
+            print(f"[ERROR] Local Chrome init failed: {e}")
             return None
 
     try:

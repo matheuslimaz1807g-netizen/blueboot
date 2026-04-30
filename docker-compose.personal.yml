@@ -12,21 +12,9 @@ services:
       - "8080:8080"
     volumes:
       - bot_sessions:/app/sessions
+      - /root/.config/BraveSoftware/Brave-Browser:/app/brave_profile
     depends_on:
       - whatsapp
-      - chrome
-
-  # ── Navegador Remoto com Tela (VNC) para Mercado Livre ─────────────────────
-  chrome:
-    image: selenium/standalone-chromium-debug:4.11.0
-    container_name: bluebot_chrome
-    ports:
-      - "4444:4444" # Porta do Selenium
-      - "7900:7900" # Porta da Interface Web (NoVNC)
-    volumes:
-      - chrome_profile:/home/seluser/.config/chromium
-    shm_size: 2gb
-    restart: unless-stopped
 
   # ── WhatsApp Bridge (Node.js) ──────────────────────────────────────────────
   whatsapp:
@@ -45,4 +33,3 @@ volumes:
   bot_sessions:
   whatsapp_auth:
   whatsapp_cache:
-  chrome_profile:
