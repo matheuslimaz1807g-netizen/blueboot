@@ -10,8 +10,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pyperclip
-
 import undetected_chromedriver as uc
+
 from utils import fechar_brave, expandir_link_async
 
 def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
@@ -33,7 +33,6 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         
         fechar_brave()
         time.sleep(1)
-        
         service = Service(ChromeDriverManager().install())
         
         try:
@@ -42,22 +41,21 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             print(f"[ERROR] ML ChromeDriver init failed no Windows: {e}")
             return None
     else:
-        # 🚨 LINUX / VPS DOCKER (Usa Undetected Chromedriver para bypass e estabilidade)
-        options.binary_location = "/usr/bin/brave-browser"
+        # 🚨 LINUX / VPS DOCKER (Usa Undetected Chromedriver + Google Chrome Stable)
+        options.binary_location = "/usr/bin/google-chrome-stable"
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
         
-        # Pasta de perfil do Brave
-        user_data_dir = "/app/brave_profile"
-        options.add_argument(f"--user-data-dir={user_data_dir}")
-        
+        # UC no Linux funciona melhor sem passar pasta de perfil se estiver dando erro de conexão
         try:
-            # O UC baixa o driver e remenda o binário automaticamente
-            driver = uc.Chrome(options=options, driver_executable_path="/usr/bin/chromedriver")
+            driver = uc.Chrome(options=options, headless=False)
         except Exception as e:
-            print(f"[ERROR] Undetected Chromedriver (Brave) falhou: {e}")
+            print(f"[ERROR] Undetected Chromedriver (Chrome) falhou: {e}")
             return None
 
     try:
@@ -107,18 +105,6 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
                 compartilhar_btn.click()
                 time.sleep(2)
             except Exception as e:
-                # Debug se falhar
-                try:
-                    driver.save_screenshot("/app/sessions/ml_error_compartilhar.png")
-                    print(f"[ERROR] Screenshot de erro salvo em /app/sessions/ml_error_compartilhar.png")
-                except Exception as print_e:
-                    print(f"[ERROR] Não foi possível salvar o screenshot: {print_e}")
-                    try:
-                        with open("/app/sessions/ml_error_page.html", "w", encoding="utf-8") as f:
-                            f.write(driver.page_source)
-                        print("[ERROR] HTML salvo em /app/sessions/ml_error_page.html")
-                    except Exception as html_e:
-                        print(f"[ERROR] HTML falhou: {html_e}")
                 print(f"[ERROR] Falha ao clicar em 'Compartilhar': {e}")
                 return None
 
@@ -127,7 +113,6 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')]")))
             copiar_botao.click()
         except:
-            # Fallback por XPATH completo
             copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")))
             copiar_botao.click()
         
@@ -153,13 +138,9 @@ async def convert(url: str, ml_token: str = "") -> Optional[str]:
     try:
         if "meli.la" in url:
             url = await expandir_link_async(url)
-
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, _gerar_link_mercadolivre_sync, url)
-        
-        if result and result.startswith("http"):
-            return result
-        return None
+        return result
     except Exception as exc:
         print(f"[ERROR] Execução do Selenium falhou: {exc}")
         return None

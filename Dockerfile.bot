@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Instala TODAS as bibliotecas necessárias para o Chrome/Brave rodar em modo servidor (Debian Slim)
+# Instala bibliotecas base e Google Chrome oficial
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
@@ -20,21 +20,22 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libpango-1.0-0 \
     libcairo2 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala o Brave Browser oficial
-RUN curl -fsS https://dl.brave.com/install.sh | sh
-
-# Instala o chromedriver
-RUN apt-get update && apt-get install -y chromium-driver && rm -rf /var/lib/apt/lists/*
+# Instala o Google Chrome oficial (estável)
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copia dependências primeiro para aproveitar o cache do Docker
+# Copia dependências
 COPY executable/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o código do bot
+# Copia o código
 COPY executable/ .
 RUN rm -f .env .env.local
 
