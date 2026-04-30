@@ -38,28 +38,35 @@ def gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
     from selenium.webdriver.support import expected_conditions as EC
     from webdriver_manager.chrome import ChromeDriverManager
     
-    # 🚨 CAMINHOS PARA O BRAVE NO WINDOWS
-    brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-    user_data_dir = r"C:\Users\mathe\AppData\Local\BraveSoftware\Brave-Browser\User Data"
-
     options = Options()
-    options.binary_location = brave_path
-    options.add_argument("--no-sandbox")
-    options.add_argument("--start-maximized")
-    # Tenta usar o profile default do usuário
-    options.add_argument(f"--user-data-dir={user_data_dir}")
-    options.add_argument("--profile-directory=Default")
-    
-    # Se quiser omitir o display "Totalmente" no background, poderia adicionar --headless,
-    # Mas como o usuário quer o driver (e às vezes o mercado livre barra --headless sem proxy), 
-    # vamus manter como o usuário tinha.
 
-    # Fecha qualquer instância prévia do Brave para liberar o User Data
-    fechar_brave()
-    time.sleep(1)
+    if os.name == 'nt':
+        # 🚨 WINDOWS (Usa o Brave do Usuário)
+        brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+        user_data_dir = r"C:\Users\mathe\AppData\Local\BraveSoftware\Brave-Browser\User Data"
+        options.binary_location = brave_path
+        options.add_argument("--start-maximized")
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+        options.add_argument("--profile-directory=Default")
+        fechar_brave()
+        time.sleep(1)
+        service = Service(ChromeDriverManager().install())
+    else:
+        # 🚨 LINUX / VPS DOCKER (Usa Chromium headless com perfil persistente)
+        options.binary_location = "/usr/bin/chromium"
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--headless=new") # VPS não tem tela, precisa ser headless
+        options.add_argument("--window-size=1920,1080")
+        
+        # Perfil persistente dentro do volume mapeado do Docker
+        user_data_dir = "/app/sessions/ml_profile"
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+        
+        service = Service("/usr/bin/chromedriver")
 
     try:
-        service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
     except Exception as e:
         print(f"[ERROR] ML ChromeDriver init failed: {e}")
