@@ -11,6 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pyperclip
 
+import undetected_chromedriver as uc
 from utils import fechar_brave, expandir_link_async
 
 def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
@@ -41,40 +42,22 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             print(f"[ERROR] ML ChromeDriver init failed no Windows: {e}")
             return None
     else:
-        # 🚨 LINUX / VPS DOCKER (Usa Brave oficial instalado no container)
-        from webdriver_manager.chrome import ChromeDriverManager
-        from webdriver_manager.core.os_manager import ChromeType
-        
+        # 🚨 LINUX / VPS DOCKER (Usa Undetected Chromedriver para bypass e estabilidade)
         options.binary_location = "/usr/bin/brave-browser"
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        # Rodando fora do modo headless para aproveitar o Xvfb e evitar bloqueios
         options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-setuid-sandbox")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--remote-debugging-port=9222")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-default-browser-check")
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
-        # Pasta de perfil do Brave (Volume mapeado no Docker)
+        # Pasta de perfil do Brave
         user_data_dir = "/app/brave_profile"
         options.add_argument(f"--user-data-dir={user_data_dir}")
-        options.add_argument("--profile-directory=Default")
-        
-        # Usa o webdriver-manager para baixar o driver CORRETO para o Brave do Linux
-        try:
-            driver_path = ChromeDriverManager(chrome_type=ChromeType.BRAVE).install()
-            service = Service(driver_path, log_path="/app/sessions/chromedriver.log")
-        except Exception as e:
-            print(f"[ERROR] Falha ao baixar Chromedriver para Brave: {e}")
-            service = Service("/usr/bin/chromedriver", log_path="/app/sessions/chromedriver.log")
         
         try:
-            driver = webdriver.Chrome(service=service, options=options)
+            # O UC baixa o driver e remenda o binário automaticamente
+            driver = uc.Chrome(options=options, driver_executable_path="/usr/bin/chromedriver")
         except Exception as e:
-            print(f"[ERROR] ML ChromeDriver (Brave) init failed no Linux: {e}")
+            print(f"[ERROR] Undetected Chromedriver (Brave) falhou: {e}")
             return None
 
     try:

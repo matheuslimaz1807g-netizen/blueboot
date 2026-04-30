@@ -7,3 +7,4 @@ pyperclip==1.9.0
 python-dotenv==1.0.1
 cryptography==42.0.5
 pyinstaller==6.6.0
+undetected-chromedriver
