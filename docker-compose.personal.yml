@@ -1,0 +1,32 @@
+services:
+
+  # ── Bot Python (Telegram + Afiliados) ─────────────────────────────────────
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: bluebot_bot
+    restart: unless-stopped
+    env_file: .env.personal
+    volumes:
+      - bot_sessions:/app/sessions
+    depends_on:
+      - whatsapp
+
+  # ── WhatsApp Bridge (Node.js) ──────────────────────────────────────────────
+  whatsapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.whatsapp
+    container_name: bluebot_whatsapp
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4000:4000"  # Só acessível internamente, não exposto à internet
+    volumes:
+      - whatsapp_auth:/.wwebjs_auth
+      - whatsapp_cache:/.wwebjs_cache
+
+volumes:
+  bot_sessions:
+  whatsapp_auth:
+  whatsapp_cache:

@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instala dependências Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia o código do bot
+COPY executable/ .
+
+# Diretório para salvar a sessão do Telegram
+RUN mkdir -p /app/sessions
+
+CMD ["python", "bot_runner_vps.py"]
