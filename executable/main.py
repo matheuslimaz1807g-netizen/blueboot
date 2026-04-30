@@ -87,9 +87,8 @@ DASHBOARD_HTML = """
                 <strong>Plataformas:</strong> Telegram {% if wpp %} + WhatsApp{% endif %}
             </div>
             <div style="margin-left: auto; text-align: right;">
-                <strong>Mensagens Processadas:</strong> {{ stats.get('today_processed', 0) }}<br>
-                <strong>Envios Telegram:</strong> {{ stats.get('today_telegram', 0) }}<br>
-                <strong>Envios WhatsApp:</strong> {{ stats.get('today_whatsapp', 0) }}
+                <strong>Mensagens Processadas:</strong> {{ stats.get('processed', 0) }}<br>
+                <strong>Links Convertidos:</strong> {{ stats.get('converted', 0) }}
             </div>
         </div>
 
@@ -140,9 +139,9 @@ def create_app(mode: str, initial_config: dict):
             version=VERSION,
             mode=mode,
             status=_runner.status() if _runner else "stopped",
+            stats=_runner.get_stats() if _runner else {},
             logs=list(_logs),
-            wpp=initial_config.get("send_whatsapp", False),
-            stats=_runner.get_stats() if _runner else {}
+            wpp=initial_config.get("send_whatsapp", False)
         )
 
     @app.route("/api/status")
@@ -163,29 +162,45 @@ def main():
     add_log("info", f"Iniciando BlueBot v{VERSION}...")
 
     # 1. Carregar Configuração
-    api_base = os.getenv("APRO_API_BASE", "")
-    mode = "Gerenciado" if api_base else "Pessoal (VPS)"
+    api_base = os.getenv("APRO_API_BASE") or os.getenv("API_BASE_URL", "")
+    license_key = os.getenv("LICENSE_KEY", "")
+    mode = "Gerenciado" if (api_base and license_key) else "Pessoal (VPS)"
     
     try:
-        if api_base:
-            # Modo Gerenciado (Precisa de licença)
-            from license import get_machine_id, validate_license
+        if mode == "Gerenciado":
+            # Modo Gerenciado (Validação Obrigatória)
+            from license import get_machine_id, validate_license, start_heartbeat
             mid = get_machine_id()
-            # Simplificação: tenta carregar licença do config.json se existir
-            lic_path = Path("config.json")
-            if lic_path.exists():
-                lic_data = json.loads(lic_path.read_text())
-                key = lic_data.get("license_key")
-                config = config_loader.fetch_remote_config(key, mid)
-            else:
-                add_log("warning", "Modo gerenciado sem config.json. Usando .env fallback.")
+            add_log("info", f"Validando licença {license_key[:8]}... (ID: {mid[:6]})")
+            
+            try:
+                # 1. Validar Licença no Servidor
+                os.environ["APRO_API_BASE"] = api_base # Garante que o license.py use a URL certa
+                lic_info = validate_license(license_key, mid)
+                add_log("success", f"Licença validada! Plano: {lic_info.get('plan', 'basic').upper()}")
+                
+                # 2. Iniciar Heartbeat (Batimento para o painel)
+                def on_expired():
+                    add_log("error", "Sinal de licença perdido ou expirado. Encerrando robô...")
+                    os._exit(1)
+                
+                start_heartbeat(license_key, mid, on_expired)
+                
+                # 3. Carregar Configuração (Remota ou Local)
                 config = config_loader.load_config_from_env()
+                add_log("info", "Modo Gerenciado ativo.")
+                
+            except Exception as e:
+                add_log("error", f"Falha Crítica de Licença: {e}")
+                add_log("info", "O robô será encerrado por falta de licença válida.")
+                time.sleep(5)
+                sys.exit(1)
         else:
             # Modo Pessoal (Lê do .env)
             config = config_loader.load_config_from_env()
             add_log("info", "Configurações carregadas do .env (Modo Pessoal).")
     except Exception as e:
-        add_log("error", f"Falha ao carregar configurações: {e}")
+        add_log("error", f"Erro ao inicializar configurações: {e}")
         config = config_loader.load_config_from_env()
 
     # 2. Iniciar Bot
