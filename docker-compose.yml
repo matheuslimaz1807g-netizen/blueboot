@@ -65,5 +65,21 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  whatsapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.whatsapp
+    container_name: bluebot_whatsapp
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - whatsapp_auth:/.wwebjs_auth
+      - whatsapp_cache:/.wwebjs_cache
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   postgres_data:
+  whatsapp_auth:
+  whatsapp_cache:
