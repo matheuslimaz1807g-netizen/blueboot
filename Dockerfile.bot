@@ -23,4 +23,4 @@ COPY executable/ .
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
 
-CMD ["xvfb-run", "-a", "python", "bot_runner_vps.py"]
+CMD ["xvfb-run", "-a", "python", "-u", "bot_runner_vps.py"]
