@@ -25,4 +25,4 @@ RUN rm -f .env .env.local
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
 
-CMD ["xvfb-run", "--server-args=-screen 0 1920x1080x24", "python", "-u", "main.py"]
+CMD xvfb-run -a --server-args="-screen 0 1920x1080x24" python -u main.py
