@@ -164,7 +164,8 @@ def main():
     # 1. Carregar Configuração
     api_base = os.getenv("APRO_API_BASE") or os.getenv("API_BASE_URL", "http://license_api:8000")
     license_key = os.getenv("LICENSE_KEY", "")
-    robot_label = os.getenv("ROBOT_LABEL", "") # Nome amigável que aparece no painel
+    robot_label = os.getenv("ROBOT_LABEL", "") 
+    install_token = os.getenv("INSTALL_TOKEN", "") # Senha global de segurança
     
     from license import get_machine_id, validate_license, start_heartbeat
     import platform
@@ -177,9 +178,10 @@ def main():
         
         while not license_key:
             try:
-                # 1. Avisar o painel que este robô está aqui
+                # 1. Avisar o painel que este robô está aqui (Enviando o Token de Segurança)
                 resp = requests.post(
                     f"{api_base}/license/discover",
+                    headers={"X-Install-Token": install_token},
                     json={
                         "machine_id": mid,
                         "hostname": platform.node(),
@@ -195,6 +197,10 @@ def main():
                         license_key = data.get("assigned_key")
                         add_log("success", f"Licença vinculada pelo administrador! Chave: {license_key[:8]}")
                         break
+                elif resp.status_code == 403:
+                    add_log("error", "ACESSO NEGADO: Token de instalação (INSTALL_TOKEN) inválido ou ausente no .env")
+                    time.sleep(60) # Espera mais tempo se o token estiver errado
+                    continue
                 
                 add_log("info", f"Aguardando liberação no Painel Admin... (ID: {mid[:6]})")
             except Exception as e:

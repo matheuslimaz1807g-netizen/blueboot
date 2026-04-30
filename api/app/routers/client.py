@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import sys
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Header, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.config import get_settings
 from app.schemas.schemas import (
     ConfigIn,
     ConfigOut,
@@ -40,8 +41,14 @@ async def validate_license(
 @router.post("/license/discover", response_model=LicenseValidateResponse)
 async def discover_machine(
     body: MachineDiscoveryRequest,
+    x_install_token: str | None = Header(None, alias="X-Install-Token"),
     db: AsyncSession = Depends(get_db),
+    settings = Depends(get_settings),
 ):
+    # SEGURANÇA: Validar Token Global de Instalação
+    if not x_install_token or x_install_token != settings.INSTALL_TOKEN:
+        raise HTTPException(status_code=403, detail="Token de instalação inválido ou ausente")
+
     # 1. Verificar se esta máquina já possui uma licença vinculada
     result = await db.execute(select(License).where(License.machine_id == body.machine_id))
     lic = result.scalar_one_or_none()

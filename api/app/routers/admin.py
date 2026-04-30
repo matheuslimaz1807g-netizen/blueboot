@@ -212,6 +212,14 @@ async def link_machine_to_license(
     # 3. Remover da lista de pendentes
     await db.execute(delete(PendingMachine).where(PendingMachine.machine_id == body.machine_id))
     
+    # 4. Auditoria: Registrar o vínculo nos Logs
+    audit_log = LogEntry(
+        license_id=lic.id,
+        nivel="success",
+        mensagem=f"Máquina vinculada via Auto-Descoberta (ID: {body.machine_id[:16]}...)"
+    )
+    db.add(audit_log)
+
     await db.commit()
     return OkResponse(message="Máquina vinculada com sucesso")
 

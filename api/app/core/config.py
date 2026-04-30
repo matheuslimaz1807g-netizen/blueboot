@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 60
 
     FERNET_KEY: str = "change_me_fernet_key"
+    INSTALL_TOKEN: str = "mudar-para-senha-secreta"
 
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "change_me"

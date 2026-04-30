@@ -78,6 +78,13 @@ def get_machine_id() -> str:
     except Exception:
         parts.append("unknown_host")
 
+    # Adiciona ID do Docker se disponível
+    if os.path.exists("/proc/self/cgroup"):
+        try:
+            with open("/proc/self/cgroup", "r") as f:
+                parts.append(f.read())
+        except: pass
+
     # Try to get Windows machine GUID for extra stability
     if platform.system() == "Windows":
         try:
@@ -93,8 +100,17 @@ def get_machine_id() -> str:
                         parts.append(guid)
         except Exception:
             pass
+    elif platform.system() == "Linux":
+        # Linux machine-id
+        for p in ["/etc/machine-id", "/var/lib/dbus/machine-id"]:
+            if os.path.exists(p):
+                try:
+                    with open(p, "r") as f:
+                        parts.append(f.read().strip())
+                        break
+                except: pass
 
-    raw = ":".join(parts)
+    raw = "|".join(parts)
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
