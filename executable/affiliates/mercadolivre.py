@@ -55,7 +55,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
                 name, value = cookie_chunk.split('=', 1)
                 driver.add_cookie({'name': name.strip(), 'value': value.strip(), 'domain': '.mercadolivre.com.br'})
 
-        print(f"[DEBUG] Abrindo URL: {url}")
+        print(f"[DEBUG] Abrindo URL de perfil: {url}")
         driver.get(url)
         wait = WebDriverWait(driver, 15)
 
@@ -65,68 +65,65 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             time.sleep(1)
         except: pass
 
-        # 2. Acessar Produto (Busca inteligente)
-        print("[DEBUG] Procurando produto na página de perfil...")
+        # 2. Clicar em "Ir para produto" (Busca por TEXTO exato)
+        print("[DEBUG] Buscando botão 'Ir para produto'...")
         try:
-            item_produto = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.social-profile-post, div[class*='post-container'], div.ui-pdp-container__row, a[href*='/p/'], a[href*='/mlb-']")))
-            item_produto.click()
-            print("[DEBUG] Produto clicado.")
-            time.sleep(5)
-        except:
-            print("[DEBUG] Tentando clicar via XPATH genérico de lista...")
+            ir_para_produto = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Ir para produto')] | //span[contains(., 'Ir para produto')] | //div[contains(., 'Ir para produto') and @role='button']")))
+            ir_para_produto.click()
+            print("[DEBUG] Clicou em 'Ir para produto'.")
+            time.sleep(5) # Espera carregar a página real do produto
+        except Exception as e:
+            print(f"[WARNING] Botão 'Ir para produto' não encontrado via texto. Tentando clique genérico no post: {e}")
             try:
-                driver.find_element(By.XPATH, "//ul//div[contains(@class, 'container')] | //main//ul//li[1]").click()
+                # Tenta clicar no post se o botão de texto falhar
+                driver.find_element(By.CSS_SELECTOR, "div.social-profile-post, div[class*='post-container']").click()
                 time.sleep(5)
             except:
-                print("[DEBUG] Continuando sem clicar...")
+                print("[DEBUG] Não foi possível clicar para ir ao produto. Continuando na página atual...")
 
-        print(f"[DEBUG] Título da página atual: {driver.title}")
+        print(f"[DEBUG] Título da página: {driver.title}")
 
-        # 3. Compartilhar (Busca por TEXTO - Mais Robusto!)
+        # 3. Compartilhar (Busca por TEXTO)
+        print("[DEBUG] Buscando botão 'Compartilhar'...")
         try:
-            print("[DEBUG] Buscando botão 'Compartilhar' pelo texto...")
-            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Compartilhar')] | //div[contains(., 'Compartilhar') and @role='button']")))
+            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Compartilhar')] | //div[contains(., 'Compartilhar') and @role='button'] | //span[contains(., 'Compartilhar')]")))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
-            print("[DEBUG] Clicou em Compartilhar pelo texto.")
+            print("[DEBUG] Clicou em 'Compartilhar'.")
             time.sleep(2)
         except Exception as e:
-            # Fallback para XPATH fixo do GitHub
-            try:
-                print("[DEBUG] Fallback para XPATH fixo de Compartilhar...")
-                driver.find_element(By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button").click()
-                time.sleep(2)
-            except:
-                driver.save_screenshot("/app/sessions/erro_ml.png")
-                print(f"[ERROR] Falha ao clicar em Compartilhar. Screenshot salvo.")
-                return None
+            driver.save_screenshot("/app/sessions/erro_ml.png")
+            print(f"[ERROR] Falha ao clicar em 'Compartilhar'. Print salvo.")
+            print(f"[ERROR] Detalhes: {e}")
+            return None
 
         # 4. Copiar Link (Busca por TEXTO)
+        print("[DEBUG] Buscando botão 'Copiar link'...")
         try:
-            print("[DEBUG] Buscando botão 'Copiar link' pelo texto...")
             copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')] | //span[contains(., 'Copiar link')]")))
             copiar_botao.click()
-            print("[DEBUG] Clicou em Copiar Link pelo texto.")
-        except:
-            print("[DEBUG] Fallback para XPATH fixo de Copiar...")
+            print("[DEBUG] Clicou em 'Copiar link'.")
+        except Exception as e:
+            print(f"[DEBUG] Falha ao clicar em 'Copiar link' via texto: {e}")
             try:
+                # Fallback para XPATH fixo do modal se o texto falhar
                 driver.find_element(By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button").click()
             except: pass
         
         time.sleep(3)
 
-        # 5. Captura Final
+        # 5. Captura Final do Link
         link_afiliado = get_linux_clipboard() if os.name != 'nt' else __import__('pyperclip').paste()
         if not link_afiliado:
             try:
                 link_afiliado = driver.find_element(By.XPATH, "//input[contains(@value, 'mercadolivre.com.br')]").get_attribute("value")
             except: pass
 
-        print(f"[DEBUG] Link Final: {link_afiliado}")
+        print(f"[DEBUG] Link Final Capturado: {link_afiliado}")
         return link_afiliado if link_afiliado and "mercadolivre.com.br" in link_afiliado else None
 
     except Exception as e:
-        print(f"[ERROR] Erro Geral ML: {e}")
+        print(f"[ERROR] Erro Geral no fluxo ML: {e}")
         return None
     finally:
         try:
