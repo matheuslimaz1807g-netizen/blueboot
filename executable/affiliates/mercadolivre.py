@@ -138,8 +138,14 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
                 try:
                     driver.save_screenshot("/app/sessions/ml_error_compartilhar.png")
                     print(f"[ERROR] Screenshot de erro salvo em /app/sessions/ml_error_compartilhar.png")
-                except:
-                    pass
+                except Exception as print_e:
+                    print(f"[ERROR] Não foi possível salvar o screenshot: {print_e}")
+                    try:
+                        with open("/app/sessions/ml_error_page.html", "w", encoding="utf-8") as f:
+                            f.write(driver.page_source)
+                        print("[ERROR] HTML salvo em /app/sessions/ml_error_page.html")
+                    except Exception as html_e:
+                        print(f"[ERROR] HTML falhou: {html_e}")
                 print(f"[ERROR] Falha ao clicar em 'Compartilhar': {e}")
                 return None
 
