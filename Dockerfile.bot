@@ -1,18 +1,31 @@
 FROM python:3.11-slim
 
-# Instala dependências básicas e curl para o Brave
+# Instala TODAS as bibliotecas necessárias para o Chrome/Brave rodar em modo servidor (Debian Slim)
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
     xvfb \
     xclip \
     xauth \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Adiciona repositório oficial do Brave e instala o navegador
+# Instala o Brave Browser oficial
 RUN curl -fsS https://dl.brave.com/install.sh | sh
 
-# Instala o chromedriver (o Brave é baseado em Chromium, então usamos o driver compatível)
+# Instala o chromedriver
 RUN apt-get update && apt-get install -y chromium-driver && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -23,11 +36,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia o código do bot
 COPY executable/ .
-# Remove arquivos de configuração locais que possam ter sido copiados
 RUN rm -f .env .env.local
 
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
 
-# Rodar com xvfb-run para garantir que o Brave tenha uma tela virtual
+# Rodar com xvfb-run
 CMD xvfb-run -a --server-args="-screen 0 1920x1080x24" python -u main.py
