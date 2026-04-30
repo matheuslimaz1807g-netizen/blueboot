@@ -14,10 +14,6 @@ from selenium_stealth import stealth
 from utils import fechar_brave, expandir_link_async
 
 def get_linux_clipboard():
-    """
-    Fallback para ler o clipboard no Linux usando xclip diretamente,
-    já que o pyperclip às vezes falha em containers.
-    """
     try:
         result = subprocess.run(['xclip', '-selection', 'clipboard', '-o'], capture_output=True, text=True, timeout=5)
         return result.stdout.strip()
@@ -25,13 +21,9 @@ def get_linux_clipboard():
         return None
 
 def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
-    """
-    Gera link de afiliado seguindo a lógica do GitHub adaptada para VPS.
-    """
     options = Options()
 
     if os.name == 'nt':
-        # 🚨 WINDOWS (Brave)
         from webdriver_manager.chrome import ChromeDriverManager
         brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
         options.binary_location = brave_path
@@ -43,27 +35,17 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
     else:
-        # 🚨 LINUX / VPS DOCKER (Chromium + Stealth)
         options.binary_location = "/usr/bin/chromium"
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
-        
         service = Service("/usr/bin/chromedriver")
         driver = webdriver.Chrome(service=service, options=options)
-        
-        stealth(driver,
-            languages=["pt-BR", "pt"],
-            vendor="Google Inc.",
-            platform="Win32",
-            webgl_vendor="Intel Inc.",
-            renderer="Intel Iris OpenGL Engine",
-            fix_hairline=True,
-        )
+        stealth(driver, languages=["pt-BR", "pt"], vendor="Google Inc.", platform="Win32", webgl_vendor="Intel Inc.", renderer="Intel Iris OpenGL Engine", fix_hairline=True)
 
     try:
-        # INJEÇÃO DE COOKIES (Necessário se não houver login manual)
+        # Injeção de Cookies
         ml_cookies_str = os.getenv("ML_COOKIES", "").strip()
         if ml_cookies_str:
             driver.get("https://www.mercadolivre.com.br/robots.txt")
@@ -75,90 +57,85 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
 
         print(f"[DEBUG] Abrindo URL: {url}")
         driver.get(url)
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 15)
 
-        # STEP 1: Fechar banner de cookies (Lógica do GitHub)
+        # 1. Fechar Cookies
         try:
-            print("[DEBUG] Tentando fechar banner de cookies")
-            cookie_banner = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "cookie-consent-banner-opt-out__container")))
-            close_button = cookie_banner.find_element(By.TAG_NAME, "button")
-            close_button.click()
+            wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "cookie-consent-banner-opt-out__container"))).find_element(By.TAG_NAME, "button").click()
             time.sleep(1)
+        except: pass
+
+        # 2. Acessar Produto (Busca inteligente por classe de item social)
+        print("[DEBUG] Procurando produto na página de perfil...")
+        try:
+            # Tenta clicar no primeiro item da lista de posts sociais
+            item_produto = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.social-profile-post, div[class*='post-container'], div.ui-pdp-container__row")))
+            item_produto.click()
+            print("[DEBUG] Produto clicado com seletor inteligente.")
+            time.sleep(5)
         except:
-            print("[DEBUG] Banner de cookies não encontrado")
+            # Fallback para o XPATH do GitHub se o inteligente falhar
+            try:
+                acessar_produto = driver.find_element(By.XPATH, "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]")
+                acessar_produto.click()
+                print("[DEBUG] Produto clicado via XPATH GitHub.")
+                time.sleep(5)
+            except:
+                print("[DEBUG] Não foi necessário clicar ou elemento não encontrado. Continuando...")
 
-        # STEP 2: Clicar em "Acessar Produto" (XPATH do GitHub)
-        print("[DEBUG] Tentando clicar em 'Acessar produto'")
-        try:
-            acessar_produto = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]")))
-            acessar_produto.click()
-            print("[DEBUG] Clicou em 'Acessar produto'")
-            time.sleep(5)
-        except Exception as e:
-            print(f"[WARNING] Falha ao clicar em acessar produto (pode já estar na página): {e}")
+        print(f"[DEBUG] Título da página atual: {driver.title}")
 
-        # STEP 3: Clicar em "Compartilhar" (XPATH do GitHub com retry)
+        # 3. Compartilhar
         try:
-            print("[DEBUG] Tentando clicar em 'Compartilhar'")
-            compartilhar_btn = WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
+            # XPATH do GitHub
+            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
-            print("[DEBUG] Clicou em 'Compartilhar'")
+            print("[DEBUG] Clicou em Compartilhar.")
             time.sleep(2)
         except Exception as e:
-            print(f"[ERROR] Falha no primeiro clique de 'Compartilhar', tentando retry...")
-            time.sleep(5)
-            compartilhar_btn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
-            driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
-            compartilhar_btn.click()
-            print("[DEBUG] Clicou em 'Compartilhar' no retry")
-            time.sleep(2)
+            # Se falhar, tira print para debug
+            driver.save_screenshot("/app/sessions/erro_ml.png")
+            print(f"[ERROR] Falha ao clicar em Compartilhar. Print salvo em /app/sessions/erro_ml.png")
+            print(f"[ERROR] Mensagem: {e}")
+            return None
 
-        # STEP 4: Clicar em "Copiar Link" (XPATH do GitHub)
-        print("[DEBUG] Tentando clicar em 'Copiar link'")
-        copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")))
-        copiar_botao.click()
-        print("[DEBUG] Clicou em 'Copiar link'")
+        # 4. Copiar Link
+        try:
+            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')]")))
+            copiar_botao.click()
+        except:
+            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")))
+            copiar_botao.click()
+        
+        print("[DEBUG] Clicou em Copiar Link.")
         time.sleep(3)
 
-        # STEP 5: Recuperar o link (Tenta xclip no Linux, pyperclip no Windows)
-        if os.name == 'nt':
-            import pyperclip
-            link_afiliado = pyperclip.paste()
-        else:
-            link_afiliado = get_linux_clipboard()
-            # Fallback se xclip falhar
-            if not link_afiliado:
-                try:
-                    link_input = driver.find_element(By.XPATH, "//input[contains(@value, 'mercadolivre.com.br')]")
-                    link_afiliado = link_input.get_attribute("value")
-                except: pass
+        # 5. Captura Final
+        link_afiliado = get_linux_clipboard() if os.name != 'nt' else __import__('pyperclip').paste()
+        if not link_afiliado:
+            try:
+                link_afiliado = driver.find_element(By.XPATH, "//input[contains(@value, 'mercadolivre.com.br')]").get_attribute("value")
+            except: pass
 
-        print(f"[DEBUG] Link capturado: {link_afiliado}")
-        
-        if link_afiliado and "mercadolivre.com.br" in link_afiliado:
-            return link_afiliado
-            
-        return None
+        print(f"[DEBUG] Link Final: {link_afiliado}")
+        return link_afiliado if link_afiliado and "mercadolivre.com.br" in link_afiliado else None
 
     except Exception as e:
-        print(f"[ERROR] Erro no fluxo Selenium do ML: {e}")
+        print(f"[ERROR] Erro Geral ML: {e}")
         return None
     finally:
         try:
-            if 'driver' in locals():
-                driver.quit()
+            if 'driver' in locals(): driver.quit()
         except: pass
         fechar_brave()
 
 
 async def convert(url: str, ml_token: str = "") -> Optional[str]:
     try:
-        if "meli.la" in url:
-            url = await expandir_link_async(url)
+        if "meli.la" in url: url = await expandir_link_async(url)
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, _gerar_link_mercadolivre_sync, url)
-        return result
+        return await loop.run_in_executor(None, _gerar_link_mercadolivre_sync, url)
     except Exception as exc:
         print(f"[ERROR] Execução falhou: {exc}")
         return None
