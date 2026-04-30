@@ -9,7 +9,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import pyperclip
 from selenium_stealth import stealth
 
 from utils import fechar_brave, expandir_link_async
@@ -101,19 +100,32 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
                 print(f"[ERROR] Falha ao clicar em 'Compartilhar': {e}")
                 return None
 
-        # 4: Clicar em "Copiar Link"
+        # 4: Extrair o link direto do input (Evita usar pyperclip/clipboard no Linux)
+        try:
+            # Espera o input que contém o link aparecer no modal de compartilhamento
+            link_input = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@value, 'mercadolivre.com.br')]")))
+            link_afiliado = link_input.get_attribute("value")
+            
+            if link_afiliado and "mercadolivre.com.br" in link_afiliado:
+                print(f"[DEBUG] Link extraído via DOM: {link_afiliado}")
+                return link_afiliado
+        except Exception as e:
+            print(f"[DEBUG] Falha ao extrair link via DOM, tentando clique clássico: {e}")
+
+        # Fallback: Clicar em "Copiar Link" e tentar ler via JS
         try:
             copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')]")))
             copiar_botao.click()
+            time.sleep(2)
+            
+            # Tenta pegar via JavaScript se o pyperclip falhar
+            link_afiliado = driver.execute_script("return navigator.clipboard.readText();")
         except:
-            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")))
-            copiar_botao.click()
-        
-        time.sleep(2)
-        link_afiliado = pyperclip.paste()
+            link_afiliado = None
         
         if link_afiliado and "mercadolivre.com.br" in link_afiliado:
             return link_afiliado
+            
         return None
 
     except Exception as e:
