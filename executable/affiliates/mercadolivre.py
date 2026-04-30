@@ -63,12 +63,16 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--disable-setuid-sandbox")
         options.add_argument("--disable-extensions")
+        options.add_argument("--remote-debugging-port=9222")
+        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
+        # Pasta de perfil (Volume mapeado no Docker)
         user_data_dir = "/app/brave_profile"
         options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument("--profile-directory=Default")
         
+        # Tenta usar o driver do sistema
         service = Service("/usr/bin/chromedriver")
         
         try:
