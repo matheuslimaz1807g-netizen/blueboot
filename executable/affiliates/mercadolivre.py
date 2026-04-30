@@ -1,30 +1,17 @@
-"""
-affiliates/mercadolivre.py — Mercado Livre affiliate link generation.
-
-Suporta:
-- Windows: Executa o Brave localmente de forma visível com o perfil do usuário.
-- Linux (VPS): Executa Chromium headless, com suporte a injeção de cookies via .env.
-
-FUTURE: multi-tenant
-- Substituir ML_COOKIES global por um gerenciador de cookies atrelado ao tenant_id.
-"""
-from __future__ import annotations
-
-import asyncio
 import os
 import time
+import asyncio
+import json
 from typing import Optional
-
-import pyperclip
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import pyperclip
 
-from utils import expandir_link_async, fechar_brave
-
+from utils import fechar_brave, expandir_link_async
 
 def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
     """
@@ -54,47 +41,42 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             print(f"[ERROR] ML ChromeDriver init failed no Windows: {e}")
             return None
     else:
-        # 🚨 LINUX / VPS DOCKER (Usa Chromium headless lendo a pasta local)
-        options.binary_location = "/usr/bin/chromium"
+        # 🚨 LINUX / VPS DOCKER (Usa Brave oficial instalado no container)
+        options.binary_location = "/usr/bin/brave-browser"
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        # Removido --headless=new para rodar como navegador real na tela virtual (Xvfb) e evitar block
+        # Rodando fora do modo headless para aproveitar o Xvfb e evitar bloqueios
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--disable-setuid-sandbox")
         options.add_argument("--disable-extensions")
         options.add_argument("--remote-debugging-port=9222")
-        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--no-first-run")
         options.add_argument("--no-default-browser-check")
-        options.add_argument("--no-sandbox")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
-        # Pasta de perfil (Volume mapeado no Docker)
+        # Pasta de perfil do Brave (Volume mapeado no Docker)
         user_data_dir = "/app/brave_profile"
         options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument("--profile-directory=Default")
         
-        # Tenta usar o driver do sistema com log de debug
-        log_path = "/app/sessions/chromedriver.log"
-        service = Service("/usr/bin/chromedriver", log_path=log_path)
+        # O chromedriver no Debian/Ubuntu fica em /usr/bin/chromedriver
+        service = Service("/usr/bin/chromedriver", log_path="/app/sessions/chromedriver.log")
         
         try:
             driver = webdriver.Chrome(service=service, options=options)
         except Exception as e:
-            print(f"[ERROR] ML ChromeDriver init failed no Linux: {e}")
+            print(f"[ERROR] ML ChromeDriver (Brave) init failed no Linux: {e}")
             return None
 
     try:
         # INJEÇÃO DE COOKIES (Evita login manual na VPS)
         ml_cookies_str = os.getenv("ML_COOKIES", "").strip()
         if ml_cookies_str:
-            # Precisa estar no domínio para injetar cookies
             driver.get("https://www.mercadolivre.com.br/robots.txt")
             for cookie_chunk in ml_cookies_str.split(';'):
                 cookie_chunk = cookie_chunk.strip()
-                if not cookie_chunk or '=' not in cookie_chunk:
-                    continue
+                if not cookie_chunk or '=' not in cookie_chunk: continue
                 name, value = cookie_chunk.split('=', 1)
                 driver.add_cookie({
                     'name': name.strip(),
@@ -106,46 +88,35 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         wait = WebDriverWait(driver, 15)
         print(f"[DEBUG] ML carregou a página: {driver.title}")
 
-        # 1: Fechar banner de cookies, se houver
+        # 1: Fechar banner de cookies
         try:
-            cookie_banner = wait.until(
-                EC.presence_of_element_located((By.CLASS_NAME, "cookie-consent-banner-opt-out__container"))
-            )
-            cookie_banner.find_element(By.TAG_NAME, "button").click()
+            cookie_banner = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "cookie-consent-banner-opt-out__container")))
+            close_button = cookie_banner.find_element(By.TAG_NAME, "button")
+            close_button.click()
             time.sleep(1)
-        except Exception:
-            pass
+        except: pass
 
-        # 2: Clicar em "Acessar Produto" (caso seja uma página intermediária do meli.la)
+        # 2: Clicar em "Acessar Produto"
         try:
-            acessar_produto = wait.until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]")
-                )
-            )
+            acessar_produto = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]")))
             acessar_produto.click()
             time.sleep(5)
-        except Exception:
-            pass
+        except: pass
 
         # 3: Clicar em "Compartilhar"
         try:
-            compartilhar_btn = WebDriverWait(driver, 15).until(
-                EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button"))
-            )
+            compartilhar_btn = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button")))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
             time.sleep(2)
         except Exception:
             try:
-                # Tenta segundo XPATH possível
-                compartilhar_btn = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button"))
-                )
+                compartilhar_btn = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")))
                 driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
                 compartilhar_btn.click()
                 time.sleep(2)
             except Exception as e:
+                # Debug se falhar
                 try:
                     driver.save_screenshot("/app/sessions/ml_error_compartilhar.png")
                     print(f"[ERROR] Screenshot de erro salvo em /app/sessions/ml_error_compartilhar.png")
@@ -162,20 +133,19 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
 
         # 4: Clicar em "Copiar Link"
         try:
-            copiar_botao = wait.until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")
-                )
-            )
+            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar link')]")))
             copiar_botao.click()
-            time.sleep(1)
-        except Exception as e:
-            print(f"[ERROR] Falha ao clicar em 'Copiar Link': {e}")
-            return None
-
-        # 5: Recuperar o link copiado da área de transferência
+        except:
+            # Fallback por XPATH completo
+            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")))
+            copiar_botao.click()
+        
+        time.sleep(2)
         link_afiliado = pyperclip.paste()
-        return link_afiliado
+        
+        if link_afiliado and "mercadolivre.com.br" in link_afiliado:
+            return link_afiliado
+        return None
 
     except Exception as e:
         print(f"[ERROR] Erro durante o fluxo Selenium do ML: {e}")
@@ -184,17 +154,12 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         try:
             if 'driver' in locals():
                 driver.quit()
-        except Exception:
-            pass
+        except: pass
         fechar_brave()
 
 
 async def convert(url: str, ml_token: str = "") -> Optional[str]:
-    """
-    Função pública unificada. Expande a URL e delega ao executor síncrono.
-    """
     try:
-        # Resolve shortlinks antes de passar para o Selenium
         if "meli.la" in url:
             url = await expandir_link_async(url)
 

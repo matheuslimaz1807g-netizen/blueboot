@@ -1,28 +1,33 @@
 FROM python:3.11-slim
 
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
+# Instala dependências básicas e curl para o Brave
+RUN apt-get update && apt-get install -y \
     curl \
-    chromium \
-    chromium-driver \
+    gnupg \
     xvfb \
     xclip \
     xauth \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala dependências Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir flask
+# Adiciona repositório oficial do Brave e instala o navegador
+RUN curl -fsS https://dl.brave.com/install.sh | sh
+
+# Instala o chromedriver (o Brave é baseado em Chromium, então usamos o driver compatível)
+RUN apt-get update && apt-get install -y chromium-driver && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copia dependências primeiro para aproveitar o cache do Docker
+COPY executable/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia o código do bot
 COPY executable/ .
-# Remove arquivos de configuração locais que possam ter sido copiados, forçando o uso do env do Docker
+# Remove arquivos de configuração locais que possam ter sido copiados
 RUN rm -f .env .env.local
 
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
 
+# Rodar com xvfb-run para garantir que o Brave tenha uma tela virtual
 CMD xvfb-run -a --server-args="-screen 0 1920x1080x24" python -u main.py
