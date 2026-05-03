@@ -2,22 +2,22 @@
     email mathe@hostinger.com
 }
 
-srv1630892.hstgr.cloud {
-    # Redireciona a raiz para o painel
+bluebot.srv.br {
+    # Redireciona a raiz para o admin
     redir / /admin/ 301
 
-    # 1. PRIORIDADE: Endpoints de API (Robô e Admin)
+    # Proxy para a API
     reverse_proxy /license/* license_api:8000
     reverse_proxy /config/* license_api:8000
     reverse_proxy /version/* license_api:8000
-    
-    # Rotas da API Administrativa (Prioridade sobre os arquivos estáticos)
+
+    # Rotas da API Administrativa
     reverse_proxy /admin/login license_api:8000
     reverse_proxy /admin/licenses* license_api:8000
     reverse_proxy /admin/pending* license_api:8000
     reverse_proxy /admin/link license_api:8000
 
-    # 2. Arquivos Estáticos do Painel Admin
+    # Painel Admin (Arquivos Estáticos)
     handle_path /admin* {
         root * /usr/share/caddy/admin
         file_server browse
