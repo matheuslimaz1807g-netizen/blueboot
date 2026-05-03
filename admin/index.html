@@ -1368,25 +1368,14 @@
     <script>
       function adminApp() {
         return {
-          // ── Auth ──────────────────────────────────────────────────────
-          // ── Auth ──────────────────────────────────────────────────────
+          // ── Auth & UI ──────────────────────────────────────────────────
           loggedIn: false,
+          loading: false,
           loginError: "",
           loginForm: { username: "", password: "" },
-          loading: false,
-
-          // ── Data ──────────────────────────────────────────────────────
-          licenses: [],
-          pendingMachines: [],
-          showLinkModal: false,
-          selectedMachine: null,
-          targetLicenseId: "",
-          versions: [],
-          stats: { total: 0, active: 0, inactive: 0, online: 0 },
-          toast: { show: false, msg: "", type: "success" },
-
-          // ── Tabs ──────────────────────────────────────────────────────
           activeTab: "licenses",
+          apiBase: "/admin",
+          toast: { show: false, msg: "", type: "success" },
           tabs: [
             {
               id: "licenses",
@@ -1405,22 +1394,28 @@
             },
           ],
 
-          // ── Data ──────────────────────────────────────────────────────
+          // ── Data Lists ─────────────────────────────────────────────────
+          licenses: [],
           pendingMachines: [],
+          versions: [],
+          licLogs: [],
+          stats: { total: 0, active: 0, inactive: 0, online: 0 },
+
+          // ── Modals & Forms ─────────────────────────────────────────────
+          showNewLicModal: false,
+          showEditLicModal: false,
           showLinkModal: false,
+          showConfigModal: false,
+          showVersionModal: false,
+          
+          selectedLic: null,
           selectedMachine: null,
           targetLicenseId: "",
-          versions: [],
-          stats: { total: 0, active: 0, inactive: 0, online: 0 },
-          toast: { show: false, msg: "", type: "success" },
-
-          // ── New License ───────────────────────────────────────────────
-          showNewLicModal: false,
-          newLicForm: { plan: "basic", expires_days: 30, note: "" },
           generatedKey: "",
+          configLicKey: "",
+          configData: null,
 
-          // ── Edit License ──────────────────────────────────────────────
-          showEditLicModal: false,
+          newLicForm: { plan: "basic", expires_days: 30, note: "" },
           editLicForm: {
             id: null,
             key: "",
@@ -1434,11 +1429,6 @@
             schedule_timezone: "America/Sao_Paulo",
             note: ""
           },
-
-          // ── Config ────────────────────────────────────────────────────
-          showConfigModal: false,
-          configLicKey: "",
-          configData: null,
 
           // ── Logs ──────────────────────────────────────────────────────
           selectedLic: null,
