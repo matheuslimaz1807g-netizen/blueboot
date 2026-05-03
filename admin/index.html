@@ -1364,6 +1364,42 @@
         </div>
       </div>
     </div>
+    <!-- Link Modal -->
+    <div
+      x-show="showLinkModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showLinkModal = false"
+    >
+      <div class="modal-box" @click.stop>
+        <h3>Vincular Robô à Licença</h3>
+        <p class="text-xs text-muted mb-4">Escolha uma licença para ativar este robô.</p>
+        
+        <div class="space-y-4">
+          <div class="field">
+            <label>ID da Máquina</label>
+            <input class="inp opacity-50" type="text" x-model="linkForm.machine_id" readonly />
+          </div>
+          
+          <div class="field">
+            <label>Selecionar Licença</label>
+            <select class="inp" x-model="linkForm.license_id">
+              <option value="">Selecione uma licença disponível...</option>
+              <template x-for="lic in licenses" :key="lic.id">
+                <option :value="lic.id" x-text="`${lic.note || 'Sem Nome'} (${lic.key})`"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 pt-6">
+          <button class="btn btn-secondary" @click="showLinkModal = false">Cancelar</button>
+          <button class="btn btn-primary" @click="linkMachine()" :disabled="loading || !linkForm.license_id">
+            <span x-text="loading ? 'Vinculando...' : 'Confirmar Vinculação'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
       function adminApp() {
@@ -1429,6 +1465,7 @@
             schedule_timezone: "America/Sao_Paulo",
             note: ""
           },
+          linkForm: { machine_id: "", license_id: "" },
 
           // ── Logs ──────────────────────────────────────────────────────
           selectedLic: null,
@@ -1802,6 +1839,69 @@
               }
             } catch (e) {
               this.showToast("Erro de conexão", "error");
+            }
+          },
+
+          getHeaders() {
+            return {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+            };
+          },
+
+          // ── Discovery ────────────────────────────────────────────────
+          async loadPendingMachines() {
+            try {
+              const r = await fetch("/admin/pending", {
+                headers: this.getHeaders(),
+              });
+              this.pendingMachines = await r.json();
+            } catch (e) {
+              // silent
+            }
+          },
+
+          openLinkModal(pm) {
+            this.linkForm.machine_id = pm.machine_id;
+            this.linkForm.license_id = "";
+            this.showLinkModal = true;
+          },
+
+          async linkMachine() {
+            if (!this.linkForm.license_id) return;
+            this.loading = true;
+            try {
+              const r = await fetch("/admin/link", {
+                method: "POST",
+                headers: this.getHeaders(),
+                body: JSON.stringify(this.linkForm),
+              });
+              const d = await r.json();
+              if (d.ok) {
+                this.showToast("Robô vinculado!", "success");
+                this.showLinkModal = false;
+                this.loadPendingMachines();
+                this.loadLicenses();
+              } else {
+                this.showToast(d.detail || "Erro ao vincular", "error");
+              }
+            } catch (e) {
+              this.showToast("Erro de conexão", "error");
+            } finally {
+              this.loading = false;
+            }
+          },
+
+          async rejectMachine(machineId) {
+            if (!confirm("Tem certeza que deseja recusar este robô?")) return;
+            try {
+              await fetch(`/admin/pending/${machineId}`, {
+                method: "DELETE",
+                headers: this.getHeaders(),
+              });
+              this.loadPendingMachines();
+            } catch (e) {
+              this.showToast("Erro ao recusar", "error");
             }
           },
 
