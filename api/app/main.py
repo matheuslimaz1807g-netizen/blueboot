@@ -1,14 +1,11 @@
 """FastAPI application entry point for the license/config API."""
 from __future__ import annotations
-
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+import os
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
@@ -16,34 +13,24 @@ from app.routers import admin, client
 
 settings = get_settings()
 
-limiter = Limiter(key_func=get_remote_address, default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"])
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Tables are created by Alembic migrations; this is a safety fallback for dev
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
 
-
 app = FastAPI(
     title="BlueBot License & Config API",
     version=settings.APP_VERSION,
-    docs_url=None,  # Disable Swagger in production
+    docs_url=None,
     redoc_url=None,
     lifespan=lifespan,
 )
 
-# Rate limiting
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# CORS — allow only the executable's localhost requests
-# In production, CORS is handled by nginx; this is a safety net
+# CORS - Liberado para acesso direto via IP
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Liberado para testes; Nginx cuidará da segurança externa
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,6 +40,15 @@ app.add_middleware(
 app.include_router(client.router, tags=["Client"])
 app.include_router(admin.router, tags=["Admin"])
 
+# Painel Admin (Arquivos Estáticos)
+# Montado via Docker em /app/admin
+admin_path = "/app/admin"
+if os.path.exists(admin_path):
+    app.mount("/admin", StaticFiles(directory=admin_path, html=True), name="admin")
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/admin/")
 
 @app.get("/health")
 async def health():

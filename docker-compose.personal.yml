@@ -22,33 +22,19 @@ services:
     container_name: bluebot_license_api
     restart: unless-stopped
     env_file: .env.personal
+    ports:
+      - "80:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://bluebot:bluebot_secret@postgres:5432/bluebot
       - POSTGRES_USER=bluebot
       - POSTGRES_PASSWORD=bluebot_secret
       - POSTGRES_DB=bluebot
-    expose:
-      - "8000"
+    volumes:
+      - ./admin:/app/admin:ro
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
     depends_on:
       - postgres
-
-  # ── Servidor Web & Proxy Seguro (Caddy com Auto-SSL) ────────────────────────
-  caddy:
-    image: caddy:latest
-    container_name: bluebot_caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./admin:/usr/share/caddy/admin:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - license_api
 
   # ── Bot Python (Telegram + Afiliados) ─────────────────────────────────────
   bot:
