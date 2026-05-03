@@ -6,22 +6,40 @@ srv1630892.hstgr.cloud {
     # Redireciona a raiz para o admin
     redir / /admin/ 301
 
-    # Proxy para a API
-    reverse_proxy /license/* license_api:8000
-    reverse_proxy /config/* license_api:8000
-    reverse_proxy /version/* license_api:8000
+    # 1. Tudo que for /license, /config ou /version vai direto para a API
+    handle /license/* {
+        reverse_proxy license_api:8000
+    }
+    handle /config/* {
+        reverse_proxy license_api:8000
+    }
+    handle /version/* {
+        reverse_proxy license_api:8000
+    }
 
-    # Rotas da API Administrativa
-    reverse_proxy /admin/login license_api:8000
-    reverse_proxy /admin/licenses* license_api:8000
-    reverse_proxy /admin/pending* license_api:8000
-    reverse_proxy /admin/link license_api:8000
+    # 2. Rotas específicas da API Admin (Login, Licenses, etc)
+    # IMPORTANTE: Colocamos antes dos arquivos estáticos
+    handle /admin/login {
+        reverse_proxy license_api:8000
+    }
+    handle /admin/licenses* {
+        reverse_proxy license_api:8000
+    }
+    handle /admin/pending* {
+        reverse_proxy license_api:8000
+    }
+    handle /admin/link* {
+        reverse_proxy license_api:8000
+    }
+    handle /admin/logs* {
+        reverse_proxy license_api:8000
+    }
 
-    # Painel Admin (Arquivos Estáticos)
-    handle_path /admin* {
+    # 3. Todo o resto em /admin serve os arquivos HTML/JS
+    handle /admin* {
         root * /usr/share/caddy/admin
         file_server browse
-        try_files {path} {path}/ /index.html
+        try_files {path} {path}/ /admin/index.html
     }
 
     # Segurança

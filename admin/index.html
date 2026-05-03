@@ -1468,6 +1468,14 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(this.loginForm),
               });
+              
+              if (!r.ok) {
+                const errData = await r.json();
+                this.loginError = errData.detail || "Erro no servidor";
+                this.loading = false;
+                return;
+              }
+              
               const d = await r.json();
               if (d.access_token) {
                 localStorage.setItem("admin_token", d.access_token);
