@@ -2,7 +2,6 @@
     email mathe@hostinger.com
 }
 
-# Usando apenas a porta 80 (HTTP) para garantir acesso via IP ou Domínio
 :80 {
     # Redireciona a raiz para o admin
     redir / /admin/ 301
@@ -33,10 +32,10 @@
     }
 
     # Painel Admin (Arquivos Estáticos)
-    handle /admin* {
+    handle_path /admin* {
         root * /usr/share/caddy/admin
         file_server browse
-        try_files {path} {path}/ /admin/index.html
+        try_files {path} {path}/ /index.html
     }
 
     encode zstd gzip
