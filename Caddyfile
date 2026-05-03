@@ -2,11 +2,12 @@
     email mathe@hostinger.com
 }
 
-srv1630892.hstgr.cloud {
+# Usando apenas a porta 80 (HTTP) para garantir acesso via IP ou Domínio
+:80 {
     # Redireciona a raiz para o admin
     redir / /admin/ 301
 
-    # 1. Tudo que for /license, /config ou /version vai direto para a API
+    # Proxy para a API
     handle /license/* {
         reverse_proxy license_api:8000
     }
@@ -17,8 +18,7 @@ srv1630892.hstgr.cloud {
         reverse_proxy license_api:8000
     }
 
-    # 2. Rotas específicas da API Admin (Login, Licenses, etc)
-    # IMPORTANTE: Colocamos antes dos arquivos estáticos
+    # Rotas da API Administrativa
     handle /admin/login {
         reverse_proxy license_api:8000
     }
@@ -31,22 +31,12 @@ srv1630892.hstgr.cloud {
     handle /admin/link* {
         reverse_proxy license_api:8000
     }
-    handle /admin/logs* {
-        reverse_proxy license_api:8000
-    }
 
-    # 3. Todo o resto em /admin serve os arquivos HTML/JS
+    # Painel Admin (Arquivos Estáticos)
     handle /admin* {
         root * /usr/share/caddy/admin
         file_server browse
         try_files {path} {path}/ /admin/index.html
-    }
-
-    # Segurança
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Frame-Options "SAMEORIGIN"
-        X-Content-Type-Options "nosniff"
     }
 
     encode zstd gzip
