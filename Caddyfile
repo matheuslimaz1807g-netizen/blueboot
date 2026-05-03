@@ -2,7 +2,7 @@
     email mathe@hostinger.com
 }
 
-bluebot.srv.br {
+srv1630892.hstgr.cloud {
     # Redireciona a raiz para o admin
     redir / /admin/ 301
 
