@@ -6,6 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import os
+import logging
+
+# Configuração de Logs para facilitar o debug
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
@@ -27,7 +32,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS - Liberado para acesso direto via IP
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,15 +40,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
+# Routers (API)
 app.include_router(client.router, tags=["Client"])
 app.include_router(admin.router, tags=["Admin"])
 
 # Painel Admin (Arquivos Estáticos)
-# Montado via Docker em /app/admin
+# No Docker, montamos a pasta admin em /app/admin
 admin_path = "/app/admin"
 if os.path.exists(admin_path):
+    logger.info(f"Montando arquivos estáticos de: {admin_path}")
     app.mount("/admin", StaticFiles(directory=admin_path, html=True), name="admin")
+else:
+    logger.warning(f"AVISO: Pasta admin não encontrada em {admin_path}")
 
 @app.get("/")
 async def root():
