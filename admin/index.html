@@ -1369,10 +1369,21 @@
       function adminApp() {
         return {
           // ── Auth ──────────────────────────────────────────────────────
+          // ── Auth ──────────────────────────────────────────────────────
           loggedIn: false,
-          loading: false,
           loginError: "",
           loginForm: { username: "", password: "" },
+          loading: false,
+
+          // ── Data ──────────────────────────────────────────────────────
+          licenses: [],
+          pendingMachines: [],
+          showLinkModal: false,
+          selectedMachine: null,
+          targetLicenseId: "",
+          versions: [],
+          stats: { total: 0, active: 0, inactive: 0, online: 0 },
+          toast: { show: false, msg: "", type: "success" },
 
           // ── Tabs ──────────────────────────────────────────────────────
           activeTab: "licenses",
