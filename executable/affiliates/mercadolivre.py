@@ -55,7 +55,7 @@ def _gerar_link_mercadolivre_sync(url: str, ml_cookies_str: str) -> Optional[str
 
     try:
         # Injeção de Cookies
-        ml_cookies_str = ml_cookies_str.strip()
+        ml_cookies_str = (ml_cookies_str or "").strip()
         if ml_cookies_str:
             driver.get("https://www.mercadolivre.com.br/robots.txt")
             for cookie_chunk in ml_cookies_str.split(';'):
