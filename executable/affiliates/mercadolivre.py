@@ -1,52 +1,46 @@
-"""
-mercadolivre.py — Geração de links de afiliado do Mercado Livre.
-
-Usa Selenium com Chromium (Docker) ou Brave (Windows).
-Baseado no mercadolivre_link_generator.py que funciona em produção.
-"""
-from __future__ import annotations
-
-import asyncio
 import os
-import subprocess
 import time
+import asyncio
+import subprocess
 from typing import Optional
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from utils import expandir_link_async
 
+def fechar_brave():
+    if os.name == 'nt':
+        try:
+            subprocess.call(['taskkill', '/F', '/IM', 'brave.exe'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except:
+            pass
 
-def _gerar_link_mercadolivre_sync(url: str) -> str | None:
-    """
-    Gera link de afiliado do Mercado Livre usando Selenium.
-    Mesma lógica do mercadolivre_link_generator.py que funciona em produção.
-    """
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
+def get_linux_clipboard():
+    try:
+        result = subprocess.run(['xclip', '-selection', 'clipboard', '-o'], capture_output=True, text=True, timeout=5)
+        return result.stdout.strip()
+    except:
+        return None
 
+def _gerar_link_mercadolivre_sync(url: str, ml_cookies_str: str) -> Optional[str]:
     options = Options()
 
     if os.name == 'nt':
-        # Windows: Brave com perfil logado
         from webdriver_manager.chrome import ChromeDriverManager
         brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
-        user_data_dir = rf"C:\Users\{os.getlogin()}\AppData\Local\BraveSoftware\Brave-Browser\User Data"
         options.binary_location = brave_path
-        options.add_argument("--no-sandbox")
         options.add_argument("--start-maximized")
-        options.add_argument(f"--user-data-dir={user_data_dir}")
+        options.add_argument(f"--user-data-dir=C:\\Users\\{os.getlogin()}\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data")
         options.add_argument("--profile-directory=Default")
-        try:
-            subprocess.call(['taskkill', '/F', '/IM', 'brave.exe'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except: pass
+        fechar_brave()
         time.sleep(1)
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
     else:
-        # Linux (Docker/VPS): Chromium
         options.binary_location = "/usr/bin/chromium"
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -60,131 +54,98 @@ def _gerar_link_mercadolivre_sync(url: str) -> str | None:
         except: pass
 
     try:
+        # Injeção de Cookies
+        ml_cookies_str = ml_cookies_str.strip()
+        if ml_cookies_str:
+            driver.get("https://www.mercadolivre.com.br/robots.txt")
+            for cookie_chunk in ml_cookies_str.split(';'):
+                cookie_chunk = cookie_chunk.strip()
+                if not cookie_chunk or '=' not in cookie_chunk: continue
+                name, value = cookie_chunk.split('=', 1)
+                driver.add_cookie({'name': name.strip(), 'value': value.strip(), 'domain': '.mercadolivre.com.br'})
+
         print(f"[DEBUG] Abrindo URL: {url}")
         driver.get(url)
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 15)
 
-        # --- STEP 1: Fechar cookie banner ---
+        # 1. Fechar Cookies
         try:
-            print("[DEBUG] Fechando cookie banner")
-            cookie_banner = wait.until(
-                EC.presence_of_element_located(
-                    (By.CLASS_NAME, "cookie-consent-banner-opt-out__container")
-                )
-            )
-            close_button = cookie_banner.find_element(By.TAG_NAME, "button")
-            close_button.click()
-            print("[DEBUG] Cookie banner fechado")
+            wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "cookie-consent-banner-opt-out__container"))).find_element(By.TAG_NAME, "button").click()
             time.sleep(1)
-        except Exception:
-            print("[DEBUG] Sem cookie banner")
+        except: pass
 
-        # --- STEP 2: Clicar "Ir para produto" / "Access Product" ---
-        print("[DEBUG] Clicando em 'Ir para produto'")
+        # 2. Clicar em "Ir para produto"
+        print("[DEBUG] Buscando botão 'Ir para produto'...")
         try:
-            acessar_produto = wait.until(
-                EC.element_to_be_clickable(
-                    (
-                        By.XPATH,
-                        "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]",
-                    )
-                )
-            )
-            acessar_produto.click()
-            print("[DEBUG] Clicou em 'Ir para produto'")
-            time.sleep(5)
+            xpath_ir = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')] | //span[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')] | /html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]"
+            ir_para_produto = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_ir)))
+            ir_para_produto.click()
+            print("[DEBUG] Clicou em 'Ir para produto'.")
+            time.sleep(6) 
+            
+            # 🚀 TROCA DE ABA: Se abriu uma nova aba, pula para ela
+            if len(driver.window_handles) > 1:
+                driver.switch_to.window(driver.window_handles[-1])
+                print(f"[DEBUG] Trocado para nova aba do produto. Titulo: {driver.title}")
+            
         except Exception as e:
-            print(f"[DEBUG] XPATH fixo falhou: {e}")
-            # Fallback: tenta por texto
-            try:
-                xpath_texto = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')] | //span[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')]"
-                ir_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_texto)))
-                ir_btn.click()
-                print("[DEBUG] Clicou em 'Ir para produto' (fallback texto)")
-                time.sleep(5)
-            except Exception as e2:
-                print(f"[ERROR] Falha ao clicar em 'Ir para produto': {e2}")
-                return None
+            print(f"[ERROR] Falha ao entrar no produto: {e}")
+            return None
 
-        # Trocar de aba se necessário
-        if len(driver.window_handles) > 1:
-            driver.switch_to.window(driver.window_handles[-1])
-            print(f"[DEBUG] Trocado para nova aba: {driver.title}")
-
-        # --- STEP 3: Clicar "Compartilhar" ---
-        print("[DEBUG] Clicando em 'Compartilhar'")
+        # 3. Compartilhar
+        print(f"[DEBUG] Título da página atual: {driver.title}")
         try:
-            compartilhar_btn = WebDriverWait(driver, 30).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button")
-                )
-            )
+            print("[DEBUG] Buscando botão 'Compartilhar'...")
+            xpath_comp = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartilhar')] | //div[contains(@role, 'button') and contains(., 'Compartilhar')]"
+            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_comp)))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
-            print("[DEBUG] Clicou em 'Compartilhar'")
-            time.sleep(2)
+            print("[DEBUG] Clicou em 'Compartilhar'.")
+            time.sleep(3)
         except Exception as e:
-            print(f"[DEBUG] Primeiro XPATH Compartilhar falhou: {e}")
-            try:
-                compartilhar_btn = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable(
-                        (By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")
-                    )
-                )
-                driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
-                compartilhar_btn.click()
-                print("[DEBUG] Clicou em 'Compartilhar' (segundo XPATH)")
-                time.sleep(2)
-            except Exception as e2:
-                print(f"[ERROR] Falha ao clicar em 'Compartilhar': {e2}")
-                return None
+            print(f"[ERROR] Falha ao clicar em 'Compartilhar'. Detalhes: {e}")
+            return None
 
-        # --- STEP 4: Clicar "Copiar link" ---
-        print("[DEBUG] Clicando em 'Copiar link'")
+        # 4. Copiar Link
+        print("[DEBUG] Buscando botão 'Copiar link' via XPATH direto...")
         try:
-            copiar_botao = wait.until(
-                EC.element_to_be_clickable(
-                    (
-                        By.XPATH,
-                        "/html/body/div[1]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button",
-                    )
-                )
-            )
+            xpath_copy_user = "/html/body/div[1]/nav/div/div[3]/div[2]/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button"
+            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_copy_user)))
             copiar_botao.click()
-            print("[DEBUG] Clicou em 'Copiar link'")
-            time.sleep(2)
+            print("[DEBUG] Clicou em 'Copiar link'.")
         except Exception as e:
-            print(f"[DEBUG] XPATH Copiar link falhou: {e}")
+            print(f"[DEBUG] Falha no XPATH direto de Copiar: {e}")
             try:
                 driver.find_element(By.XPATH, "//button[contains(., 'Copiar link')]").click()
-                print("[DEBUG] Clicou em 'Copiar link' (fallback texto)")
-                time.sleep(2)
-            except:
-                print("[ERROR] Falha ao clicar em 'Copiar link'")
-                return None
+            except: pass
+        
+        time.sleep(4)
 
-        # --- STEP 5: Capturar link da área de transferência ---
+        # 5. Captura Final
         if os.name == 'nt':
             import pyperclip
             link_afiliado = pyperclip.paste()
         else:
+            link_afiliado = get_linux_clipboard()
+            
+        if not link_afiliado or "mercadolivre.com.br" not in link_afiliado and "meli.la" not in link_afiliado:
             try:
-                result = subprocess.run(['xclip', '-selection', 'clipboard', '-o'], capture_output=True, text=True, timeout=5)
-                link_afiliado = result.stdout.strip()
-            except:
-                link_afiliado = None
+                # Tenta ler do input meli.la se existir
+                link_afiliado = driver.find_element(By.XPATH, "//input[contains(@value, 'meli.la') or contains(@value, 'mercadolivre.com.br')]").get_attribute("value")
+            except: pass
 
-        print(f"[DEBUG] Link de afiliado: {link_afiliado}")
-        return link_afiliado
+        print(f"[DEBUG] Link Final: {link_afiliado}")
+        return link_afiliado if link_afiliado and ("mercadolivre.com.br" in link_afiliado or "meli.la" in link_afiliado) else None
 
     except Exception as e:
-        print(f"[ERROR] Erro no ML: {e}")
+        print(f"[ERROR] Erro Geral ML: {e}")
         return None
-
     finally:
         print("[DEBUG] Fechando WebDriver")
-        if 'driver' in locals():
-            driver.quit()
+        try:
+            if 'driver' in locals(): driver.quit()
+        except: pass
+        fechar_brave()
 
 
 async def convert(url: str, ml_token: str = "") -> Optional[str]:
@@ -192,8 +153,9 @@ async def convert(url: str, ml_token: str = "") -> Optional[str]:
     Converte um link do Mercado Livre em link de afiliado.
     
     1. Expande links encurtados (meli.la)
-    2. Gera link de afiliado via Selenium
-    3. Se falhar, retorna o link original (nunca aborta o pipeline)
+    2. Usa o ml_token (cookies do admin) para injetar a sessão
+    3. Gera link de afiliado via Selenium
+    4. Se falhar, retorna o link original (nunca aborta o pipeline)
     """
     try:
         if "meli.la" in url:
@@ -201,7 +163,7 @@ async def convert(url: str, ml_token: str = "") -> Optional[str]:
             print(f"[DEBUG] Link meli.la expandido para: {url}")
         
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, _gerar_link_mercadolivre_sync, url)
+        result = await loop.run_in_executor(None, _gerar_link_mercadolivre_sync, url, ml_token)
         
         if result:
             return result
