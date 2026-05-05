@@ -109,6 +109,7 @@ class ConfigIn(BaseModel):
     api_id: str | None = None
     api_hash: str | None = None
     session_string: str | None = None
+    bot_dashboard_url: str | None = None
 
 
 class ConfigOut(BaseModel):
@@ -132,6 +133,7 @@ class ConfigOut(BaseModel):
     api_id: str | None
     api_hash: str | None
     session_string: str | None
+    bot_dashboard_url: str | None
 
 
 # ── AppVersion ────────────────────────────────────────────────────────────────

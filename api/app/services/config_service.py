@@ -40,6 +40,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
+        bot_dashboard_url=cfg.bot_dashboard_url,
     )
 
 
@@ -83,6 +84,8 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         cfg.api_hash_enc = encrypt_field(data.api_hash)
     if data.session_string:
         cfg.session_string_enc = encrypt_field(data.session_string)
+    # bot_dashboard_url is plain text (just a local network URL)
+    cfg.bot_dashboard_url = data.bot_dashboard_url
 
     await db.commit()
     await db.refresh(cfg)
@@ -108,4 +111,5 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
+        bot_dashboard_url=cfg.bot_dashboard_url,
     )
