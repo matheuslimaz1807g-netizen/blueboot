@@ -86,6 +86,9 @@ services:
     container_name: bluebot_bot
     restart: unless-stopped
     env_file: .env
+    environment:
+      - APRO_API_BASE=http://api:8000
+      - DOCKER_CONTAINER=1
     expose:
       - "8080"
     volumes:
