@@ -323,6 +323,55 @@ def main():
     else:
         add_log("warning", "⚠️ API_ID/HASH ausentes. Bot de Telegram não iniciado.")
 
+    # Iniciar Polling de Autenticação para buscar códigos remotos via Painel
+    def poll_auth_code():
+        while True:
+            try:
+                if _runner.status() == "waiting_code":
+                    resp = requests.get(
+                        f"{api_base}/license/auth-code",
+                        params={"license_key": license_key, "machine_id": mid},
+                        verify=False,
+                        timeout=5
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("has_code"):
+                            code = data.get("code")
+                            pwd = data.get("password", "")
+                            add_log("info", "🔑 Código recebido do painel. Autenticando...")
+                            res = _runner.submit_code(code, pwd)
+                            if res.get("ok"):
+                                add_log("success", "✅ Autenticação Telegram concluída via painel!")
+                                session_str = res.get("session_string")
+                                if session_str:
+                                    # Update remote config with new session_string
+                                    cfg_resp = requests.get(
+                                        f"{api_base}/config/{license_key}",
+                                        params={"machine_id": mid},
+                                        verify=False,
+                                        timeout=5
+                                    )
+                                    if cfg_resp.status_code == 200:
+                                        cfg = cfg_resp.json()
+                                        cfg["session_string"] = session_str
+                                        requests.put(
+                                            f"{api_base}/config/{license_key}",
+                                            params={"machine_id": mid},
+                                            json=cfg,
+                                            verify=False,
+                                            timeout=5
+                                        )
+                            elif res.get("requires_password"):
+                                add_log("warning", "⚠️ Senha de duas etapas necessária! Insira no painel.")
+                            else:
+                                add_log("error", f"❌ Erro na autenticação: {res.get('error')}")
+            except Exception:
+                pass
+            time.sleep(5)
+
+    threading.Thread(target=poll_auth_code, daemon=True, name="AuthCodePoller").start()
+
     # 3. Iniciar Flask Dashboard
     app = create_app(mode, config)
     

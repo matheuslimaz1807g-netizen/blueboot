@@ -71,11 +71,29 @@ services:
       dockerfile: Dockerfile.whatsapp
     container_name: bluebot_whatsapp
     restart: unless-stopped
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
     volumes:
       - whatsapp_auth:/.wwebjs_auth
       - whatsapp_cache:/.wwebjs_cache
+    security_opt:
+      - no-new-privileges:true
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: bluebot_bot
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8080"
+    volumes:
+      - bot_sessions:/app/sessions
+      - bot_data:/app/data
+    depends_on:
+      - api
+      - whatsapp
     security_opt:
       - no-new-privileges:true
 
@@ -83,3 +101,5 @@ volumes:
   postgres_data:
   whatsapp_auth:
   whatsapp_cache:
+  bot_sessions:
+  bot_data:

@@ -48,6 +48,13 @@ class License(Base):
     )
     note: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
+    # Código de verificação Telegram pendente (pull-based: o bot busca aqui)
+    pending_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    pending_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    pending_code_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     config: Mapped["ClientConfig | None"] = relationship(
         "ClientConfig", back_populates="license", uselist=False, cascade="all, delete-orphan"
     )

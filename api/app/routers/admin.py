@@ -250,97 +250,25 @@ async def send_auth_code(
     _admin=Depends(get_admin_user),
 ):
     """
-    Envia o código de verificação do Telegram para o bot.
-    O painel admin chama este endpoint, que redireciona para o dashboard do bot.
+    Envia o código de verificação do Telegram (salva no banco para o bot buscar via pull).
     """
     code = body.get("code", "").strip()
     password = body.get("password", "").strip()
-    
+
     if not code and not password:
         raise HTTPException(status_code=400, detail="Código ou senha é obrigatório")
-    
-    # Buscar a licença para obter o machine_id
+
+    # Buscar a licença
     result = await db.execute(select(License).where(License.id == license_id))
     lic = result.scalar_one_or_none()
     if not lic or not lic.machine_id:
         raise HTTPException(status_code=404, detail="Licença não encontrada ou sem máquina vinculada")
+
+    from datetime import datetime, timezone
+    lic.pending_code = code
+    lic.pending_password = password
+    lic.pending_code_at = datetime.now(timezone.utc)
     
-    # Buscar a config da licença para obter a URL do dashboard do bot
-    cfg = await config_service.get_config(db, lic)
-    if not cfg or not cfg.bot_dashboard_url:
-        raise HTTPException(
-            status_code=400,
-            detail="URL do dashboard do bot não configurada. Acesse a aba Configuração da licença e preencha o campo 'URL do Dashboard do Bot' com o endereço do bot (ex: http://IP_DO_BOT:8080)."
-        )
-    
-    # Monta a URL do endpoint de auth-code do bot
-    bot_base = cfg.bot_dashboard_url.rstrip("/")
-    bot_url = f"{bot_base}/api/auth-code"
-    
-    # Credenciais Basic Auth do dashboard do bot (admin:admin123 por padrão)
-    import base64
-    dashboard_user = settings.BOT_DASHBOARD_USER if hasattr(settings, 'BOT_DASHBOARD_USER') else "admin"
-    dashboard_pass = settings.BOT_DASHBOARD_PASSWORD if hasattr(settings, 'BOT_DASHBOARD_PASSWORD') else "admin123"
-    basic_token = base64.b64encode(f"{dashboard_user}:{dashboard_pass}".encode()).decode()
-    
-    import httpx
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                bot_url,
-                json={"code": code, "password": password},
-                headers={"Authorization": f"Basic {basic_token}"}
-            )
-            if resp.status_code == 401:
-                raise HTTPException(
-                    status_code=502,
-                    detail="Credenciais do dashboard do bot incorretas. Verifique DASHBOARD_USER e DASHBOARD_PASSWORD no .env do bot."
-                )
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get("ok"):
-                    # Se conseguiu autenticar, salva a session_string na config
-                    session_str = data.get("session_string")
-                    if session_str:
-                        from app.schemas.schemas import ConfigIn
-                        config_data = ConfigIn(
-                            phone=cfg.phone,
-                            sources=cfg.sources,
-                            destination_telegram=cfg.destination_telegram,
-                            delay_segundos=cfg.delay_segundos,
-                            whatsapp_endpoint=cfg.whatsapp_endpoint,
-                            send_telegram=cfg.send_telegram,
-                            send_whatsapp=cfg.send_whatsapp,
-                            conv_shopee=cfg.conv_shopee,
-                            conv_ali=cfg.conv_ali,
-                            conv_ml=cfg.conv_ml,
-                            filtros=cfg.filtros,
-                            shopee_token=cfg.shopee_token,
-                            ali_key=cfg.ali_key,
-                            ali_secret=cfg.ali_secret,
-                            ali_tracking=cfg.ali_tracking,
-                            ml_token=cfg.ml_token,
-                            api_id=cfg.api_id,
-                            api_hash=cfg.api_hash,
-                            session_string=session_str,
-                            bot_dashboard_url=cfg.bot_dashboard_url,
-                        )
-                        await config_service.upsert_config(db, lic, config_data)
-                    
-                    return OkResponse(message="Código enviado e autenticado com sucesso!")
-                elif data.get("requires_password"):
-                    return OkResponse(message="Senha de duas etapas necessária. Envie novamente com a senha.")
-                else:
-                    raise HTTPException(status_code=400, detail=data.get("error", "Erro ao autenticar"))
-            else:
-                raise HTTPException(status_code=502, detail=f"Erro ao comunicar com o bot: {resp.status_code}")
-    except httpx.ConnectError:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Não foi possível conectar ao bot em {bot_url}. Verifique se o bot está rodando e se a URL está correta na configuração da licença."
-        )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Erro inesperado ao contatar o bot: {exc}")
+    await db.commit()
+    return OkResponse(message="Código salvo! O bot irá coletá-lo nos próximos segundos.")
 

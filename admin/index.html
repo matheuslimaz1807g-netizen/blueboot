@@ -1372,18 +1372,7 @@
                 placeholder="http://IP:4000/send"
               />
             </div>
-            <div class="field">
-              <label>
-                URL do Dashboard do Bot
-                <span class="text-xs text-yellow-400 font-normal ml-1">⚠️ Necessário para autenticar Telegram</span>
-              </label>
-              <input
-                class="inp"
-                x-model="configData.bot_dashboard_url"
-                placeholder="http://IP_DO_BOT:8080"
-              />
-              <p class="text-xs text-muted mt-1">Endereço do painel local do bot executado na máquina do cliente (ex: http://177.100.0.10:8080)</p>
-            </div>
+
             <div class="grid grid-cols-3 gap-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
@@ -2039,7 +2028,6 @@
                   conv_ali: true,
                   conv_ml: true,
                   whatsapp_endpoint: '',
-                  bot_dashboard_url: '',
                 };
               }
             } catch (e) {

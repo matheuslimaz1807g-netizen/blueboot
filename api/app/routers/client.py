@@ -95,6 +95,28 @@ async def heartbeat(
     return OkResponse()
 
 
+@router.get("/license/auth-code")
+async def get_pending_auth_code(
+    license_key: str = Query(..., min_length=5),
+    machine_id: str = Query(..., min_length=10),
+    db: AsyncSession = Depends(get_db),
+):
+    lic = await _get_verified_license(license_key, machine_id, db)
+    if not lic.pending_code:
+        return {"has_code": False}
+    
+    code = lic.pending_code
+    password = lic.pending_password
+    
+    # Consome (zera para não usar de novo)
+    lic.pending_code = None
+    lic.pending_password = None
+    lic.pending_code_at = None
+    await db.commit()
+    
+    return {"has_code": True, "code": code, "password": password}
+
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 async def _get_verified_license(
