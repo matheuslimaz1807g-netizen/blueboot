@@ -1564,13 +1564,13 @@
               @keydown.enter="sendAuthCode()"
             />
           </div>
-          <div class="field" x-show="authCodeForm.requires_password">
-            <label>Senha de Duas Etapas</label>
+          <div class="field">
+            <label>Senha de Duas Etapas (Opcional)</label>
             <input
               class="inp"
               type="password"
               x-model="authCodeForm.password"
-              placeholder="Digite a senha de duas etapas"
+              placeholder="Só preencha se sua conta exigir (2FA)"
               @keydown.enter="sendAuthCode()"
             />
           </div>
@@ -1589,10 +1589,10 @@
           <button
             class="btn btn-primary"
             @click="sendAuthCode()"
-            :disabled="authCodeLoading || !authCodeForm.code"
+            :disabled="authCodeLoading || (!authCodeForm.code && !authCodeForm.password)"
           >
             <span
-              x-text="authCodeLoading ? 'Enviando...' : 'Enviar Código'"
+              x-text="authCodeLoading ? 'Enviando...' : 'Enviar'"
             ></span>
           </button>
         </div>
