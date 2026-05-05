@@ -811,6 +811,25 @@
                             />
                           </svg>
                         </button>
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          @click="openAuthCodeModal(lic)"
+                          title="Código Telegram"
+                        >
+                          <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1500,6 +1519,77 @@
       </div>
     </div>
 
+    <!-- Auth Code Modal (Telegram Verification) -->
+    <div
+      x-show="showAuthCodeModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showAuthCodeModal = false"
+    >
+      <div class="modal-box" @click.stop>
+        <h3>Código de Verificação Telegram</h3>
+        <p class="text-xs text-muted mb-4">
+          O bot está aguardando o código de verificação enviado pelo Telegram
+          para o número <strong x-text="authCodeLic?.phone || '...'"></strong>.
+          Digite o código que chegou no app do Telegram.
+        </p>
+
+        <div class="space-y-4">
+          <div class="field">
+            <label>Licença</label>
+            <input
+              class="inp opacity-50"
+              type="text"
+              :value="authCodeLic?.note || authCodeLic?.key || '...'"
+              readonly
+            />
+          </div>
+          <div class="field">
+            <label>Código de Verificação</label>
+            <input
+              class="inp text-2xl text-center font-mono tracking-widest"
+              type="text"
+              x-model="authCodeForm.code"
+              placeholder="12345"
+              maxlength="10"
+              @keydown.enter="sendAuthCode()"
+            />
+          </div>
+          <div class="field" x-show="authCodeForm.requires_password">
+            <label>Senha de Duas Etapas</label>
+            <input
+              class="inp"
+              type="password"
+              x-model="authCodeForm.password"
+              placeholder="Digite a senha de duas etapas"
+              @keydown.enter="sendAuthCode()"
+            />
+          </div>
+          <div
+            x-show="authCodeResult"
+            class="px-4 py-3 rounded-xl text-sm"
+            :class="authCodeResult.type === 'success' ? 'bg-green-900/40 border border-green-500/40 text-green-300' : 'bg-yellow-900/40 border border-yellow-500/40 text-yellow-300'"
+            x-text="authCodeResult.msg"
+          ></div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-6">
+          <button class="btn btn-secondary" @click="showAuthCodeModal = false">
+            Fechar
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="sendAuthCode()"
+            :disabled="authCodeLoading || !authCodeForm.code"
+          >
+            <span
+              x-text="authCodeLoading ? 'Enviando...' : 'Enviar Código'"
+            ></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script>
       function adminApp() {
         return {
@@ -1542,6 +1632,7 @@
           showLinkModal: false,
           showConfigModal: false,
           showVersionModal: false,
+          showAuthCodeModal: false,
 
           selectedLic: null,
           selectedMachine: null,
@@ -1549,6 +1640,12 @@
           generatedKey: "",
           configLicKey: "",
           configData: null,
+
+          // ── Auth Code (Telegram Verification) ──────────────────────────
+          authCodeLic: null,
+          authCodeLoading: false,
+          authCodeResult: null,
+          authCodeForm: { code: "", password: "", requires_password: false },
 
           newLicForm: { plan: "basic", expires_days: 30, note: "" },
           editLicForm: {
@@ -1816,6 +1913,73 @@
               }
             } catch (e) {
               this.showToast("Erro de conexão", "error");
+            }
+          },
+
+          // ── Auth Code (Telegram Verification) ────────────────────────
+          async openAuthCodeModal(lic) {
+            this.authCodeLic = lic;
+            this.authCodeForm = {
+              code: "",
+              password: "",
+              requires_password: false,
+            };
+            this.authCodeResult = null;
+            this.showAuthCodeModal = true;
+            // Carregar config para pegar o phone
+            try {
+              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+                headers: this.getHeaders(),
+              });
+              const d = await r.json();
+              if (d && !d.detail) {
+                this.authCodeLic = { ...lic, phone: d.phone || "—" };
+              }
+            } catch (e) {}
+          },
+
+          async sendAuthCode() {
+            if (!this.authCodeLic || !this.authCodeForm.code) return;
+            this.authCodeLoading = true;
+            this.authCodeResult = null;
+            try {
+              const body = { code: this.authCodeForm.code };
+              if (this.authCodeForm.password) {
+                body.password = this.authCodeForm.password;
+              }
+              const r = await fetch(
+                `/admin/licenses/${this.authCodeLic.id}/auth-code`,
+                {
+                  method: "POST",
+                  headers: this.getHeaders(),
+                  body: JSON.stringify(body),
+                },
+              );
+              const d = await r.json();
+              if (d.ok) {
+                this.authCodeResult = {
+                  type: "success",
+                  msg: d.message || "Autenticado com sucesso!",
+                };
+                setTimeout(() => {
+                  this.showAuthCodeModal = false;
+                }, 2000);
+              } else if (d.detail && d.detail.includes("senha")) {
+                this.authCodeForm.requires_password = true;
+                this.authCodeResult = { type: "info", msg: d.detail };
+              } else {
+                this.authCodeResult = {
+                  type: "info",
+                  msg: d.detail || "Erro ao enviar código",
+                };
+              }
+            } catch (e) {
+              this.authCodeResult = {
+                type: "info",
+                msg: "Erro de conexão com o servidor",
+              };
+            } finally {
+              this.authCodeLoading = false;
             }
           },
 
