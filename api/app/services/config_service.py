@@ -44,9 +44,12 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
 
 async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> ConfigOut:
     """Create or update the ClientConfig for a license, encrypting all credential fields."""
-    if license.config:
-        cfg = license.config
-    else:
+    # Query config explicitly to avoid lazy-load MissingGreenlet
+    result = await db.execute(
+        select(ClientConfig).where(ClientConfig.license_id == license.id)
+    )
+    cfg = result.scalar_one_or_none()
+    if cfg is None:
         cfg = ClientConfig(license_id=license.id)
         db.add(cfg)
 
