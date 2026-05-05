@@ -244,7 +244,7 @@ async def delete_pending_machine(
 
 @router.post("/licenses/{license_id}/auth-code", response_model=OkResponse)
 async def send_auth_code(
-    license_id: int,
+    license_id: uuid.UUID,
     body: dict,
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_admin_user),
