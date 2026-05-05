@@ -89,6 +89,11 @@ async def patch_license(
         values["schedule_rules"] = body.schedule_rules
     if body.note is not None:
         values["note"] = body.note
+    if body.machine_id is not None:
+        values["machine_id"] = body.machine_id
+    elif "machine_id" in body.model_dump(exclude_unset=True) and body.machine_id is None:
+        # Explicitly set to null to unbind the machine
+        values["machine_id"] = None
 
     if values:
         await db.execute(update(License).where(License.id == license_id).values(**values))

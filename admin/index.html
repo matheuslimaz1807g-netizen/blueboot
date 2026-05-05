@@ -1126,6 +1126,24 @@
               placeholder="Deixe vazio para não alterar"
             />
           </div>
+          <div class="field">
+            <label>Máquina Vinculada</label>
+            <div class="flex items-center gap-2">
+              <input
+                class="inp flex-1 opacity-70"
+                type="text"
+                :value="editLicForm.machine_id"
+                readonly
+              />
+              <button
+                class="btn btn-secondary text-xs whitespace-nowrap"
+                @click="editLicForm.machine_id = ''"
+                :disabled="!editLicForm.machine_id || editLicForm.machine_id === 'Não vinculado'"
+              >
+                Desvincular
+              </button>
+            </div>
+          </div>
 
           <!-- Schedule Rules -->
           <div class="border-t border-border pt-4 mt-2">
@@ -1775,6 +1793,13 @@
               hora_fim: this.editLicForm.schedule_hora_fim,
               timezone: this.editLicForm.schedule_timezone,
             };
+            // Se o machine_id foi limpo (desvincular), enviar null para liberar
+            if (
+              !this.editLicForm.machine_id ||
+              this.editLicForm.machine_id === "Não vinculado"
+            ) {
+              body.machine_id = null;
+            }
             try {
               const r = await fetch(`/admin/licenses/${this.editLicForm.id}`, {
                 method: "PATCH",

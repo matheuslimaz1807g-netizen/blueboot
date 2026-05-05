@@ -179,6 +179,7 @@ class LicensePatchRequest(BaseModel):
     expires_days: int | None = Field(default=None, ge=1, le=3650)
     schedule_rules: dict | None = None
     note: str | None = Field(default=None, max_length=256)
+    machine_id: str | None = Field(default=None, description="Set to null to unbind machine")
 
 
 # ── LogEntry ──────────────────────────────────────────────────────────────────
