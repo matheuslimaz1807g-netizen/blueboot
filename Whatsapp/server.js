@@ -9,8 +9,7 @@ const express_1 = __importDefault(require("express"));
 const whatsapp_web_js_1 = require("whatsapp-web.js");
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const qrcode_1 = __importDefault(require("qrcode")); // Use raw qrcode gen instead of terminal
-const qrcode_terminal_1 = __importDefault(require("qrcode-terminal"));
+const qrcode_1 = __importDefault(require("qrcode"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
@@ -22,9 +21,8 @@ let qrCodeBase64 = "";
 const client = new whatsapp_web_js_1.Client({
   authStrategy: new whatsapp_web_js_1.LocalAuth(),
   puppeteer: {
-    headless: true, // Invisible, so it can run via python hidden process
-    executablePath:
-      process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium-browser",
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -35,11 +33,8 @@ const client = new whatsapp_web_js_1.Client({
 // --- EVENTOS DO WHATSAPP ---
 client.on("qr", async (qr) => {
   statusVal = "qr";
-  console.log("\n🔐 ESCANEAR QR CODE ABAIXO COM WHATSAPP:\n");
-  qrcode_terminal_1.default.generate(qr, { small: false });
-  console.log("\n");
   try {
-    qrCodeBase64 = await qrcode_1.default.toDataURL(qr); // Returns data:image/png;base64,...
+    qrCodeBase64 = await qrcode_1.default.toDataURL(qr);
   } catch (err) {
     console.error("Erro gerando QR base64:", err);
   }
@@ -61,11 +56,6 @@ client.on("ready", async () => {
     .filter((c) => c.isGroup)
     .map((c) => ({ name: c.name, id: c.id._serialized }));
   console.log(`📋 Total de grupos monitorados: ${allGroups.length}`);
-  console.log("\n📱 GRUPOS ENCONTRADOS:");
-  allGroups.forEach((g, i) => {
-    console.log(`  ${i + 1}. ${g.name}`);
-  });
-  console.log("\n");
 });
 /**
  * Função para enviar mensagens para grupos dinâmicos
@@ -118,6 +108,19 @@ app.get("/status", (req, res) => {
 });
 app.post("/send", async (req, res) => {
   const { text, base64Image, mimeType, targets } = req.body;
+  // Validação básica do payload
+  if (!text && !base64Image) {
+    res
+      .status(400)
+      .json({ error: "É necessário fornecer 'text' ou 'base64Image'" });
+    return;
+  }
+  if (!Array.isArray(targets) || targets.length === 0) {
+    res
+      .status(400)
+      .json({ error: "É necessário fornecer 'targets' como array não vazio" });
+    return;
+  }
   try {
     await sendToGroups(text, base64Image, mimeType, targets);
     res

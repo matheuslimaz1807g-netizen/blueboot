@@ -1,9 +1,8 @@
 FROM python:3.11-slim
 
-# Instala Chromium, Chromedriver e ferramentas de monitor virtual
+# Instala Chromium e ferramentas de monitor virtual
 RUN apt-get update && apt-get install -y \
     chromium \
-    chromium-driver \
     xvfb \
     xclip \
     xauth \

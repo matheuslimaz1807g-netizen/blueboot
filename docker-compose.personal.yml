@@ -1,5 +1,4 @@
 services:
-
   # ── Banco de Dados (PostgreSQL) ───────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -23,7 +22,7 @@ services:
     restart: unless-stopped
     env_file: .env.personal
     ports:
-      - "80:8000"
+      - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://bluebot:bluebot_secret@postgres:5432/bluebot
       - POSTGRES_USER=bluebot
