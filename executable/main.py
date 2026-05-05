@@ -160,10 +160,11 @@ def create_app(mode: str, initial_config: dict):
 def main():
     global _runner
     add_log("info", f"Iniciando BlueBot v{VERSION}...")
+    add_log("info", "🔒 MODO: Gerenciado (Licenciado)")
 
     # 1. Carregar Configuração
     api_base = os.getenv("APRO_API_BASE") or os.getenv("API_BASE_URL", "http://license_api:8000")
-    license_key = os.getenv("LICENSE_KEY", "")
+    license_key = os.getenv("LICENSE_KEY", "").strip()
     robot_label = os.getenv("ROBOT_LABEL", "") 
     install_token = os.getenv("INSTALL_TOKEN", "") # Senha global de segurança
     
@@ -173,78 +174,126 @@ def main():
 
     mid = get_machine_id()
     
+    # ⚠️ MODO GERENCIADO OBRIGATÓRIO: Sempre exigir LICENSE_KEY
     if not license_key:
-        add_log("warning", "Nenhuma LICENSE_KEY encontrada. Entrando em modo de auto-descoberta...")
+        add_log("warning", "⏳ Nenhuma LICENSE_KEY detectada.")
+        add_log("info", "")
+        add_log("info", "📋 INFORMAÇÕES DESTA MÁQUINA:")
+        add_log("info", f"   Machine ID:  {mid}")
+        add_log("info", f"   Hostname:    {platform.node()}")
+        add_log("info", f"   Platform:    {platform.system()} {platform.release()}")
+        add_log("info", "")
+        add_log("info", "⚙️ Conectando ao Painel Admin para auto-descoberta...")
+        add_log("info", f"   Painel: {api_base}")
+        add_log("info", "")
+        add_log("success", "✅ Robô aguardando aprovação no Painel Admin...")
+        add_log("info", "   📱 Vá ao Painel, localize esta máquina e clique em AUTORIZAR")
+        add_log("info", "   ⏱️ Tentando a cada 10 segundos... (Ctrl+C para cancelar)")
+        add_log("info", "")
+        
+        # Loop de auto-descoberta com tentativas frequentes
+        attempt = 0
+        failed_attempts = 0
         
         while not license_key:
+            attempt += 1
+            
             try:
-                # 1. Avisar o painel que este robô está aqui (Enviando o Token de Segurança)
+                # Tenta descobrir automaticamente no painel
                 resp = requests.post(
                     f"{api_base}/license/discover",
-                    headers={"X-Install-Token": install_token},
+                    headers={"X-Install-Token": install_token or ""},
                     json={
                         "machine_id": mid,
                         "hostname": platform.node(),
                         "platform": f"{platform.system()} {platform.release()}",
-                        "label": robot_label
+                        "label": robot_label or "BlueBot"
                     },
-                    timeout=10
+                    timeout=10,
+                    verify=False
                 )
                 
                 if resp.status_code == 200:
                     data = resp.json()
-                    if data.get("valid") and data.get("assigned_key"):
+                    if data.get("assigned_key"):
                         license_key = data.get("assigned_key")
-                        add_log("success", f"Licença vinculada pelo administrador! Chave: {license_key[:8]}")
+                        add_log("success", f"🎉 LICENÇA AUTORIZADA PELO PAINEL!")
+                        add_log("success", f"   Chave: {license_key[:16]}***")
+                        add_log("info", "   Iniciando sistema...")
+                        failed_attempts = 0
                         break
+                    elif data.get("pending"):
+                        if attempt % 6 == 0:  # Log a cada 60 segundos
+                            add_log("info", f"⏳ Aguardando aprovação... (Tentativa {attempt})")
+                    else:
+                        if failed_attempts == 0:
+                            add_log("warning", "📍 Robô registrado no painel. Aguardando aprovação admin...")
+                        failed_attempts += 1
+                        
+                elif resp.status_code == 401:
+                    add_log("error", "❌ INSTALL_TOKEN inválido!")
+                    add_log("error", "   Verifique a variável INSTALL_TOKEN no .env")
+                    time.sleep(30)
+                    continue
+                    
                 elif resp.status_code == 403:
-                    add_log("error", "ACESSO NEGADO: Token de instalação (INSTALL_TOKEN) inválido ou ausente no .env")
-                    time.sleep(60) # Espera mais tempo se o token estiver errado
+                    if attempt == 1:
+                        add_log("warning", "⚠️ Acesso negado ao Painel Admin")
+                    time.sleep(30)
                     continue
                 
-                add_log("info", f"Aguardando liberação no Painel Admin... (ID: {mid[:6]})")
+                else:
+                    if attempt == 1 or attempt % 10 == 0:
+                        add_log("warning", f"Painel retornou: {resp.status_code}")
+                    
+            except requests.exceptions.ConnectionError as e:
+                if attempt == 1:
+                    add_log("warning", f"⚠️ Não conseguiu conectar ao painel em {api_base}")
+                    add_log("warning", f"   Erro: {str(e)[:100]}")
+                elif attempt % 12 == 0:  # Log a cada 2 minutos
+                    add_log("warning", f"Ainda tentando conectar ao painel... (Tentativa {attempt})")
+                    
             except Exception as e:
-                add_log("error", f"Erro ao contatar servidor de licenças: {e}")
+                if attempt == 1 or attempt % 20 == 0:
+                    add_log("warning", f"Erro na auto-descoberta: {str(e)[:100]}")
             
-            # Espera 30 segundos antes de tentar de novo
-            time.sleep(30)
+            # Aguarda antes da próxima tentativa (10 segundos)
+            time.sleep(10)
 
-    # Modo Gerenciado Obrigatório
+    # ✅ Modo Gerenciado Confirmado
     mode = "Gerenciado"
-    add_log("info", f"Validando licença {license_key[:8]}... (ID: {mid[:6]})")
+    add_log("info", f"🔐 Validando licença {license_key[:8]}... (ID: {mid[:6]})")
     
     try:
         # 1. Validar Licença no Servidor
         os.environ["APRO_API_BASE"] = api_base # Garante que o license.py use a URL certa
         lic_info = validate_license(license_key, mid)
-        add_log("success", f"Licença validada! Plano: {lic_info.get('plan', 'basic').upper()}")
+        add_log("success", f"✅ Licença VALIDADA! Plano: {lic_info.get('plan', 'basic').upper()}")
         
         # 2. Iniciar Heartbeat (Batimento para o painel)
         def on_expired():
-            add_log("error", "Sinal de licença perdido ou expirado. Encerrando robô...")
+            add_log("error", "❌ Sinal de licença perdido ou expirado. Encerrando robô...")
             os._exit(1)
         
         start_heartbeat(license_key, mid, on_expired)
         
-        # 3. Carregar Configuração (Prioriza Remota)
+        # 3. Carregar Configuração (Sempre Remota em modo gerenciado)
         try:
-            add_log("info", "Buscando configurações remotas do painel...")
+            add_log("info", "📡 Buscando configurações remotas do painel...")
             config = config_loader.fetch_remote_config(license_key, mid)
-            add_log("success", "Configurações remotas carregadas com sucesso!")
+            add_log("success", "✅ Configurações remotas carregadas!")
         except Exception as e:
-            add_log("warning", f"Não foi possível carregar config remota ({e}). Usando .env local.")
-            config = config_loader.load_config_from_env()
+            add_log("error", f"❌ Falha ao carregar configurações remotas: {e}")
+            add_log("error", "Sem configurações válidas, o robô não pode continuar.")
+            sys.exit(1)
         
-        add_log("info", "Sistema de licenciamento e gestão remota ativo.")
+        add_log("info", "✨ Sistema de licenciamento e gestão remota ATIVO.")
         
     except Exception as e:
-        add_log("error", f"Falha Crítica de Licença: {e}")
-        add_log("info", "O robô será encerrado por falta de licença válida.")
+        add_log("error", f"❌ FALHA CRÍTICA DE LICENÇA: {e}")
+        add_log("error", "O robô será encerrado. Verifique sua LICENSE_KEY e tente novamente.")
         time.sleep(5)
         sys.exit(1)
-    except Exception as e:
-        add_log("error", f"Erro ao inicializar configurações: {e}")
-        config = config_loader.load_config_from_env()
 
     # 2. Iniciar Bot
     _runner = BotRunner(log_callback=add_log)
@@ -252,9 +301,9 @@ def main():
         try:
             _runner.start(config)
         except Exception as e:
-            add_log("error", f"Falha ao iniciar BotRunner: {e}")
+            add_log("error", f"❌ Falha ao iniciar BotRunner: {e}")
     else:
-        add_log("warning", "API_ID/HASH ausentes. Bot não iniciado.")
+        add_log("warning", "⚠️ API_ID/HASH ausentes. Bot de Telegram não iniciado.")
 
     # 3. Iniciar Flask Dashboard
     app = create_app(mode, config)
@@ -263,10 +312,11 @@ def main():
     # Na VPS (Docker), rodamos no main thread para manter o container vivo
     host = "0.0.0.0" if os.getenv("DOCKER_CONTAINER") or not sys.stdin.isatty() else "127.0.0.1"
     
-    if host == "127.0.0.1" and mode == "Gerenciado":
+    if host == "127.0.0.1":
         threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{LOCAL_PORT}")).start()
 
-    add_log("info", f"Painel de controle rodando em http://{host}:{LOCAL_PORT}")
+    add_log("success", f"🎯 Painel de controle rodando em http://{host}:{LOCAL_PORT}")
+    add_log("info", f"🔒 Modo: {mode} | Licença: {license_key[:12]}***")
     app.run(host=host, port=LOCAL_PORT, debug=False, use_reloader=False)
 
 
