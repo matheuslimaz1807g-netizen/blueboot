@@ -81,5 +81,24 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     await db.commit()
     await db.refresh(cfg)
 
-    # Return decrypted view
-    return await get_config(db, license)
+    # Return decrypted view directly from cfg (avoid MissingGreenlet)
+    return ConfigOut(
+        phone=cfg.phone,
+        sources=cfg.sources or [],
+        destination_telegram=cfg.destination_telegram,
+        delay_segundos=cfg.delay_segundos,
+        whatsapp_endpoint=cfg.whatsapp_endpoint,
+        send_telegram=cfg.send_telegram,
+        send_whatsapp=cfg.send_whatsapp,
+        conv_shopee=cfg.conv_shopee,
+        conv_ali=cfg.conv_ali,
+        conv_ml=cfg.conv_ml,
+        filtros=cfg.filtros or {},
+        shopee_token=decrypt_field(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
+        ali_key=decrypt_field(cfg.ali_key_enc) if cfg.ali_key_enc else None,
+        ali_secret=decrypt_field(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
+        ali_tracking=decrypt_field(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
+        ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
+        api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
+        api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
+    )
