@@ -277,15 +277,16 @@ def main():
         
         start_heartbeat(license_key, mid, on_expired)
         
-        # 3. Carregar Configuração (Sempre Remota em modo gerenciado)
+        # 3. Carregar Configuração (Remota primeiro, fallback para local)
         try:
             add_log("info", "📡 Buscando configurações remotas do painel...")
             config = config_loader.fetch_remote_config(license_key, mid)
             add_log("success", "✅ Configurações remotas carregadas!")
         except Exception as e:
-            add_log("error", f"❌ Falha ao carregar configurações remotas: {e}")
-            add_log("error", "Sem configurações válidas, o robô não pode continuar.")
-            sys.exit(1)
+            add_log("warning", f"⚠️ Config remota indisponível ({e})")
+            add_log("info", "📁 Usando configurações locais (.env) como fallback...")
+            config = config_loader.load_config_from_env()
+            add_log("info", "✅ Configurações locais carregadas!")
         
         add_log("info", "✨ Sistema de licenciamento e gestão remota ATIVO.")
         
