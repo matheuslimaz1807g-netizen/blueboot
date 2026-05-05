@@ -238,3 +238,84 @@ async def delete_pending_machine(
     await db.execute(delete(PendingMachine).where(PendingMachine.machine_id == machine_id))
     await db.commit()
     return OkResponse(message="Máquina removida da lista")
+
+
+# ── Auth Code (Telegram verification) ──────────────────────────────────────────
+
+@router.post("/licenses/{license_id}/auth-code", response_model=OkResponse)
+async def send_auth_code(
+    license_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_admin_user),
+):
+    """
+    Envia o código de verificação do Telegram para o bot.
+    O painel admin chama este endpoint, que redireciona para o dashboard do bot.
+    """
+    code = body.get("code", "").strip()
+    password = body.get("password", "").strip()
+    
+    if not code and not password:
+        raise HTTPException(status_code=400, detail="Código ou senha é obrigatório")
+    
+    # Buscar a licença para obter o machine_id
+    result = await db.execute(select(License).where(License.id == license_id))
+    lic = result.scalar_one_or_none()
+    if not lic or not lic.machine_id:
+        raise HTTPException(status_code=404, detail="Licença não encontrada ou sem máquina vinculada")
+    
+    # O bot roda na porta 8080 dentro da rede Docker
+    # O nome do host é o nome do container do bot
+    bot_url = f"http://bot:8080/api/auth-code"
+    
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                bot_url,
+                json={"code": code, "password": password},
+                headers={"Authorization": "Basic YWRtaW46YWRtaW4xMjM="}  # admin:admin123
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("ok"):
+                    # Se conseguiu autenticar, salva a session_string na config
+                    session_str = data.get("session_string")
+                    if session_str:
+                        cfg = await config_service.get_config(db, lic)
+                        if cfg:
+                            # Atualiza a config com a nova session_string
+                            from app.schemas.schemas import ConfigIn
+                            config_data = ConfigIn(
+                                phone=cfg.phone,
+                                sources=cfg.sources,
+                                destination_telegram=cfg.destination_telegram,
+                                delay_segundos=cfg.delay_segundos,
+                                whatsapp_endpoint=cfg.whatsapp_endpoint,
+                                send_telegram=cfg.send_telegram,
+                                send_whatsapp=cfg.send_whatsapp,
+                                conv_shopee=cfg.conv_shopee,
+                                conv_ali=cfg.conv_ali,
+                                conv_ml=cfg.conv_ml,
+                                filtros=cfg.filtros,
+                                shopee_token=cfg.shopee_token,
+                                ali_key=cfg.ali_key,
+                                ali_secret=cfg.ali_secret,
+                                ali_tracking=cfg.ali_tracking,
+                                ml_token=cfg.ml_token,
+                                api_id=cfg.api_id,
+                                api_hash=cfg.api_hash,
+                                session_string=session_str,
+                            )
+                            await config_service.upsert_config(db, lic, config_data)
+                    
+                    return OkResponse(message="Código enviado e autenticado com sucesso!")
+                elif data.get("requires_password"):
+                    return OkResponse(message="Senha de duas etapas necessária. Envie novamente com a senha.")
+                else:
+                    raise HTTPException(status_code=400, detail=data.get("error", "Erro ao autenticar"))
+            else:
+                raise HTTPException(status_code=502, detail=f"Erro ao comunicar com o bot: {resp.status_code}")
+    except httpx.ConnectError:
+        raise HTTPException(status_code=502, detail="Não foi possível conectar ao bot. Verifique se ele está rodando.")

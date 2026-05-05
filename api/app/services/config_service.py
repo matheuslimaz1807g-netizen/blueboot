@@ -39,6 +39,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
+        session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
     )
 
 
@@ -80,6 +81,8 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         cfg.api_id_enc = encrypt_field(data.api_id)
     if data.api_hash:
         cfg.api_hash_enc = encrypt_field(data.api_hash)
+    if data.session_string:
+        cfg.session_string_enc = encrypt_field(data.session_string)
 
     await db.commit()
     await db.refresh(cfg)
@@ -104,4 +107,5 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
+        session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
     )

@@ -154,6 +154,23 @@ def create_app(mode: str, initial_config: dict):
             "stats": _runner.get_stats() if _runner else {}
         })
 
+    @app.route("/api/auth-code", methods=["POST"])
+    @requires_auth
+    def submit_auth_code():
+        """Endpoint para receber o código de verificação do Telegram."""
+        if not _runner:
+            return jsonify({"ok": False, "error": "Bot não iniciado"}), 400
+        
+        data = request.get_json(silent=True) or {}
+        code = data.get("code", "").strip()
+        password = data.get("password", "").strip()
+        
+        if not code and not password:
+            return jsonify({"ok": False, "error": "Código ou senha é obrigatório"}), 400
+        
+        result = _runner.submit_code(code, password)
+        return jsonify(result)
+
     return app
 
 

@@ -95,6 +95,9 @@ class ClientConfig(Base):
     # Telegram API Credentials (Encrypted)
     api_id_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_hash_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Telegram Session String (Encrypted)
+    session_string_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False

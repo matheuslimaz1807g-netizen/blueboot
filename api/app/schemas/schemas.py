@@ -108,6 +108,7 @@ class ConfigIn(BaseModel):
     ml_token: str | None = None
     api_id: str | None = None
     api_hash: str | None = None
+    session_string: str | None = None
 
 
 class ConfigOut(BaseModel):
@@ -130,6 +131,7 @@ class ConfigOut(BaseModel):
     ml_token: str | None
     api_id: str | None
     api_hash: str | None
+    session_string: str | None
 
 
 # ── AppVersion ────────────────────────────────────────────────────────────────
