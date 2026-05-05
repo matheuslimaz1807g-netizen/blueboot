@@ -172,7 +172,7 @@ async def record_heartbeat(db: AsyncSession, key: str, machine_id: str) -> bool:
 
 
 async def create_license(
-    db: AsyncSession, plan: str, expires_days: int
+    db: AsyncSession, plan: str, expires_days: int, note: str | None = None
 ) -> License:
     """Create a new license with a generated key."""
     key = generate_license_key()
@@ -187,6 +187,7 @@ async def create_license(
         active=True,
         expires_at=now + timedelta(days=expires_days),
         created_at=now,
+        note=note,
     )
     db.add(lic)
     await db.commit()
