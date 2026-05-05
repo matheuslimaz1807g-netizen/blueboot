@@ -12,6 +12,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     expose:
       - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bluebot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ── API de Licenças (FastAPI) ──────────────────────────────────────────────
   license_api:
@@ -32,8 +37,15 @@ services:
       - ./admin:/app/admin:ro
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   # ── Bot Python (Telegram + Afiliados) ─────────────────────────────────────
   bot:
@@ -43,6 +55,9 @@ services:
     container_name: bluebot_bot
     restart: unless-stopped
     env_file: .env.personal
+    environment:
+      - APRO_API_BASE=http://license_api:8000
+      - DOCKER_CONTAINER=1
     ports:
       - "8080:8080"
     volumes:
@@ -50,8 +65,10 @@ services:
       - bot_data:/app/data
       - /root/.config/BraveSoftware/Brave-Browser:/app/brave_profile
     depends_on:
-      - whatsapp
-      - license_api
+      license_api:
+        condition: service_healthy
+      whatsapp:
+        condition: service_started
 
   # ── WhatsApp Bridge (Node.js) ──────────────────────────────────────────────
   whatsapp:
