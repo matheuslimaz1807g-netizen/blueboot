@@ -95,8 +95,10 @@ services:
       - bot_sessions:/app/sessions
       - bot_data:/app/data
     depends_on:
-      - api
-      - whatsapp
+      api:
+        condition: service_healthy
+      whatsapp:
+        condition: service_started
     security_opt:
       - no-new-privileges:true
 
