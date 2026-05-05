@@ -75,12 +75,15 @@ def _gerar_link_mercadolivre_sync(url: str, ml_cookies_str: str) -> Optional[str
         except: pass
 
         # 2. Clicar em "Ir para produto"
-        print("[DEBUG] Buscando botão 'Ir para produto'...")
+        print("[DEBUG] Clicando em 'Ir para produto'")
         try:
-            xpath_ir = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')] | //span[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'ir para produto')] | /html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]"
-            ir_para_produto = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_ir)))
-            ir_para_produto.click()
-            print("[DEBUG] Clicou em 'Ir para produto'.")
+            acessar_produto = wait.until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "/html/body/main/div/div/div[2]/div[2]/section/section/section/div/ul/div/div[2]")
+                )
+            )
+            acessar_produto.click()
+            print("[DEBUG] Clicou em 'Ir para produto'")
             time.sleep(6) 
             
             # 🚀 TROCA DE ABA: Se abriu uma nova aba, pula para ela
@@ -95,29 +98,47 @@ def _gerar_link_mercadolivre_sync(url: str, ml_cookies_str: str) -> Optional[str
         # 3. Compartilhar
         print(f"[DEBUG] Título da página atual: {driver.title}")
         try:
-            print("[DEBUG] Buscando botão 'Compartilhar'...")
-            xpath_comp = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartilhar')] | //div[contains(@role, 'button') and contains(., 'Compartilhar')]"
-            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_comp)))
+            print("[DEBUG] Trying to click 'Share'")
+            compartilhar_btn = WebDriverWait(driver, 30).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div/button")
+                )
+            )
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
             compartilhar_btn.click()
-            print("[DEBUG] Clicou em 'Compartilhar'.")
-            time.sleep(3)
+            print("[DEBUG] Clicked 'Share'")
+            time.sleep(2)
         except Exception as e:
-            print(f"[ERROR] Falha ao clicar em 'Compartilhar'. Detalhes: {e}")
-            return None
+            print(f"[ERROR] Failed to click 'Share': {e}")
+            print("[DEBUG] Waiting 5 seconds before retry...")
+            time.sleep(5)
+            try:
+                compartilhar_btn = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "/html/body/div[2]/nav/div/div[3]/div/div/button")
+                    )
+                )
+                driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
+                compartilhar_btn.click()
+                print("[DEBUG] Clicked 'Share' on second attempt")
+                time.sleep(2)
+            except Exception as e2:
+                print(f"[ERROR] Falha ao clicar em 'Compartilhar' na segunda tentativa: {e2}")
+                return None
 
         # 4. Copiar Link
-        print("[DEBUG] Buscando botão 'Copiar link' via XPATH direto...")
+        print("[DEBUG] Trying to click 'Copy link'")
         try:
-            xpath_copy_user = "/html/body/div[1]/nav/div/div[3]/div[2]/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button"
-            copiar_botao = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_copy_user)))
+            copiar_botao = wait.until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "/html/body/div[1]/nav/div/div[3]/div/div[2]/div/div/div/div/div[2]/div/div/div/div[2]/div/div/div/button")
+                )
+            )
             copiar_botao.click()
-            print("[DEBUG] Clicou em 'Copiar link'.")
+            print("[DEBUG] Clicked 'Copy link'")
         except Exception as e:
-            print(f"[DEBUG] Falha no XPATH direto de Copiar: {e}")
-            try:
-                driver.find_element(By.XPATH, "//button[contains(., 'Copiar link')]").click()
-            except: pass
+            print(f"[ERROR] Falha no XPATH direto de Copiar: {e}")
+            return None
         
         time.sleep(4)
 
