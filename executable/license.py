@@ -55,16 +55,31 @@ class LicenseError(Exception):
 
 # ── Machine fingerprint ────────────────────────────────────────────────────────
 
+_MACHINE_ID_FILE = "/app/data/machine_id"
+
+
 def get_machine_id() -> str:
     """
-    Returns a stable SHA-256 fingerprint of this machine by combining:
-    - Primary network interface MAC address
-    - Hostname
-    - Windows machine GUID (if available)
+    Returns a STABLE machine fingerprint that persists across container restarts.
 
-    The result is deterministic across reboots and does not change unless
-    the NIC or hostname changes.
+    Uses a file-based approach:
+    - If /app/data/machine_id exists, reads and returns it (persistent across restarts)
+    - Otherwise, generates a new ID from hardware fingerprint and saves it
+
+    This ensures the machine_id NEVER changes between Docker container restarts,
+    preventing license validation failures.
     """
+    # Try to read existing persistent machine_id
+    try:
+        if os.path.exists(_MACHINE_ID_FILE):
+            with open(_MACHINE_ID_FILE, "r") as f:
+                stored = f.read().strip()
+                if stored and len(stored) == 64:
+                    return stored
+    except Exception:
+        pass
+
+    # Generate from hardware fingerprint (stable across reboots)
     parts = []
     try:
         mac = str(uuid.getnode())
@@ -77,13 +92,6 @@ def get_machine_id() -> str:
         parts.append(hostname)
     except Exception:
         parts.append("unknown_host")
-
-    # Adiciona ID do Docker se disponível
-    if os.path.exists("/proc/self/cgroup"):
-        try:
-            with open("/proc/self/cgroup", "r") as f:
-                parts.append(f.read())
-        except: pass
 
     # Try to get Windows machine GUID for extra stability
     if platform.system() == "Windows":
@@ -101,7 +109,7 @@ def get_machine_id() -> str:
         except Exception:
             pass
     elif platform.system() == "Linux":
-        # Linux machine-id
+        # Linux machine-id (stable on real machines, may change in Docker)
         for p in ["/etc/machine-id", "/var/lib/dbus/machine-id"]:
             if os.path.exists(p):
                 try:
@@ -111,7 +119,17 @@ def get_machine_id() -> str:
                 except: pass
 
     raw = "|".join(parts)
-    return hashlib.sha256(raw.encode()).hexdigest()
+    mid = hashlib.sha256(raw.encode()).hexdigest()
+
+    # Save to persistent file for future restarts
+    try:
+        os.makedirs(os.path.dirname(_MACHINE_ID_FILE), exist_ok=True)
+        with open(_MACHINE_ID_FILE, "w") as f:
+            f.write(mid)
+    except Exception:
+        pass
+
+    return mid
 
 
 # ── Remote validation ─────────────────────────────────────────────────────────
