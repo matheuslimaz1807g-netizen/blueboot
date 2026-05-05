@@ -219,17 +219,15 @@ async def processar_mensagem(
                     log_callback("info", f"[{msg_id}] Link ML detectado após expansão: {expanded_link}")
                     try:
                         aff = await mercadolivre.convert(expanded_link, config.get("ml_token", ""))
-                        if aff:
+                        if aff and aff != expanded_link:
                             text = text.replace(original_link, aff)
                             converted_links[original_link] = aff
                             log_callback("info", f"[{msg_id}] Link ML convertido via Navegador.")
                             any_link_converted = True
                         else:
-                            log_callback("warning", f"[{msg_id}] Link ML nao convertido. Abortando envio. URL: {expanded_link}")
-                            return False, False, False
+                            log_callback("warning", f"[{msg_id}] Link ML nao convertido. Usando link original. URL: {expanded_link}")
                     except Exception as exc:
-                        log_callback("error", f"[{msg_id}] Erro ML ao converter {expanded_link}: {exc}. Abortando envio.")
-                        return False, False, False
+                        log_callback("error", f"[{msg_id}] Erro ML ao converter {expanded_link}: {exc}. Usando link original.")
         else:
             log_callback("info", f"[{msg_id}] Conversão Mercado Livre desativada.")
 
