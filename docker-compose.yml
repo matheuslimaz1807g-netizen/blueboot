@@ -94,6 +94,7 @@ services:
     volumes:
       - bot_sessions:/app/sessions
       - bot_data:/app/data
+      - /root/.config/BraveSoftware/Brave-Browser:/app/brave_profile
     depends_on:
       api:
         condition: service_healthy
