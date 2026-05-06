@@ -48,12 +48,28 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         # Injeção de Cookies
         ml_cookies_str = os.getenv("ML_COOKIES", "").strip()
         if ml_cookies_str:
+            print("[DEBUG] Injetando cookies do Mercado Livre...")
             driver.get("https://www.mercadolivre.com.br/robots.txt")
+            time.sleep(2)
+            
+            # Detecta o domínio real (pode ter redirecionado para .com ou .com.ar dependendo da VPS)
+            current_url = driver.current_url
+            current_domain = current_url.split('/')[2].replace("www.", "")
+            print(f"[DEBUG] Domínio detectado para cookies: {current_domain}")
+
             for cookie_chunk in ml_cookies_str.split(';'):
                 cookie_chunk = cookie_chunk.strip()
                 if not cookie_chunk or '=' not in cookie_chunk: continue
-                name, value = cookie_chunk.split('=', 1)
-                driver.add_cookie({'name': name.strip(), 'value': value.strip(), 'domain': '.mercadolivre.com.br'})
+                try:
+                    name, value = cookie_chunk.split('=', 1)
+                    # Tenta injetar no domínio base detectado
+                    driver.add_cookie({
+                        'name': name.strip(), 
+                        'value': value.strip(), 
+                        'domain': f".{current_domain}"
+                    })
+                except Exception as e:
+                    pass # Alguns cookies podem falhar se forem de outros domínios
 
         print(f"[DEBUG] Abrindo URL de perfil: {url}")
         driver.get(url)
@@ -85,12 +101,25 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             return None
 
         # 3. Compartilhar
+        print(f"[DEBUG] Página Final URL: {driver.current_url}")
         print(f"[DEBUG] Título da página atual: {driver.title}")
+        
+        # Check para Login Wall
+        if "entre" in driver.title.lower() or "ingresa" in driver.title.lower() or "login" in driver.title.lower():
+            print("[WARNING] Detectada página de LOGIN. A sessão (ML_COOKIES) pode ter expirado ou ser inválida para este IP.")
+            driver.save_screenshot("/app/sessions/login_wall_detectado.png")
+
         try:
             print("[DEBUG] Buscando botão 'Compartilhar'...")
-            xpath_comp = "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartilhar')] | //div[contains(@role, 'button') and contains(., 'Compartilhar')]"
+            # XPath expandido para PT e ES (compartilhar / compartir)
+            xpath_comp = (
+                "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartilhar')] | "
+                "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartir')] | "
+                "//div[contains(@role, 'button') and (contains(., 'Compartilhar') or contains(., 'Compartir'))]"
+            )
             compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_comp)))
             driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
+            time.sleep(1)
             compartilhar_btn.click()
             print("[DEBUG] Clicou em 'Compartilhar'.")
             time.sleep(3)
@@ -142,4 +171,4 @@ async def convert(url: str, ml_token: str = "") -> Optional[str]:
         return await loop.run_in_executor(None, _gerar_link_mercadolivre_sync, url)
     except Exception as exc:
         print(f"[ERROR] Execução falhou: {exc}")
-        return None
+        return None 
