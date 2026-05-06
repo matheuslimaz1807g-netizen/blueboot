@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia o código
 COPY executable/ .
-RUN rm -f .env .env.local
+# RUN rm -f .env .env.local # Commented out to allow .env to be present in the container for load_dotenv
 
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
