@@ -3,7 +3,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore")
 
     DATABASE_URL: str = "postgresql+asyncpg://bluebot:bluebot_secret@localhost:5432/bluebot"
     JWT_SECRET: str = "change_me_jwt_secret"
