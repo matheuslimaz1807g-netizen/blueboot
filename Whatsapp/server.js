@@ -74,87 +74,96 @@ client.on("ready", async () => {
     .map((c) => ({ name: c.name, id: c.id._serialized }));
   console.log(`📋 Total de grupos monitorados: ${allGroups.length}`);
 });
+// --- FILA DE MENSAGENS (ANTI-BAN) ---
+let messageQueue = [];
+let isProcessing = false;
+const SEND_DELAY = (parseInt(process.env.WHATSAPP_DELAY_MINUTES) || 15) * 60 * 1000;
+
+async function processQueue() {
+  if (isProcessing || messageQueue.length === 0) return;
+  isProcessing = true;
+
+  while (messageQueue.length > 0) {
+    const item = messageQueue.shift();
+    console.log(`[Queue] Processando envio para grupos: ${item.targets.join(", ")}`);
+    
+    try {
+      await sendToGroupsInternal(item.text, item.base64Image, item.mimeType, item.targets);
+      console.log("[Queue] Envio concluído.");
+    } catch (err) {
+      console.error("[Queue] Erro ao processar item da fila:", err.message);
+    }
+
+    if (messageQueue.length > 0) {
+      console.log(`[Queue] Aguardando ${SEND_DELAY / 60000} minutos para o próximo disparo...`);
+      await new Promise((res) => setTimeout(res, SEND_DELAY));
+    }
+  }
+
+  isProcessing = false;
+}
+
 /**
- * Função para enviar mensagens para grupos dinâmicos
+ * Função interna para enviar mensagens (sem delay de fila)
  */
-async function sendToGroups(text, base64Image, mimeType, targets = []) {
+async function sendToGroupsInternal(text, base64Image, mimeType, targets = []) {
   if (statusVal !== "connected") {
-    throw new Error(
-      `WhatsApp não está conectado (Status: ${statusVal}). Por favor, escaneie o QR Code no dashboard.`,
-    );
+    throw new Error(`WhatsApp não está conectado.`);
   }
-  if (targets.length === 0) {
-    throw new Error("Nenhum grupo alvo especificado no payload da rota send.");
-  }
+
   // Refresha a lista de grupos para garantir
-  if (allGroups.length === 0) {
-    const chats = await client.getChats();
-    allGroups = chats
-      .filter((c) => c.isGroup)
-      .map((c) => ({ name: c.name, id: c.id._serialized }));
-  }
-  // Filtra os que demos match
+  const chats = await client.getChats();
+  allGroups = chats
+    .filter((c) => c.isGroup)
+    .map((c) => ({ name: c.name, id: c.id._serialized }));
+
   const matchedGroups = allGroups.filter((g) => targets.includes(g.name));
-  if (matchedGroups.length === 0) {
-    throw new Error(
-      `Nenhum dos grupos (${targets.join(", ")}) foi encontrado no seu Whatsapp! Verifique se você faz parte desses grupos.`,
-    );
-  }
+  
   for (const group of matchedGroups) {
     try {
-      if (
-        base64Image &&
-        (mimeType === null || mimeType === void 0
-          ? void 0
-          : mimeType.startsWith("image/"))
-      ) {
+      if (base64Image && (mimeType?.startsWith("image/"))) {
         const media = new whatsapp_web_js_1.MessageMedia(mimeType, base64Image);
         await client.sendMessage(group.id, media, { caption: text });
       } else {
         await client.sendMessage(group.id, text);
       }
-      console.log(`📤 Enviado com sucesso para: ${group.name}`);
+      console.log(`[Direct] Enviado para: ${group.name}`);
+      // Pequeno delay de 3s entre grupos do mesmo lote
+      await new Promise((res) => setTimeout(res, 3000));
     } catch (err) {
-      console.error(`❌ Erro ao enviar para ${group.name}:`, err.message);
-      throw new Error(
-        `Erro ao enviar mensagem para ${group.name}: ${err.message}`,
-      );
+      console.error(`[Direct] Erro em ${group.name}:`, err.message);
     }
-    // Delay de 1.5s entre grupos para evitar bloqueios
-    await new Promise((res) => setTimeout(res, 1500));
   }
 }
+
 // --- ROTAS DA API ---
 app.get("/status", (req, res) => {
   res.json({
     status: statusVal,
     qr: qrCodeBase64,
+    queue_size: messageQueue.length,
+    next_delay_min: isProcessing && messageQueue.length > 0 ? SEND_DELAY / 60000 : 0
   });
 });
+
 app.post("/send", async (req, res) => {
   const { text, base64Image, mimeType, targets } = req.body;
-  // Validação básica do payload
+
   if (!text && !base64Image) {
-    res
-      .status(400)
-      .json({ error: "É necessário fornecer 'text' ou 'base64Image'" });
-    return;
+    return res.status(400).json({ error: "Conteúdo vazio" });
   }
-  if (!Array.isArray(targets) || targets.length === 0) {
-    res
-      .status(400)
-      .json({ error: "É necessário fornecer 'targets' como array não vazio" });
-    return;
-  }
-  try {
-    await sendToGroups(text, base64Image, mimeType, targets);
-    res
-      .status(200)
-      .json({ status: "ok", message: "Mensagem enviada aos grupos." });
-  } catch (err) {
-    console.error("API /send Error:", err.message);
-    res.status(500).json({ error: err.message });
-  }
+
+  // Adiciona na fila
+  messageQueue.push({ text, base64Image, mimeType, targets });
+  
+  // Inicia o processamento se não estiver rodando
+  processQueue();
+
+  res.status(202).json({ 
+    status: "queued", 
+    message: "Mensagem adicionada à fila de processamento lento.",
+    queue_position: messageQueue.length
+  });
 });
 // --- INICIALIZAÇÃO ---
 const PORT = process.env.PORT || 4000;
