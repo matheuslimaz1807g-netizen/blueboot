@@ -308,6 +308,23 @@ async def send_auth_code(
     return OkResponse(message="Código salvo! O bot irá coletá-lo nos próximos segundos.")
 
 
+# ── Public License View (No admin auth required) ──────────────────────────────
+
+@router.get("/license/public/{key}", response_model=LicenseOut)
+async def get_public_license_status(
+    key: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Rota pública para clientes visualizarem o status de seu próprio robô via chave.
+    """
+    result = await db.execute(select(License).where(License.key == key))
+    lic = result.scalar_one_or_none()
+    if not lic:
+        raise HTTPException(status_code=404, detail="Licença não encontrada")
+    return lic
+
+
 # ── WhatsApp Proxy ──────────────────────────────────────────────────────────
 
 @router.get("/whatsapp/status")
