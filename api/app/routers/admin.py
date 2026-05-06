@@ -40,32 +40,34 @@ login_limiter = Limiter(key_func=get_remote_address, default_limits=["5/minute"]
 @router.post("/login", response_model=AdminLoginResponse)
 @login_limiter.limit("5/minute")
 async def admin_login(body: AdminLoginRequest, request: Request):
+    # Strip spaces to avoid "15 vs 14" character errors
+    username = body.username.strip()
+    password = body.password.strip()
+
     # Log para depuração (Remover após resolver)
     from app.main import logger
-    logger.info(f"[AUTH] Tentativa de login para usuário: {body.username}")
-    logger.info(f"[AUTH] Esperado: {settings.ADMIN_USERNAME} | Recebido: {body.username}")
+    logger.info(f"[AUTH] Tentativa de login para usuário: {username}")
+    logger.info(f"[AUTH] Esperado: {settings.ADMIN_USERNAME} | Recebido: {username}")
     
     # Check password length and presence
-    pwd_match = (body.password == settings.ADMIN_PASSWORD)
+    pwd_match = (password == settings.ADMIN_PASSWORD)
     logger.info(f"[AUTH] Senha coincide: {pwd_match}")
     if not pwd_match:
         exp_len = len(settings.ADMIN_PASSWORD)
-        rec_len = len(body.password)
+        rec_len = len(password)
         logger.info(f"[AUTH] Comprimento: Esperado {exp_len} | Recebido {rec_len}")
         
-        # Log character by character to find hidden spaces or encoding issues
-        # Only log if they have same length but don't match
         if exp_len == rec_len:
             diffs = []
             for i in range(exp_len):
-                if settings.ADMIN_PASSWORD[i] != body.password[i]:
-                    diffs.append(f"Pos {i}: {ord(settings.ADMIN_PASSWORD[i])} vs {ord(body.password[i])}")
+                if settings.ADMIN_PASSWORD[i] != password[i]:
+                    diffs.append(f"Pos {i}: {ord(settings.ADMIN_PASSWORD[i])} vs {ord(password[i])}")
             logger.info(f"[AUTH] Diferenças: {', '.join(diffs)}")
 
-    if body.username != settings.ADMIN_USERNAME or body.password != settings.ADMIN_PASSWORD:
+    if username != settings.ADMIN_USERNAME or password != settings.ADMIN_PASSWORD:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
     
-    token = create_access_token({"sub": body.username, "role": "admin"}, expires_minutes=60)
+    token = create_access_token({"sub": username, "role": "admin"}, expires_minutes=60)
     return AdminLoginResponse(access_token=token)
 
 
@@ -294,4 +296,20 @@ async def send_auth_code(
     
     await db.commit()
     return OkResponse(message="Código salvo! O bot irá coletá-lo nos próximos segundos.")
+
+
+# ── WhatsApp Proxy ──────────────────────────────────────────────────────────
+
+@router.get("/whatsapp/status")
+async def get_whatsapp_status(_admin=Depends(get_admin_user)):
+    """
+    Proxy para buscar o status do WhatsApp do container 'bot' (porta 8080).
+    """
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get("http://bot:8080/api/whatsapp/status")
+            return resp.json()
+    except Exception as e:
+        return {"status": "error", "message": f"Não foi possível conectar ao robô: {str(e)}"}
 
