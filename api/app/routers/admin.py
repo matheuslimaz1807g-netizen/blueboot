@@ -84,14 +84,7 @@ async def admin_login(body: AdminLoginRequest, request: Request):
 
 # ── Licenses ──────────────────────────────────────────────────────────────────
 
-@router.get("/licenses", response_model=list[LicenseOut])
-async def list_licenses(
-    db: AsyncSession = Depends(get_db),
-    _admin=Depends(get_admin_user),
-):
-    result = await db.execute(select(License).order_by(desc(License.created_at)))
-    return result.scalars().all()
-
+# Rate limiter for login is already defined above
 
 @router.post("/licenses", response_model=LicenseOut, status_code=201)
 async def create_license(
@@ -345,7 +338,7 @@ async def client_login(
     if not lic.password:
         raise HTTPException(status_code=400, detail="Esta licença não possui senha definida pelo administrador")
 
-    if lic.password != body.password:
+    if not verify_password(body.password, lic.password):
         raise HTTPException(status_code=401, detail="Senha incorreta")
         
     return OkResponse(message="Login realizado com sucesso")

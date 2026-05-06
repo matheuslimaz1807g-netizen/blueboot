@@ -5,19 +5,20 @@ from functools import lru_cache
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
-    DATABASE_URL: str = "postgresql+asyncpg://bluebot:bluebot_secret@localhost:5432/bluebot"
-    JWT_SECRET: str = "change_me_jwt_secret"
+    DATABASE_URL: str = "postgresql+asyncpg://bluebot:S3cur3P@ss!2026#BlueBot@localhost:5432/bluebot"
+    JWT_SECRET: str = "7d33672694b5f0741bfaf7cf73669a6bb46d85f9df8286e2d323fbf9dbf86a66"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
 
-    BLUEBOT_FERNET_KEY: str = "change_me_fernet_key"
-    INSTALL_TOKEN: str = "mudar-para-senha-secreta"
+    BLUEBOT_FERNET_KEY: str = "ptaiS0u-FfzRI0iG-scBtJphQyrPIzG5un0YCuiEBtU="
+    INSTALL_TOKEN: str = "Bt-S3cur3-Inst@ll-2026!"
 
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "change_me"
+    ADMIN_PASSWORD: str = "Adm1n-S3cur3-P@ss!2026#"
 
-    API_BASE_URL: str = "http://localhost:8000"
+    API_BASE_URL: str = "https://api.bluebotapp.com.br"
     RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_STORAGE_URL: str = "memory://"
     APP_VERSION: str = "1.0.0"
 
 

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.config import get_settings
+from app.core.security import verify_password
 from app.schemas.schemas import (
     ConfigIn,
     ConfigOut,

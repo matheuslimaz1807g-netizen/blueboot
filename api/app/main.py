@@ -7,16 +7,22 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import os
 import logging
-
-# Configuração de Logs
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.routers import admin, client
 
 settings = get_settings()
+
+# Rate limiter - configuração global
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"],
+    storage_uri=settings.RATE_LIMIT_STORAGE_URL
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,14 +40,30 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Total para evitar qualquer bloqueio no navegador
+# Integrar slowapi com FastAPI
+app.state.limiter = limiter
+
+@app.exception_handler(RateLimitExceeded)
+async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Muitas requisições. Por favor, aguarde e tente novamente."}
+    )
+
+# CORS - Restrito a domínios autorizados (ajustar conforme ambiente)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://painel.bluebot.com",
+        "https://admin.bluebot.com",
+        "http://localhost:3000",  # Dev
+        "http://localhost:8080",  # Bot panel
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    expose_headers=["X-Total-Count"],
+)  # Recomendado: Configurar via .env em produção
 
 # 1. Routers da API (Processados Primeiro)
 app.include_router(client.router)

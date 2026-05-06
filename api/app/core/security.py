@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
+import secrets
 
 from cryptography.fernet import Fernet
 from jose import JWTError, jwt
@@ -11,7 +12,7 @@ settings = get_settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Fallback rígido para garantir que os dados do usuário continuem legíveis mesmo com erro de ambiente
-_original_key = "MQkOWe-uIEVsRisaPQ2zLPbbRtJoY0VMdl1X46FYNI8="
+_original_key = "ptaiS0u-FfzRI0iG-scBtJphQyrPIzG5un0YCuiEBtU="
 try:
     _key_str = settings.BLUEBOT_FERNET_KEY.strip().replace('"', '').replace("'", "")
     
@@ -42,18 +43,35 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 # ── JWT ───────────────────────────────────────────────────────
 
+def _generate_jti() -> str:
+    """Generate unique JWT ID for replay attack prevention."""
+    return secrets.token_urlsafe(32)
+
 def create_access_token(data: dict[str, Any], expires_minutes: int | None = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=expires_minutes or settings.JWT_EXPIRE_MINUTES
     )
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "jti": _generate_jti()  # JWT ID for replay attack prevention
+    })
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_token(token: str) -> dict[str, Any]:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token, 
+            settings.JWT_SECRET, 
+            algorithms=[settings.JWT_ALGORITHM],
+            options={
+                "verify_exp": True,
+                "verify_iat": True,
+                "require": ["exp", "jti"]
+            }
+        )
         return payload
     except JWTError:
         raise ValueError("Token inválido ou expirado")

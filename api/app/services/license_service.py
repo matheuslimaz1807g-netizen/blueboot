@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password, verify_password
 from app.models.models import License
 from app.schemas.schemas import LicenseValidateResponse
 
@@ -200,7 +201,7 @@ async def create_license(
         expires_at=now + timedelta(days=expires_days),
         created_at=now,
         note=note,
-        password=password,
+        password=hash_password(password) if password else None,
     )
     db.add(lic)
     await db.commit()
