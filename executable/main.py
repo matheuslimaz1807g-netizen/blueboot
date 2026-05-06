@@ -182,8 +182,11 @@ def main():
     # 1. Carregar Configuração Local (Variáveis de Ambiente do .env)
     from dotenv import load_dotenv
     from pathlib import Path
-    if Path(".env").exists():
-        load_dotenv(dotenv_path=".env", override=False)
+    
+    # Padronizado: .env.local -> .env
+    for f in [".env.local", ".env"]:
+        if Path(f).exists():
+            load_dotenv(dotenv_path=f, override=False)
     
     api_base = os.getenv("APRO_API_BASE") or os.getenv("API_BASE_URL", "http://license_api:8000")
     license_key = os.getenv("LICENSE_KEY", "").strip()
@@ -300,15 +303,18 @@ def main():
         start_heartbeat(license_key, mid, on_expired)
         
         # 3. Carregar Configuração (Remota primeiro, fallback para local)
+        # Carrega a local como base
+        config = config_loader.load_config_from_env()
+        
         try:
             add_log("info", "📡 Buscando configurações remotas do painel...")
-            config = config_loader.fetch_remote_config(license_key, mid)
-            add_log("success", "✅ Configurações remotas carregadas!")
+            remote_config = config_loader.fetch_remote_config(license_key, mid)
+            # Mescla remota sobre a local
+            config = config_loader.merge_configs(config, remote_config)
+            add_log("success", "✅ Configurações remotas aplicadas e mescladas com local!")
         except Exception as e:
-            add_log("warning", f"⚠️ Config remota indisponível ({e})")
-            add_log("info", "📁 Usando configurações locais (.env) como fallback...")
-            config = config_loader.load_config_from_env()
-            add_log("info", "✅ Configurações locais carregadas!")
+            add_log("warning", f"⚠️ Config remota indisponível ou vazia ({e})")
+            add_log("info", "📁 Mantendo configurações locais (.env).")
         
         add_log("info", "✨ Sistema de licenciamento e gestão remota ATIVO.")
         

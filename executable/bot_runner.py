@@ -286,7 +286,11 @@ class BotRunner:
             # Log inicial com configurações
             wpp_enabled = self._config.get("send_whatsapp", False)
             wpp_destinations = self._config.get("wpp_destinations", [])
-            wpp_endpoint = self._config.get("whatsapp_endpoint", "http://localhost:4000/send")
+            wpp_endpoint = self._config.get("whatsapp_endpoint") or "http://localhost:4000/send"
+            
+            # Garantir que a config interna também seja corrigida se estiver nula
+            if self._config.get("whatsapp_endpoint") is None:
+                self._config["whatsapp_endpoint"] = wpp_endpoint
             self._log("info", f"⚙️ WhatsApp Config: ENABLED={wpp_enabled} | Destinos={wpp_destinations} | Endpoint={wpp_endpoint}")
             
             last_heartbeat = time.time()

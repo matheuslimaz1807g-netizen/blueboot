@@ -16,8 +16,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template_string
 
-# Carrega o .env
-load_dotenv(dotenv_path=".env", override=True)
+# Carrega o .env (Padrão)
+for f in [".env.local", ".env"]:
+    if os.path.exists(f):
+        load_dotenv(dotenv_path=f, override=False)
 
 # ── Log store compartilhado ────────────────────────────────────────────────────
 _logs: deque[dict] = deque(maxlen=300)
@@ -42,7 +44,7 @@ def _load_config() -> dict:
         "destination_telegram": os.getenv("DESTINATION", ""),
         "delay_segundos": int(os.getenv("DELAY", "3")),
         "wpp_destinations": [s.strip() for s in os.getenv("WHATSAPP_DESTINATIONS", "").split(",") if s.strip()],
-        "whatsapp_endpoint": os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send"),
+        "whatsapp_endpoint": os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send") or "http://whatsapp:4000/send",
         "send_telegram": os.getenv("ENABLE_TELEGRAM", "true").lower() == "true",
         "send_whatsapp": os.getenv("ENABLE_WHATSAPP", "false").lower() == "true",
         "conv_shopee": os.getenv("CONV_SHOPEE", "true").lower() == "true",
