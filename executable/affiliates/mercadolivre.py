@@ -57,19 +57,31 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             current_domain = current_url.split('/')[2].replace("www.", "")
             print(f"[DEBUG] Domínio detectado para cookies: {current_domain}")
 
+            # Adiciona cookies com mais robustez
             for cookie_chunk in ml_cookies_str.split(';'):
                 cookie_chunk = cookie_chunk.strip()
-                if not cookie_chunk or '=' not in cookie_chunk: continue
+                if not cookie_chunk or '=' not in cookie_chunk: 
+                    continue
                 try:
                     name, value = cookie_chunk.split('=', 1)
-                    # Tenta injetar no domínio base detectado
-                    driver.add_cookie({
-                        'name': name.strip(), 
-                        'value': value.strip(), 
-                        'domain': f".{current_domain}"
-                    })
+                    name = name.strip()
+                    value = value.strip()
+                    
+                    cookie_dict = {
+                        'name': name,
+                        'value': value,
+                        'domain': f".{current_domain}",
+                        'path': '/',
+                        'secure': True,
+                        'httpOnly': False,
+                        'expiry': 2147483647  # Ano 2038 (max int32)
+                    }
+                    driver.add_cookie(cookie_dict)
+                    print(f"[DEBUG] Cookie injetado: {name}=***")
                 except Exception as e:
-                    pass # Alguns cookies podem falhar se forem de outros domínios
+                    print(f"[DEBUG] Erro ao injetar cookie: {e}")
+        else:
+            print("[INFO] ML_COOKIES não definido no ambiente. Usando autenticação do perfil Brave (Windows) ou sessão anônima.")
 
         print(f"[DEBUG] Abrindo URL de perfil: {url}")
         driver.get(url)
@@ -104,8 +116,21 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
         print(f"[DEBUG] Página Final URL: {driver.current_url}")
         print(f"[DEBUG] Título da página atual: {driver.title}")
         
-        # Check para Login Wall
-        if "entre" in driver.title.lower() or "ingresa" in driver.title.lower() or "login" in driver.title.lower():
+        # Check para Login Wall - verificação múltipla
+        title_lower = driver.title.lower()
+        is_login_wall = ("entre" in title_lower or "ingresa" in title_lower or "login" in title_lower or 
+                         title_lower.strip() == "mercado libre")
+        
+        # Verificação adicional: checar se há elemento de usuário logado
+        try:
+            # Se não conseguir encontrar o menu do usuário logado, provavelmente não está autenticado
+            driver.find_element(By.XPATH, "//button[contains(@aria-label, 'Ir para') or contains(@class, 'my-account')]")
+            is_login_wall = False  # Encontrou elemento de usuário, então está logado
+        except:
+            if is_login_wall:
+                is_login_wall = True
+        
+        if is_login_wall:
             print("[WARNING] Detectada página de LOGIN. A sessão (ML_COOKIES) pode ter expirado ou ser inválida para este IP.")
             driver.save_screenshot("/app/sessions/login_wall_detectado.png")
 
