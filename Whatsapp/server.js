@@ -44,15 +44,22 @@ client.on("qr", async (qr) => {
   statusVal = "qr";
   try {
     qrCodeBase64 = await qrcode_1.default.toDataURL(qr);
+    console.log("New QR Code generated. Scan it on the dashboard.");
   } catch (err) {
     console.error("Erro gerando QR base64:", err);
   }
 });
 client.on("authenticated", () => {
+  console.log("✅ Authenticated!");
   statusVal = "connected";
   qrCodeBase64 = "";
 });
-client.on("disconnected", () => {
+client.on("auth_failure", (msg) => {
+  console.error("❌ Authentication failure:", msg);
+  statusVal = "disconnected";
+});
+client.on("disconnected", (reason) => {
+  console.warn("⚠️ Client disconnected:", reason);
   statusVal = "disconnected";
   qrCodeBase64 = "";
 });
@@ -70,6 +77,11 @@ client.on("ready", async () => {
  * Função para enviar mensagens para grupos dinâmicos
  */
 async function sendToGroups(text, base64Image, mimeType, targets = []) {
+  if (statusVal !== "connected") {
+    throw new Error(
+      `WhatsApp não está conectado (Status: ${statusVal}). Por favor, escaneie o QR Code no dashboard.`,
+    );
+  }
   if (targets.length === 0) {
     throw new Error("Nenhum grupo alvo especificado no payload da rota send.");
   }
@@ -84,7 +96,7 @@ async function sendToGroups(text, base64Image, mimeType, targets = []) {
   const matchedGroups = allGroups.filter((g) => targets.includes(g.name));
   if (matchedGroups.length === 0) {
     throw new Error(
-      `Nenhum dos grupos (${targets.join(", ")}) foi encontrado no seu Whatsapp!`,
+      `Nenhum dos grupos (${targets.join(", ")}) foi encontrado no seu Whatsapp! Verifique se você faz parte desses grupos.`,
     );
   }
   for (const group of matchedGroups) {
@@ -103,6 +115,9 @@ async function sendToGroups(text, base64Image, mimeType, targets = []) {
       console.log(`📤 Enviado com sucesso para: ${group.name}`);
     } catch (err) {
       console.error(`❌ Erro ao enviar para ${group.name}:`, err.message);
+      throw new Error(
+        `Erro ao enviar mensagem para ${group.name}: ${err.message}`,
+      );
     }
     // Delay de 1.5s entre grupos para evitar bloqueios
     await new Promise((res) => setTimeout(res, 1500));
@@ -136,10 +151,13 @@ app.post("/send", async (req, res) => {
       .status(200)
       .json({ status: "ok", message: "Mensagem enviada aos grupos." });
   } catch (err) {
+    console.error("API /send Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 // --- INICIALIZAÇÃO ---
 const PORT = process.env.PORT || 4000;
-client.initialize();
+client.initialize().catch((err) => {
+  console.error("Failed to initialize WhatsApp client:", err);
+});
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
