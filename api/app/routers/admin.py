@@ -27,6 +27,7 @@ from app.schemas.schemas import (
     LinkMachineRequest,
     VersionIn,
     VersionOut,
+    ClientLoginRequest,
 )
 from app.services import config_service, license_service
 
