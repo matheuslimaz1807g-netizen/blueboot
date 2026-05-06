@@ -89,7 +89,13 @@ async def heartbeat(
     body: LicenseHeartbeatRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    ok = await license_service.record_heartbeat(db, body.license_key, body.machine_id)
+    ok = await license_service.record_heartbeat(
+        db, 
+        body.license_key, 
+        body.machine_id,
+        whatsapp_status=body.whatsapp_status,
+        whatsapp_qr=body.whatsapp_qr
+    )
     if not ok:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Licença inválida ou máquina não autorizada")
     return OkResponse()

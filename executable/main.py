@@ -171,6 +171,18 @@ def create_app(mode: str, initial_config: dict):
         result = _runner.submit_code(code, password)
         return jsonify(result)
 
+    @app.route("/api/whatsapp/status")
+    @requires_auth
+    def whatsapp_status():
+        """Endpoint para consultar o status do WhatsApp via container dedicado."""
+        try:
+            import requests
+            wpp_url = os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send").replace("/send", "/status")
+            resp = requests.get(wpp_url, timeout=5)
+            return jsonify(resp.json())
+        except Exception as e:
+            return jsonify({"status": "error", "message": f"Erro ao conectar ao serviço WhatsApp: {str(e)}"}), 500
+
     return app
 
 
@@ -300,7 +312,24 @@ def main():
             add_log("error", "❌ Sinal de licença perdido ou expirado. Encerrando robô...")
             os._exit(1)
         
-        start_heartbeat(license_key, mid, on_expired)
+        def get_wpp_status_callback():
+            """Busca o status do WhatsApp local para enviar ao painel master."""
+            try:
+                import requests
+                # Pega a URL do WhatsApp da config e muda /send para /status
+                wpp_url = config.get("whatsapp_endpoint", "http://whatsapp:4000/send").replace("/send", "/status")
+                r = requests.get(wpp_url, timeout=5)
+                if r.status_code == 200:
+                    d = r.json()
+                    return {
+                        "whatsapp_status": d.get("status"),
+                        "whatsapp_qr": d.get("qr")
+                    }
+            except:
+                pass
+            return {}
+
+        start_heartbeat(license_key, mid, on_grace_expired=on_expired, status_callback=get_wpp_status_callback)
         
         # 3. Carregar Configuração (Remota primeiro, fallback para local)
         # Carrega a local como base

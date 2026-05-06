@@ -38,6 +38,8 @@ class LicenseValidateRequest(BaseModel):
 class LicenseHeartbeatRequest(BaseModel):
     license_key: str
     machine_id: str
+    whatsapp_status: str | None = None
+    whatsapp_qr: str | None = None
 
 
 class LicenseValidateResponse(BaseModel):
@@ -81,6 +83,8 @@ class LicenseOut(BaseModel):
     last_heartbeat: datetime | None
     schedule_rules: dict | None = None
     note: str | None = None
+    whatsapp_status: str | None = None
+    whatsapp_qr: str | None = None
 
     model_config = {"from_attributes": True}
 

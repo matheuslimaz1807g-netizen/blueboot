@@ -47,6 +47,10 @@ class License(Base):
         JSONB, nullable=True, default=dict
     )
     note: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    
+    # Status do WhatsApp por Licença (enviado via heartbeat)
+    whatsapp_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    whatsapp_qr: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Código de verificação Telegram pendente (pull-based: o bot busca aqui)
     pending_code: Mapped[str | None] = mapped_column(String(32), nullable=True)

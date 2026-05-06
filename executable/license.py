@@ -29,7 +29,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # API_BASE is set at build time and baked into the compiled module.
 # In production, this is always set. Empty = dev mode only.
 _API_BASE_DEFAULT: str = "https://api.yourdomain.com"
-HEARTBEAT_INTERVAL: int = 15 * 60       # 15 minutes
+HEARTBEAT_INTERVAL: int = 60              # 1 minute (for faster status sync)
 OFFLINE_GRACE_SECONDS: int = 30 * 60    # 30 minutes (reduced from 4h)
 REQUEST_TIMEOUT: int = 10
 
@@ -174,19 +174,27 @@ def validate_license(key: str, machine_id: str) -> dict:
     return data  # { valid: True, plan: "basic"|"pro", expires_at: "..." | null }
 
 
-def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on_grace_expired=None) -> None:
+def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on_grace_expired=None, status_callback=None) -> None:
     """Background thread that PINGs the server every HEARTBEAT_INTERVAL seconds."""
     last_success: float = time.time()
 
     while not stop_event.is_set():
-        stop_event.wait(timeout=HEARTBEAT_INTERVAL)
-        if stop_event.is_set():
-            break
+        # Payload base do heartbeat
+        payload = {"license_key": key, "machine_id": machine_id}
+        
+        # Coleta status extra (ex: WhatsApp) se houver um callback definido
+        if status_callback:
+            try:
+                extra = status_callback()
+                if isinstance(extra, dict):
+                    payload.update(extra)
+            except:
+                pass
 
         try:
             resp = requests.post(
                 f"{get_api_base()}/license/heartbeat",
-                json={"license_key": key, "machine_id": machine_id},
+                json=payload,
                 timeout=REQUEST_TIMEOUT,
                 verify=False,
             )
@@ -197,6 +205,9 @@ def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on
             if elapsed > OFFLINE_GRACE_SECONDS:
                 if on_grace_expired:
                     on_grace_expired()
+        
+        # Espera pelo próximo ciclo
+        stop_event.wait(timeout=HEARTBEAT_INTERVAL)
 
 
 # Module-level stop event so callers can shut down heartbeat cleanly
@@ -204,14 +215,14 @@ _heartbeat_stop = threading.Event()
 _heartbeat_on_expired = None
 
 
-def start_heartbeat(key: str, machine_id: str, on_grace_expired: Optional[callable] = None) -> None:
+def start_heartbeat(key: str, machine_id: str, on_grace_expired: Optional[callable] = None, status_callback: Optional[callable] = None) -> None:
     """Start the heartbeat daemon thread. Call once after successful validation."""
     global _heartbeat_on_expired
     _heartbeat_on_expired = on_grace_expired
     _heartbeat_stop.clear()
     t = threading.Thread(
         target=_heartbeat_worker,
-        args=(key, machine_id, _heartbeat_stop, on_grace_expired),
+        args=(key, machine_id, _heartbeat_stop, on_grace_expired, status_callback),
         daemon=True,
         name="LicenseHeartbeat",
     )

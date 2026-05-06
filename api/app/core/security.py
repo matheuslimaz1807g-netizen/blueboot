@@ -11,12 +11,20 @@ settings = get_settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Fallback rígido para garantir que os dados do usuário continuem legíveis mesmo com erro de ambiente
-_original_key = "MQkOWe-uIEVsRisaPQ2zLPbbRtJoY0VMd1X46FYNI="
+_original_key = "MQkOWe-uIEVsRisaPQ2zLPbbRtJoY0VMdl1X46FYNI8="
 try:
     _key_str = settings.BLUEBOT_FERNET_KEY.strip().replace('"', '').replace("'", "")
-    # Se a chave tiver o tamanho errado (comum em erros de ambiente), usa a original
+    
+    # Se a chave tiver 43 caracteres (comum em erros de truncamento), tenta adicionar o '8' final
+    if len(_key_str) == 43 and not _key_str.endswith('='):
+        _key_str += "8="
+    elif len(_key_str) == 43 and _key_str.endswith('='):
+        # Provavelmente falta um caractere antes do '='
+        _key_str = _key_str[:-1] + "8="
+
     if len(_key_str) != 44:
         _key_str = _original_key
+        
     _fernet = Fernet(_key_str.encode())
 except Exception:
     _fernet = Fernet(_original_key.encode())
