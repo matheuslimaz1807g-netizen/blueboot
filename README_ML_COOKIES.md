@@ -3,6 +3,7 @@
 ## ✅ Já Implementado
 
 ### 1. Detecção melhorada de página de login
+
 - Agora detecta quando título é apenas "Mercado Libre" (seu caso exato!)
 - Verifica presença de elementos de usuário logado
 - Mensagens de erro mais específicas
@@ -10,6 +11,7 @@
 **Arquivo**: `executable/affiliates/mercadolivre.py` (linhas 103-119 e 48-86)
 
 ### 2. Injeção de cookies mais robusta
+
 - Cookies injetados com atributos completos
 - Melhor tratamento de erros
 - Log detalhado de cada cookie injetado
@@ -19,6 +21,7 @@
 ## 🚨 O Problema Real
 
 Na VPS, os cookies salvos em `ML_COOKIES` estão:
+
 - **Expirados** (TTL excedido)
 - **Inválidos para o IP da VPS** (proteção anti-fraude do ML)
 
@@ -31,6 +34,7 @@ No Windows funciona porque usa seu **perfil logado do Brave** (não depende de c
 ### ⚡ Solução Rápida (5 minutos):
 
 1. **Windows - Extrair cookies novos**:
+
    ```
    Brave → Mercado Livre → LOGIN
    → Instale extensão "Cookie Editor"
@@ -39,6 +43,7 @@ No Windows funciona porque usa seu **perfil logado do Brave** (não depende de c
    ```
 
 2. **VPS - Atualizar .env**:
+
    ```bash
    ssh seu-vps
    nano /opt/apenaspromo/.env
@@ -47,6 +52,7 @@ No Windows funciona porque usa seu **perfil logado do Brave** (não depende de c
    ```
 
 3. **VPS - Reiniciar**:
+
    ```bash
    docker compose restart
    ```
@@ -69,6 +75,7 @@ Veja: `SOLUCAO_ML_COOKIES.md` (instruções detalhadas com screenshots e alterna
 ## ✨ Resultado Esperado
 
 **Antes** (com cookies expirados):
+
 ```
 [DEBUG] Título da página atual: Mercado Libre
 [WARNING] Detectada página de LOGIN. A sessão (ML_COOKIES) pode ter expirado...
@@ -76,6 +83,7 @@ Veja: `SOLUCAO_ML_COOKIES.md` (instruções detalhadas com screenshots e alterna
 ```
 
 **Depois** (com cookies válidos):
+
 ```
 [DEBUG] Título da página atual: Kit Com 10 Cuecas Boxer Microfibra Adulto Usee Brasil
 [DEBUG] Clicou em 'Compartilhar'

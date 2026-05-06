@@ -47,10 +47,14 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
     try:
         # Injeção de Cookies
         ml_cookies_str = os.getenv("ML_COOKIES", "").strip()
+        print(f"[DEBUG] ML_COOKIES detectado: {'SIM' if ml_cookies_str else 'NÃO'} (tamanho: {len(ml_cookies_str)} chars)")
+        
         if ml_cookies_str:
             print("[DEBUG] Injetando cookies do Mercado Livre...")
-            driver.get("https://www.mercadolivre.com.br/robots.txt")
-            time.sleep(2)
+            
+            # Ir para domínio base primeiro
+            driver.get("https://www.mercadolivre.com.br")
+            time.sleep(1)
             
             # Detecta o domínio real (pode ter redirecionado para .com ou .com.ar dependendo da VPS)
             current_url = driver.current_url
@@ -58,6 +62,7 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
             print(f"[DEBUG] Domínio detectado para cookies: {current_domain}")
 
             # Adiciona cookies com mais robustez
+            cookies_injetados = 0
             for cookie_chunk in ml_cookies_str.split(';'):
                 cookie_chunk = cookie_chunk.strip()
                 if not cookie_chunk or '=' not in cookie_chunk: 
@@ -67,24 +72,35 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
                     name = name.strip()
                     value = value.strip()
                     
-                    cookie_dict = {
-                        'name': name,
-                        'value': value,
-                        'domain': f".{current_domain}",
-                        'path': '/',
-                        'secure': True,
-                        'httpOnly': False,
-                        'expiry': 2147483647  # Ano 2038 (max int32)
-                    }
-                    driver.add_cookie(cookie_dict)
-                    print(f"[DEBUG] Cookie injetado: {name}=***")
+                    # Tenta injetar em múltiplos domínios
+                    for domain in [f".{current_domain}", current_domain, ".mercadolivre.com.br", "mercadolivre.com.br"]:
+                        try:
+                            cookie_dict = {
+                                'name': name,
+                                'value': value,
+                                'domain': domain,
+                                'path': '/',
+                                'secure': False,  # Tentar sem secure primeiro
+                                'httpOnly': False,
+                                'expiry': 2147483647
+                            }
+                            driver.add_cookie(cookie_dict)
+                            cookies_injetados += 1
+                            print(f"[DEBUG] Cookie '{name}' injetado em domínio {domain}")
+                            break  # Se conseguiu, não tenta outros domínios
+                        except:
+                            pass
                 except Exception as e:
-                    print(f"[DEBUG] Erro ao injetar cookie: {e}")
+                    print(f"[DEBUG] Erro ao processar cookie: {e}")
+            
+            print(f"[DEBUG] Total de cookies injetados: {cookies_injetados}")
+            time.sleep(2)
         else:
-            print("[INFO] ML_COOKIES não definido no ambiente. Usando autenticação do perfil Brave (Windows) ou sessão anônima.")
+            print("[INFO] ML_COOKIES não definido no ambiente. Verificar .env!")
 
         print(f"[DEBUG] Abrindo URL de perfil: {url}")
         driver.get(url)
+        time.sleep(3)  # Aguardar carregamento
         wait = WebDriverWait(driver, 15)
 
         # 1. Fechar Cookies
@@ -136,21 +152,49 @@ def _gerar_link_mercadolivre_sync(url: str) -> Optional[str]:
 
         try:
             print("[DEBUG] Buscando botão 'Compartilhar'...")
-            # XPath expandido para PT e ES (compartilhar / compartir)
-            xpath_comp = (
-                "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartilhar')] | "
-                "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartir')] | "
-                "//div[contains(@role, 'button') and (contains(., 'Compartilhar') or contains(., 'Compartir'))]"
-            )
-            compartilhar_btn = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_comp)))
-            driver.execute_script("arguments[0].scrollIntoView(true);", compartilhar_btn)
+            
+            # Múltiplas variações de XPath
+            xpaths_compartilhar = [
+                # Português - botão
+                "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartilhar')]",
+                # Espanhol - botão
+                "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'compartir')]",
+                # Div com role=button
+                "//div[contains(@role, 'button') and (contains(., 'Compartilhar') or contains(., 'Compartir'))]",
+                # Procura por SVG + texto (alguns layouts)
+                "//button[contains(@aria-label, 'Compartilhar')] | //button[contains(@aria-label, 'Compartir')]",
+                # Procura por classe contendo share
+                "//button[contains(@class, 'share')] | //button[contains(@class, 'compartilhar')]",
+                # Último recurso: procura qualquer botão com SVG de compartilhar
+                "//button//svg[contains(@viewBox, '24 24')] | //button//svg[@class*='icon']",
+            ]
+            
+            compartilhar_btn = None
+            for xpath in xpaths_compartilhar:
+                try:
+                    print(f"[DEBUG] Tentando XPath: {xpath[:50]}...")
+                    compartilhar_btn = WebDriverWait(driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, xpath))
+                    )
+                    print(f"[DEBUG] ✓ Botão encontrado com XPath!")
+                    break
+                except:
+                    pass
+            
+            if not compartilhar_btn:
+                raise Exception("Botão 'Compartilhar' não encontrado com nenhum XPath")
+            
+            # Scroll para garantir que está visível
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", compartilhar_btn)
             time.sleep(1)
+            
             compartilhar_btn.click()
             print("[DEBUG] Clicou em 'Compartilhar'.")
             time.sleep(3)
         except Exception as e:
             driver.save_screenshot("/app/sessions/erro_compartilhar.png")
             print(f"[ERROR] Falha ao clicar em 'Compartilhar'. Detalhes: {e}")
+            print(f"[DEBUG] Página HTML snippet: {driver.find_element(By.TAG_NAME, 'body').get_attribute('innerHTML')[:500]}")
             return None
 
         # 4. Copiar Link (XPATH DO USUARIO)
