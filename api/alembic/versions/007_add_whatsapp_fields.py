@@ -15,10 +15,16 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    # Adiciona as colunas se elas não existirem
-    # Usamos batch_alter_table para compatibilidade
-    op.add_column('licenses', sa.Column('whatsapp_status', sa.String(length=32), nullable=True))
-    op.add_column('licenses', sa.Column('whatsapp_qr', sa.Text(), nullable=True))
+    # Verifica se as colunas já existem antes de tentar adicionar
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('licenses')]
+    
+    if 'whatsapp_status' not in columns:
+        op.add_column('licenses', sa.Column('whatsapp_status', sa.String(length=32), nullable=True))
+    
+    if 'whatsapp_qr' not in columns:
+        op.add_column('licenses', sa.Column('whatsapp_qr', sa.Text(), nullable=True))
 
 def downgrade():
     op.drop_column('licenses', 'whatsapp_qr')

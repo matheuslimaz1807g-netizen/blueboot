@@ -22,17 +22,7 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
-            # Cria as tabelas se não existirem
             await conn.run_sync(Base.metadata.create_all)
-            
-            # ⚠️ AUTO-FIX: Forçar criação das colunas do WhatsApp se não existirem
-            from sqlalchemy import text
-            try:
-                await conn.execute(text("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS whatsapp_status VARCHAR(32)"))
-                await conn.execute(text("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS whatsapp_qr TEXT"))
-            except Exception as e:
-                logger.warning(f"Aviso ao adicionar colunas extras (pode já existir): {e}")
-                
         logger.info("Banco de dados sincronizado com sucesso.")
     except Exception as e:
         logger.error(f"Erro ao sincronizar banco: {e}")

@@ -145,7 +145,6 @@ def create_app(mode: str, initial_config: dict):
         )
 
     @app.route("/api/status")
-    @requires_auth
     def status():
         return jsonify({
             "status": _runner.status() if _runner else "stopped",
@@ -172,7 +171,6 @@ def create_app(mode: str, initial_config: dict):
         return jsonify(result)
 
     @app.route("/api/whatsapp/status")
-    @requires_auth
     def whatsapp_status():
         """Endpoint para consultar o status do WhatsApp via container dedicado."""
         try:
