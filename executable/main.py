@@ -179,7 +179,12 @@ def main():
     add_log("info", f"Iniciando BlueBot v{VERSION}...")
     add_log("info", "🔒 MODO: Gerenciado (Licenciado)")
 
-    # 1. Carregar Configuração
+    # 1. Carregar Configuração Local (Variáveis de Ambiente do .env)
+    from dotenv import load_dotenv
+    from pathlib import Path
+    if Path(".env").exists():
+        load_dotenv(dotenv_path=".env", override=False)
+    
     api_base = os.getenv("APRO_API_BASE") or os.getenv("API_BASE_URL", "http://license_api:8000")
     license_key = os.getenv("LICENSE_KEY", "").strip()
     robot_label = os.getenv("ROBOT_LABEL", "") 
