@@ -49,7 +49,18 @@ async def admin_login(body: AdminLoginRequest, request: Request):
     pwd_match = (body.password == settings.ADMIN_PASSWORD)
     logger.info(f"[AUTH] Senha coincide: {pwd_match}")
     if not pwd_match:
-        logger.info(f"[AUTH] Comprimento da senha: Esperado {len(settings.ADMIN_PASSWORD)} | Recebido {len(body.password)}")
+        exp_len = len(settings.ADMIN_PASSWORD)
+        rec_len = len(body.password)
+        logger.info(f"[AUTH] Comprimento: Esperado {exp_len} | Recebido {rec_len}")
+        
+        # Log character by character to find hidden spaces or encoding issues
+        # Only log if they have same length but don't match
+        if exp_len == rec_len:
+            diffs = []
+            for i in range(exp_len):
+                if settings.ADMIN_PASSWORD[i] != body.password[i]:
+                    diffs.append(f"Pos {i}: {ord(settings.ADMIN_PASSWORD[i])} vs {ord(body.password[i])}")
+            logger.info(f"[AUTH] Diferenças: {', '.join(diffs)}")
 
     if body.username != settings.ADMIN_USERNAME or body.password != settings.ADMIN_PASSWORD:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
