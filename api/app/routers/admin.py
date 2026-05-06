@@ -98,7 +98,7 @@ async def create_license(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_admin_user),
 ):
-    return await license_service.create_license(db, body.plan, body.expires_days, body.note)
+    return await license_service.create_license(db, body.plan, body.expires_days, body.note, body.password)
 
 
 @router.patch("/licenses/{license_id}", response_model=LicenseOut)
@@ -323,6 +323,29 @@ async def get_public_license_status(
     if not lic:
         raise HTTPException(status_code=404, detail="Licença não encontrada")
     return lic
+
+
+@router.post("/client/login", response_model=OkResponse)
+async def client_login(
+    body: ClientLoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Login para clientes usando chave e senha da licença.
+    """
+    result = await db.execute(select(License).where(License.key == body.license_key))
+    lic = result.scalar_one_or_none()
+    
+    if not lic or not lic.active:
+        raise HTTPException(status_code=401, detail="Licença inválida ou inativa")
+    
+    if not lic.password:
+        raise HTTPException(status_code=400, detail="Esta licença não possui senha definida pelo administrador")
+
+    if lic.password != body.password:
+        raise HTTPException(status_code=401, detail="Senha incorreta")
+        
+    return OkResponse(message="Login realizado com sucesso")
 
 
 # ── WhatsApp Proxy ──────────────────────────────────────────────────────────

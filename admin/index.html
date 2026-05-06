@@ -1120,6 +1120,15 @@
               x-model="newLicForm.expires_days"
             />
           </div>
+          <div class="field">
+            <label>Senha de Acesso (SaaS)</label>
+            <input
+              class="inp"
+              type="text"
+              x-model="newLicForm.password"
+              placeholder="Senha para o cliente logar"
+            />
+          </div>
         </div>
         <div class="flex justify-end gap-3 pt-4">
           <button class="btn btn-secondary" @click="showNewLicModal = false">
@@ -1181,6 +1190,10 @@
           <div class="field">
             <label>Cliente (Nome)</label>
             <input class="inp" type="text" x-model="editLicForm.note" />
+          </div>
+          <div class="field">
+            <label>Senha de Acesso (SaaS)</label>
+            <input class="inp" type="text" x-model="editLicForm.password" />
           </div>
           <div class="field">
             <label>Plano</label>
@@ -1771,7 +1784,7 @@
           authCodeResult: null,
           authCodeForm: { code: "", password: "", requires_password: false },
 
-          newLicForm: { plan: "basic", expires_days: 30, note: "" },
+          newLicForm: { plan: "basic", expires_days: 30, note: "", password: "" },
           editLicForm: {
             id: null,
             key: "",
@@ -1784,6 +1797,8 @@
             schedule_hora_fim: "18:00",
             schedule_timezone: "America/Sao_Paulo",
             note: "",
+            password: "",
+            machine_id: "",
           },
           linkForm: { machine_id: "", license_id: "" },
 
@@ -1954,7 +1969,7 @@
           openNewLicenseModal() {
             this.showNewLicModal = true;
             this.generatedKey = "";
-            this.newLicForm = { plan: "basic", expires_days: 365 };
+            this.newLicForm = { plan: "basic", expires_days: 365, note: "", password: "" };
           },
 
           async createLicense() {
@@ -1993,6 +2008,7 @@
               schedule_hora_fim: sr.hora_fim || "18:00",
               schedule_timezone: sr.timezone || "America/Sao_Paulo",
               note: lic.note || "",
+              password: lic.password || "",
               machine_id: lic.machine_id || "Não vinculado",
             };
             this.showEditLicModal = true;
@@ -2007,6 +2023,7 @@
               body.expires_days = parseInt(this.editLicForm.expires_days);
             }
             body.note = this.editLicForm.note;
+            body.password = this.editLicForm.password;
             body.schedule_rules = {
               enabled: this.editLicForm.schedule_enabled,
               dias_semana: this.editLicForm.schedule_dias,

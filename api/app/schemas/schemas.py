@@ -85,8 +85,16 @@ class LicenseOut(BaseModel):
     note: str | None = None
     whatsapp_status: str | None = None
     whatsapp_qr: str | None = None
+    password: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ── Client Login (SaaS) ──────────────────────────────────────────────────────
+
+class ClientLoginRequest(BaseModel):
+    license_key: str
+    password: str
 
 
 # ── ClientConfig ──────────────────────────────────────────────────────────────
@@ -179,6 +187,7 @@ class LicenseCreateRequest(BaseModel):
     plan: str = Field(default="basic", pattern=r"^(basic|pro)$")
     expires_days: int = Field(default=30, ge=1, le=3650)
     note: str | None = Field(default=None, max_length=256)
+    password: str | None = Field(default=None, max_length=64)
 
 
 class LicensePatchRequest(BaseModel):
@@ -188,6 +197,7 @@ class LicensePatchRequest(BaseModel):
     schedule_rules: dict | None = None
     note: str | None = Field(default=None, max_length=256)
     machine_id: str | None = Field(default=None, description="Set to null to unbind machine")
+    password: str | None = Field(default=None, max_length=64)
 
 
 # ── LogEntry ──────────────────────────────────────────────────────────────────

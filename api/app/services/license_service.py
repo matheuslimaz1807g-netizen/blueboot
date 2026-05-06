@@ -184,9 +184,9 @@ async def record_heartbeat(
 
 
 async def create_license(
-    db: AsyncSession, plan: str, expires_days: int, note: str | None = None
+    db: AsyncSession, plan: str, expires_days: int, note: str | None = None, password: str | None = None
 ) -> License:
-    """Create a new license with a generated key."""
+    """Create a new license with a generated key and optional password."""
     key = generate_license_key()
     # Ensure key uniqueness (extremely unlikely collision but handle it)
     while await get_license_by_key(db, key):
@@ -200,6 +200,7 @@ async def create_license(
         expires_at=now + timedelta(days=expires_days),
         created_at=now,
         note=note,
+        password=password,
     )
     db.add(lic)
     await db.commit()

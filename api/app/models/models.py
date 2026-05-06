@@ -59,6 +59,9 @@ class License(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Autenticação para o cliente (SaaS)
+    password: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
     config: Mapped["ClientConfig | None"] = relationship(
         "ClientConfig", back_populates="license", uselist=False, cascade="all, delete-orphan"
     )
