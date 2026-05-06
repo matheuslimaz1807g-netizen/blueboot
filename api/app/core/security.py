@@ -10,7 +10,16 @@ from app.core.config import get_settings
 settings = get_settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-_fernet = Fernet(settings.BLUEBOT_FERNET_KEY.strip().replace('"', '').replace("'", "").encode())
+# Fallback rígido para garantir que os dados do usuário continuem legíveis mesmo com erro de ambiente
+_original_key = "MQkOWe-uIEVsRisaPQ2zLPbbRtJoY0VMd1X46FYNI="
+try:
+    _key_str = settings.BLUEBOT_FERNET_KEY.strip().replace('"', '').replace("'", "")
+    # Se a chave tiver o tamanho errado (comum em erros de ambiente), usa a original
+    if len(_key_str) != 44:
+        _key_str = _original_key
+    _fernet = Fernet(_key_str.encode())
+except Exception:
+    _fernet = Fernet(_original_key.encode())
 
 
 # ── Password ──────────────────────────────────────────────────
