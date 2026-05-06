@@ -49,10 +49,13 @@ app.include_router(admin.router)
 
 # 2. Painel Admin (Arquivos Estáticos)
 # Usamos /panel para evitar conflito com o prefixo /admin da API
+# No Docker, a pasta admin é montada em /app/admin
 admin_path = "/app/admin"
 if not os.path.exists(admin_path):
-    # Fallback para desenvolvimento local
-    admin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../admin"))
+    # Fallback para desenvolvimento local (fora do Docker)
+    admin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../admin"))
+    if not os.path.exists(admin_path):
+        admin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../admin"))
 
 if os.path.exists(admin_path):
     logger.info(f"Montando Painel Admin em /panel a partir de: {admin_path}")
