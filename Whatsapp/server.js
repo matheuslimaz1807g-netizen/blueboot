@@ -23,7 +23,7 @@ const client = new whatsapp_web_js_1.Client({
   webVersionCache: {
     type: "remote",
     remotePath:
-      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
+      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1012158737-alpha.html",
   },
   puppeteer: {
     headless: true,
@@ -36,6 +36,7 @@ const client = new whatsapp_web_js_1.Client({
       "--no-zygote",
       "--single-process",
       "--disable-gpu",
+      "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     ],
   },
 });
