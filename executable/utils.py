@@ -32,21 +32,12 @@ def fechar_brave() -> None:
 
 async def expandir_link_async(url: str) -> str:
     """
-    Expande URLs encurtadas (ex: amzn.to, a.aliexpress.com, meli.la) seguindo redirecionamentos.
-    Utiliza httpx assíncrono com headers de navegador para evitar bloqueios (CloudFront, etc).
+    Expande URLs encurtadas (ex: amzn.to, a.aliexpress.com) seguindo redirecionamentos.
+    Utiliza httpx assíncrono.
     """
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    }
-    async with httpx.AsyncClient(follow_redirects=True, timeout=15, headers=headers) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=10) as client:
         try:
             r = await client.get(url)
-            final_url = str(r.url)
-            # Se conseguiu seguir os redirects e chegou numa URL diferente, retorna ela
-            if final_url and final_url != url:
-                return final_url
-            return url
+            return str(r.url)
         except Exception:
             return url
