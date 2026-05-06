@@ -10,7 +10,7 @@ from app.core.config import get_settings
 settings = get_settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-_fernet = Fernet(settings.FERNET_KEY.strip().replace('"', '').replace("'", "").encode())
+_fernet = Fernet(settings.BLUEBOT_FERNET_KEY.strip().replace('"', '').replace("'", "").encode())
 
 
 # ── Password ──────────────────────────────────────────────────
