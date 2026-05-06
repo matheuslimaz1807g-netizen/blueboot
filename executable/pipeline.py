@@ -376,8 +376,14 @@ async def processar_mensagem(
                         resp.raise_for_status()
                     log_callback("success", f"[{msg_id}] ✅ Enviado para WhatsApp com sucesso.")
                     wp_sent = True
+                except httpx.HTTPStatusError as exc:
+                    try:
+                        err_detail = exc.response.json().get("error", exc.response.text)
+                    except:
+                        err_detail = exc.response.text
+                    log_callback("error", f"[{msg_id}] ❌ Erro WhatsApp ({exc.response.status_code}): {err_detail}")
                 except Exception as exc:
-                    log_callback("error", f"[{msg_id}] ❌ Erro WhatsApp ao enviar para {wpp_endpoint}: {exc}")
+                    log_callback("error", f"[{msg_id}] ❌ Erro ao conectar no WhatsApp: {exc}")
             elif not isinstance(wpp_destinations, list):
                 log_callback("error", f"[{msg_id}] ❌ ERRO: wpp_destinations não é uma lista! Tipo: {type(wpp_destinations)} | Valor: {wpp_destinations}")
             else:

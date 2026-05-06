@@ -23,4 +23,10 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    # Check if loaded from env or using default
+    import os
+    if s.ADMIN_USERNAME == "admin" and os.getenv("ADMIN_USERNAME") != "admin" and os.getenv("ADMIN_USERNAME") is not None:
+        # This would indicate a loading failure
+        pass 
+    return s

@@ -40,8 +40,20 @@ login_limiter = Limiter(key_func=get_remote_address, default_limits=["5/minute"]
 @router.post("/login", response_model=AdminLoginResponse)
 @login_limiter.limit("5/minute")
 async def admin_login(body: AdminLoginRequest, request: Request):
+    # Log para depuração (Remover após resolver)
+    from app.main import logger
+    logger.info(f"[AUTH] Tentativa de login para usuário: {body.username}")
+    logger.info(f"[AUTH] Esperado: {settings.ADMIN_USERNAME} | Recebido: {body.username}")
+    
+    # Check password length and presence
+    pwd_match = (body.password == settings.ADMIN_PASSWORD)
+    logger.info(f"[AUTH] Senha coincide: {pwd_match}")
+    if not pwd_match:
+        logger.info(f"[AUTH] Comprimento da senha: Esperado {len(settings.ADMIN_PASSWORD)} | Recebido {len(body.password)}")
+
     if body.username != settings.ADMIN_USERNAME or body.password != settings.ADMIN_PASSWORD:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
+    
     token = create_access_token({"sub": body.username, "role": "admin"}, expires_minutes=60)
     return AdminLoginResponse(access_token=token)
 
