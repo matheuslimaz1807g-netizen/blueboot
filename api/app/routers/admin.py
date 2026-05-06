@@ -33,6 +33,16 @@ from app.services import config_service, license_service
 router = APIRouter(prefix="/admin")
 settings = get_settings()
 
+@router.get("/", include_in_schema=False)
+async def admin_root_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/panel/")
+
+@router.get("/whatsapp", include_in_schema=False)
+async def admin_whatsapp_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/panel/")
+
 # Rate limiter specifically for login (5 attempts per minute)
 login_limiter = Limiter(key_func=get_remote_address, default_limits=["5/minute"])
 

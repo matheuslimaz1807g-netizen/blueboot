@@ -48,22 +48,19 @@ app.include_router(client.router)
 app.include_router(admin.router)
 
 # 2. Painel Admin (Arquivos Estáticos)
-# Montamos em /panel (rota interna) e /admin (para o nginx fazer proxy)
+# Usamos /panel para evitar conflito com o prefixo /admin da API
 admin_path = "/app/admin"
-if os.path.exists(admin_path):
-    logger.info(f"Montando arquivos estáticos de: {admin_path}")
-    app.mount("/panel", StaticFiles(directory=admin_path, html=True), name="panel")
-    app.mount("/admin", StaticFiles(directory=admin_path, html=True), name="admin_panel")
-else:
+if not os.path.exists(admin_path):
     # Fallback para desenvolvimento local
-    dev_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../admin"))
-    if os.path.exists(dev_path):
-        app.mount("/panel", StaticFiles(directory=dev_path, html=True), name="panel")
-        app.mount("/admin", StaticFiles(directory=dev_path, html=True), name="admin_panel")
+    admin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../admin"))
+
+if os.path.exists(admin_path):
+    logger.info(f"Montando Painel Admin em /panel a partir de: {admin_path}")
+    app.mount("/panel", StaticFiles(directory=admin_path, html=True), name="panel")
 
 @app.get("/")
 async def root():
-    # Redireciona a raiz direto para o novo painel
+    # Redireciona a raiz direto para o painel
     return RedirectResponse(url="/panel/")
 
 @app.get("/health")
