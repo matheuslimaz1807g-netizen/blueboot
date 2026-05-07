@@ -1,0 +1,39 @@
+services:
+  whatsapp_matheus:
+    image: blueboot-whatsapp
+    container_name: whatsapp_matheus
+    restart: unless-stopped
+    expose:
+      - "4000"
+    volumes:
+      - ./auth:/.wwebjs_auth
+      - ./cache:/.wwebjs_cache
+    networks:
+      - bluebot_network
+    security_opt:
+      - no-new-privileges:true
+
+  bot_matheus:
+    image: blueboot-bot
+    container_name: bot_matheus
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - APRO_API_BASE=https://api.bluebotapp.com.br
+      - DOCKER_CONTAINER=1
+      - CLIENT_SLUG=matheus
+    expose:
+      - "8080"
+    volumes:
+      - ./sessions:/app/sessions
+      - ./data:/app/data
+    depends_on:
+      - whatsapp_matheus
+    networks:
+      - bluebot_network
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  bluebot_network:
+    external: true

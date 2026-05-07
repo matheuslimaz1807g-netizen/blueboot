@@ -19,6 +19,8 @@ services:
       retries: 5
     security_opt:
       - no-new-privileges:true
+    networks:
+      - bluebot_network
 
   certbot:
     image: certbot/certbot:latest
@@ -26,6 +28,8 @@ services:
     volumes:
       - ./ssl/letsencrypt:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+    networks:
+      - bluebot_network
 
   api:
     build:
@@ -55,6 +59,8 @@ services:
       start_period: 15s
     security_opt:
       - no-new-privileges:true
+    networks:
+      - bluebot_network
 
   nginx:
     image: nginx:alpine
@@ -74,6 +80,8 @@ services:
         condition: service_healthy
     security_opt:
       - no-new-privileges:true
+    networks:
+      - bluebot_network
 
   whatsapp:
     build:
@@ -88,6 +96,8 @@ services:
       - whatsapp_cache:/.wwebjs_cache
     security_opt:
       - no-new-privileges:true
+    networks:
+      - bluebot_network
 
   bot:
     build:
@@ -111,6 +121,8 @@ services:
         condition: service_started
     security_opt:
       - no-new-privileges:true
+    networks:
+      - bluebot_network
 
 volumes:
   postgres_data:
@@ -119,3 +131,8 @@ volumes:
   whatsapp_cache:
   bot_sessions:
   bot_data:
+
+networks:
+  bluebot_network:
+    name: bluebot_network
+    driver: bridge
