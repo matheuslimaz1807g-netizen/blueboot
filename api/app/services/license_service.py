@@ -8,8 +8,7 @@ import random
 import string
 import uuid
 from datetime import datetime, timedelta, timezone
-
-from sqlalchemy import select, update
+from fastapi import HTTPExceptionfrom sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
@@ -188,22 +187,26 @@ async def create_license(
     db: AsyncSession, plan: str, expires_days: int, note: str | None = None, password: str | None = None
 ) -> License:
     """Create a new license with a generated key and optional password."""
-    key = generate_license_key()
-    # Ensure key uniqueness (extremely unlikely collision but handle it)
-    while await get_license_by_key(db, key):
+    try:
         key = generate_license_key()
+        # Ensure key uniqueness (extremely unlikely collision but handle it)
+        while await get_license_by_key(db, key):
+            key = generate_license_key()
 
-    now = datetime.now(timezone.utc)
-    lic = License(
-        key=key,
-        plan=plan,
-        active=True,
-        expires_at=now + timedelta(days=expires_days),
-        created_at=now,
-        note=note,
-        password=hash_password(password) if password else None,
-    )
-    db.add(lic)
-    await db.commit()
-    await db.refresh(lic)
-    return lic
+        now = datetime.now(timezone.utc)
+        lic = License(
+            key=key,
+            plan=plan,
+            active=True,
+            expires_at=now + timedelta(days=expires_days),
+            created_at=now,
+            note=note,
+            password=hash_password(password) if password else None,
+        )
+        db.add(lic)
+        await db.commit()
+        await db.refresh(lic)
+        return lic
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar licença: {str(e)}")

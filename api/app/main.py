@@ -55,13 +55,7 @@ async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
 # CORS - Restrito a domínios autorizados (ajustar conforme ambiente)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://admin.bluebotapp.com.br",
-        "https://painel.bluebot.com",
-        "https://admin.bluebot.com",
-        "http://localhost:3000",  # Dev
-        "http://localhost:8080",  # Bot panel
-    ],
+    allow_origins=["*"],  # Temporariamente aberto para debug
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
