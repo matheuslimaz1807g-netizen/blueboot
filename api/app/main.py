@@ -56,6 +56,7 @@ async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://admin.bluebotapp.com.br",
         "https://painel.bluebot.com",
         "https://admin.bluebot.com",
         "http://localhost:3000",  # Dev

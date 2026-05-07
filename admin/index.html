@@ -1730,7 +1730,7 @@
           loginError: "",
           loginForm: { username: "", password: "" },
           activeTab: "licenses",
-          apiBase: "/admin",
+          apiBase: "https://api.bluebotapp.com.br/admin",
           toast: { show: false, msg: "", type: "success" },
           tabs: [
             {
@@ -1809,7 +1809,7 @@
           // ── Version ───────────────────────────────────────────────────
           showVersionModal: false,
           versionForm: { version: "", changelog: "", download_url: "" },
-          apiBase: "/admin",
+          apiBase: "https://api.bluebotapp.com.br/admin",
 
           // ── Init ──────────────────────────────────────────────────────
           init() {
@@ -1835,7 +1835,7 @@
             this.loading = true;
             this.loginError = "";
             try {
-              const r = await fetch("/admin/login", {
+              const r = await fetch(`${this.apiBase}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(this.loginForm),
@@ -1933,7 +1933,7 @@
           // ── Licenses ─────────────────────────────────────────────────
           async loadLicenses() {
             try {
-              const r = await fetch("/admin/licenses", {
+              const r = await fetch(`${this.apiBase}/licenses`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -1974,7 +1974,7 @@
 
           async createLicense() {
             try {
-              const r = await fetch("/admin/licenses", {
+              const r = await fetch(`${this.apiBase}/licenses`, {
                 method: "POST",
                 headers: this.getHeaders(),
                 body: JSON.stringify(this.newLicForm),
@@ -2039,7 +2039,7 @@
               body.machine_id = null;
             }
             try {
-              const r = await fetch(`/admin/licenses/${this.editLicForm.id}`, {
+              const r = await fetch(`${this.apiBase}/licenses/${this.editLicForm.id}`, {
                 method: "PATCH",
                 headers: this.getHeaders(),
                 body: JSON.stringify(body),
@@ -2069,7 +2069,7 @@
             this.showAuthCodeModal = true;
             // Carregar config para pegar o phone
             try {
-              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -2089,7 +2089,7 @@
                 body.password = this.authCodeForm.password;
               }
               const r = await fetch(
-                `/admin/licenses/${this.authCodeLic.id}/auth-code`,
+                `${this.apiBase}/licenses/${this.authCodeLic.id}/auth-code`,
                 {
                   method: "POST",
                   headers: this.getHeaders(),
@@ -2135,7 +2135,7 @@
             this.showConfigModal = true;
             this.configData = null;
             try {
-              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -2190,7 +2190,7 @@
               return;
             }
             try {
-              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
                 method: "PUT",
                 headers: this.getHeaders(),
                 body: JSON.stringify(cfg),
@@ -2213,7 +2213,7 @@
             this.licLogs = [];
             this.activeTab = "log_viewer";
             try {
-              const r = await fetch(`/admin/licenses/${lic.id}/logs`, {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/logs`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -2226,7 +2226,7 @@
           // ── Versions ─────────────────────────────────────────────────
           async loadVersions() {
             try {
-              const r = await fetch("/admin/versions", {
+              const r = await fetch(`${this.apiBase}/versions`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -2238,7 +2238,7 @@
 
           async publishVersion() {
             try {
-              const r = await fetch("/admin/versions", {
+              const r = await fetch(`${this.apiBase}/versions`, {
                 method: "POST",
                 headers: this.getHeaders(),
                 body: JSON.stringify(this.versionForm),
@@ -2271,7 +2271,7 @@
           // ── Discovery ────────────────────────────────────────────────
           async loadPendingMachines() {
             try {
-              const r = await fetch("/admin/pending", {
+              const r = await fetch(`${this.apiBase}/pending`, {
                 headers: this.getHeaders(),
               });
               this.pendingMachines = await r.json();
@@ -2290,7 +2290,7 @@
             if (!this.linkForm.license_id) return;
             this.loading = true;
             try {
-              const r = await fetch("/admin/link", {
+              const r = await fetch(`${this.apiBase}/link`, {
                 method: "POST",
                 headers: this.getHeaders(),
                 body: JSON.stringify(this.linkForm),
@@ -2314,7 +2314,7 @@
           async rejectMachine(machineId) {
             if (!confirm("Tem certeza que deseja recusar este robô?")) return;
             try {
-              await fetch(`/admin/pending/${machineId}`, {
+              await fetch(`${this.apiBase}/pending/${machineId}`, {
                 method: "DELETE",
                 headers: this.getHeaders(),
               });
