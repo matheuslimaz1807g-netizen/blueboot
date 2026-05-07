@@ -20,6 +20,10 @@ let statusVal = "disconnected";
 let qrCodeBase64 = "";
 const client = new whatsapp_web_js_1.Client({
   authStrategy: new whatsapp_web_js_1.LocalAuth(),
+  webVersionCache: {
+    type: "remote",
+    remotePath: "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
+  },
   puppeteer: {
     headless: true,
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
@@ -62,7 +66,7 @@ client.on("qr", async (qr) => {
   statusVal = "qr";
   try {
     qrCodeBase64 = await qrcode_1.default.toDataURL(qr);
-    console.log("New QR Code generated. Scan it on the dashboard.");
+    console.log(`New QR Code generated. Length: ${qr.length}. Scan it on the dashboard.`);
   } catch (err) {
     console.error("Erro gerando QR base64:", err);
   }
