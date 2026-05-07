@@ -1,0 +1,122 @@
+# =============================================================================
+# BlueBot — CAMADA CLIENTE (1 instância por cliente)
+# Serviços: bot (Python) + whatsapp (Node.js/wweb.js)
+#
+# Pré-requisitos:
+#   - A rede "bluebot_network" já existe (criada pelo core)
+#   - O core (postgres + api + nginx) já está UP e healthy
+#
+# Como usar:
+#   Não edite este arquivo diretamente.
+#   Use o script:  scripts/novo-cliente.sh <slug>
+#
+# O script substituirá ${CLIENTE_SLUG} pelo slug real e criará
+# a pasta clientes/<slug>/docker-compose.yml já configurado.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # WhatsApp Bridge — wweb.js (Node.js)
+  # Mantém sessão autenticada no WhatsApp Web e expõe HTTP na rede interna.
+  # NÃO exposto ao host — só o bot acessa via rede Docker.
+  # Volumes isolados por CLIENTE_SLUG → sessões nunca se misturam.
+  # ---------------------------------------------------------------------------
+  whatsapp_${CLIENTE_SLUG}:
+    build:
+      # Aponta para o Dockerfile.whatsapp na raiz do repositório
+      context: /opt/bluebot
+      dockerfile: Dockerfile.whatsapp
+    image: bluebot_whatsapp:latest
+    container_name: whatsapp_${CLIENTE_SLUG}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Identificador do cliente passado ao processo Node para logs e métricas
+      CLIENTE_SLUG: ${CLIENTE_SLUG}
+      # Porta interna do servidor HTTP do wweb.js
+      WHATSAPP_PORT: "4000"
+    expose:
+      - "4000"
+    volumes:
+      # Sessão de autenticação WhatsApp — isolada por cliente
+      - whatsapp_auth_${CLIENTE_SLUG}:/.wwebjs_auth
+      # Cache do Chromium — isolado por cliente
+      - whatsapp_cache_${CLIENTE_SLUG}:/.wwebjs_cache
+    healthcheck:
+      # Verifica se o servidor HTTP interno está respondendo
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s   # wweb.js demora ~30-60s para autenticar na primeira vez
+    networks:
+      - bluebot_network
+    security_opt:
+      - no-new-privileges:true
+    # Chromium precisa de shm maior para não crashar ao renderizar WhatsApp Web
+    shm_size: "256m"
+
+  # ---------------------------------------------------------------------------
+  # Bot Python — pipeline Telegram → WhatsApp + conversão de links afiliados
+  # Comunica com a API Central via rede Docker interna (sem sair para internet)
+  # Comunica com o whatsapp_${CLIENTE_SLUG} via rede Docker interna
+  # NÃO exposto ao host.
+  # ---------------------------------------------------------------------------
+  bot_${CLIENTE_SLUG}:
+    build:
+      context: /opt/bluebot
+      dockerfile: Dockerfile.bot
+    image: bluebot_bot:latest
+    container_name: bot_${CLIENTE_SLUG}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CLIENTE_SLUG: ${CLIENTE_SLUG}
+      # URL da API Central via rede interna — evita latência e custo de SSL
+      # "api" é o hostname do container bluebot_api na rede bluebot_network
+      APRO_API_BASE: "http://api:8000"
+      # Endpoint do WhatsApp deste cliente, acessível via rede Docker interna
+      WHATSAPP_ENDPOINT: "http://whatsapp_${CLIENTE_SLUG}:4000"
+      DOCKER_CONTAINER: "1"
+    expose:
+      - "8080"
+    volumes:
+      # Sessões Telegram isoladas por cliente (chave de sessão Pyrogram/Telethon)
+      - bot_sessions_${CLIENTE_SLUG}:/app/sessions
+      # Dados persistentes do bot (estado, filas, cache de links)
+      - bot_data_${CLIENTE_SLUG}:/app/data
+    depends_on:
+      whatsapp_${CLIENTE_SLUG}:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - bluebot_network
+    security_opt:
+      - no-new-privileges:true
+
+# =============================================================================
+# Volumes — todos com sufixo do slug para garantir isolamento total
+# =============================================================================
+volumes:
+  whatsapp_auth_${CLIENTE_SLUG}:
+    driver: local
+  whatsapp_cache_${CLIENTE_SLUG}:
+    driver: local
+  bot_sessions_${CLIENTE_SLUG}:
+    driver: local
+  bot_data_${CLIENTE_SLUG}:
+    driver: local
+
+# =============================================================================
+# Rede — usa a rede externa criada pelo core
+# O bot se comunica com postgres e api sem expor nada ao host
+# =============================================================================
+networks:
+  bluebot_network:
+    external: true
