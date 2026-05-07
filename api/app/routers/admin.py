@@ -86,6 +86,14 @@ async def admin_login(body: AdminLoginRequest, request: Request):
 
 # Rate limiter for login is already defined above
 
+@router.get("/licenses", response_model=list[LicenseOut])
+async def list_licenses(
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_admin_user),
+):
+    result = await db.execute(select(License).order_by(desc(License.created_at)))
+    return result.scalars().all()
+
 @router.post("/licenses", response_model=LicenseOut, status_code=201)
 async def create_license(
     body: LicenseCreateRequest,
