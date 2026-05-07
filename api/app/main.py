@@ -15,6 +15,8 @@ from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.routers import admin, client
 
+logger = logging.getLogger(__name__)
+
 settings = get_settings()
 
 # Rate limiter - configuração global
