@@ -5,7 +5,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", env_file=".env")
 
-    DATABASE_URL: str = "postgresql+asyncpg://bluebot:S3cur3P@ss!2026#BlueBot@postgres:5432/bluebot"
+    DATABASE_URL: str = "postgresql+asyncpg://bluebot:S3cur3P%40ss%212026%23BlueBot@postgres:5432/bluebot"
     JWT_SECRET: str = "7d33672694b5f0741bfaf7cf73669a6bb46d85f9df8286e2d323fbf9dbf86a66"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60

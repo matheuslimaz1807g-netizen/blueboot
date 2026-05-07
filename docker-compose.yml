@@ -36,7 +36,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-bluebot}:${POSTGRES_PASSWORD:-S3cur3P@ss!2026#BlueBot}@postgres:5432/${POSTGRES_DB:-bluebot}"
+      DATABASE_URL: "postgresql+asyncpg://bluebot:S3cur3P%40ss%212026%23BlueBot@postgres:5432/bluebot"
     # Porta 8000 NÃO exposta externamente — apenas nginx acessa
     expose:
       - "8000"
