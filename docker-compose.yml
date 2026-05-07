@@ -84,6 +84,7 @@ services:
       - bluebot_network
 
   whatsapp:
+    profiles: ["manual"]
     build:
       context: .
       dockerfile: Dockerfile.whatsapp
@@ -101,6 +102,7 @@ services:
       - bluebot_network
 
   bot:
+    profiles: ["manual"]
     build:
       context: .
       dockerfile: Dockerfile.bot
