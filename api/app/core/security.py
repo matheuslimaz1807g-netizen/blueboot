@@ -10,7 +10,7 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 # Fallback rígido para garantir que os dados do usuário continuem legíveis mesmo com erro de ambiente
 _original_key = "ptaiS0u-FfzRI0iG-scBtJphQyrPIzG5un0YCuiEBtU="
 try:
