@@ -184,7 +184,7 @@ class AdminLoginResponse(BaseModel):
 
 
 class LicenseCreateRequest(BaseModel):
-    plan: str = Field(default="basic", pattern=r"^(?i)(basic|pro)$")
+    plan: str = "basic"
     expires_days: int = Field(default=30, ge=1, le=3650)
     note: str | None = Field(default=None, max_length=256)
     password: str | None = Field(default=None, max_length=64)
@@ -192,8 +192,8 @@ class LicenseCreateRequest(BaseModel):
 
 class LicensePatchRequest(BaseModel):
     active: bool | None = None
-    plan: str | None = Field(default=None, pattern=r"^(?i)(basic|pro)$")
-    expires_days: int | None = Field(default=None, ge=1, le=3650)
+    plan: str | None = None
+    expires_days: int | None = None
     schedule_rules: dict | None = None
     note: str | None = Field(default=None, max_length=256)
     machine_id: str | None = Field(default=None, description="Set to null to unbind machine")
