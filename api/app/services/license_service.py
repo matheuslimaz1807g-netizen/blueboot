@@ -8,7 +8,8 @@ import random
 import string
 import uuid
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPExceptionfrom sqlalchemy import select, update
+from fastapi import HTTPException
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
