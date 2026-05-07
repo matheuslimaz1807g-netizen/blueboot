@@ -29,7 +29,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # API_BASE is set at build time and baked into the compiled module.
 # In production, this is always set. Empty = dev mode only.
 _API_BASE_DEFAULT: str = "https://api.yourdomain.com"
-HEARTBEAT_INTERVAL: int = 60              # 1 minute (for faster status sync)
+HEARTBEAT_INTERVAL: int = 15              # 15 seconds (for faster status sync)
 OFFLINE_GRACE_SECONDS: int = 30 * 60    # 30 minutes (reduced from 4h)
 REQUEST_TIMEOUT: int = 10
 

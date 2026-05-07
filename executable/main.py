@@ -319,12 +319,18 @@ def main():
                 r = requests.get(wpp_url, timeout=5)
                 if r.status_code == 200:
                     d = r.json()
+                    status = d.get("status")
+                    qr = d.get("qr")
+                    if qr:
+                        add_log("info", f"💓 QR Code detectado e pronto para envio (Tam: {len(qr)})")
                     return {
-                        "whatsapp_status": d.get("status"),
-                        "whatsapp_qr": d.get("qr")
+                        "whatsapp_status": status,
+                        "whatsapp_qr": qr
                     }
-            except:
-                pass
+                else:
+                    add_log("warning", f"💓 Falha ao buscar status WPP: Status {r.status_code}")
+            except Exception as e:
+                add_log("warning", f"💓 Erro na conexão com WhatsApp: {e}")
             return {}
 
         start_heartbeat(license_key, mid, on_grace_expired=on_expired, status_callback=get_wpp_status_callback)
