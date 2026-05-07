@@ -56,6 +56,7 @@ const client = new whatsapp_web_js_1.Client({
       "--password-store=basic",
       "--use-gl=swiftshader",
       "--use-mock-keychain",
+      "--disable-blink-features=AutomationControlled",
       "--window-size=1920,1080",
       "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     ],
