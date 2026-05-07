@@ -6,8 +6,8 @@ services:
     expose:
       - "4000"
     volumes:
-      - ./auth:/.wwebjs_auth
-      - ./cache:/.wwebjs_cache
+      - ./auth:/app/.wwebjs_auth
+      - ./cache:/app/.wwebjs_cache
     networks:
       - bluebot_network
     security_opt:
