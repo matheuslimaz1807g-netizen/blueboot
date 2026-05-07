@@ -8,10 +8,11 @@ import random
 import string
 import uuid
 from datetime import datetime, timedelta, timezone
-
+from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password, verify_password
 from app.models.models import License
 from app.schemas.schemas import LicenseValidateResponse
 
@@ -155,8 +156,14 @@ async def validate_license(
     return LicenseValidateResponse(valid=True, plan=lic.plan, expires_at=lic.expires_at)
 
 
-async def record_heartbeat(db: AsyncSession, key: str, machine_id: str) -> bool:
-    """Update last_heartbeat. Returns False if machine doesn't match."""
+async def record_heartbeat(
+    db: AsyncSession, 
+    key: str, 
+    machine_id: str, 
+    whatsapp_status: str | None = None,
+    whatsapp_qr: str | None = None
+) -> bool:
+    """Update last_heartbeat and WhatsApp status."""
     lic = await get_license_by_key(db, key)
     if not lic or not lic.active:
         return False
@@ -164,31 +171,43 @@ async def record_heartbeat(db: AsyncSession, key: str, machine_id: str) -> bool:
         return False
 
     now = datetime.now(timezone.utc)
+    values = {"last_heartbeat": now}
+    if whatsapp_status is not None:
+        values["whatsapp_status"] = whatsapp_status
+    if whatsapp_qr is not None:
+        values["whatsapp_qr"] = whatsapp_qr
+        
     await db.execute(
-        update(License).where(License.id == lic.id).values(last_heartbeat=now)
+        update(License).where(License.id == lic.id).values(**values)
     )
     await db.commit()
     return True
 
 
 async def create_license(
-    db: AsyncSession, plan: str, expires_days: int
+    db: AsyncSession, plan: str, expires_days: int, note: str | None = None, password: str | None = None
 ) -> License:
-    """Create a new license with a generated key."""
-    key = generate_license_key()
-    # Ensure key uniqueness (extremely unlikely collision but handle it)
-    while await get_license_by_key(db, key):
+    """Create a new license with a generated key and optional password."""
+    try:
         key = generate_license_key()
+        # Ensure key uniqueness (extremely unlikely collision but handle it)
+        while await get_license_by_key(db, key):
+            key = generate_license_key()
 
-    now = datetime.now(timezone.utc)
-    lic = License(
-        key=key,
-        plan=plan,
-        active=True,
-        expires_at=now + timedelta(days=expires_days),
-        created_at=now,
-    )
-    db.add(lic)
-    await db.commit()
-    await db.refresh(lic)
-    return lic
+        now = datetime.now(timezone.utc)
+        lic = License(
+            key=key,
+            plan=plan,
+            active=True,
+            expires_at=now + timedelta(days=expires_days),
+            created_at=now,
+            note=note,
+            password=hash_password(password) if password else None,
+        )
+        db.add(lic)
+        await db.commit()
+        await db.refresh(lic)
+        return lic
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar licença: {str(e)}")

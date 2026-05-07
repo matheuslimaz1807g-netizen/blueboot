@@ -38,6 +38,8 @@ class LicenseValidateRequest(BaseModel):
 class LicenseHeartbeatRequest(BaseModel):
     license_key: str
     machine_id: str
+    whatsapp_status: str | None = None
+    whatsapp_qr: str | None = None
 
 
 class LicenseValidateResponse(BaseModel):
@@ -81,8 +83,18 @@ class LicenseOut(BaseModel):
     last_heartbeat: datetime | None
     schedule_rules: dict | None = None
     note: str | None = None
+    whatsapp_status: str | None = None
+    whatsapp_qr: str | None = None
+    password: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ── Client Login (SaaS) ──────────────────────────────────────────────────────
+
+class ClientLoginRequest(BaseModel):
+    license_key: str
+    password: str
 
 
 # ── ClientConfig ──────────────────────────────────────────────────────────────
@@ -108,6 +120,8 @@ class ConfigIn(BaseModel):
     ml_token: str | None = None
     api_id: str | None = None
     api_hash: str | None = None
+    session_string: str | None = None
+    bot_dashboard_url: str | None = None
 
 
 class ConfigOut(BaseModel):
@@ -130,6 +144,8 @@ class ConfigOut(BaseModel):
     ml_token: str | None
     api_id: str | None
     api_hash: str | None
+    session_string: str | None
+    bot_dashboard_url: str | None
 
 
 # ── AppVersion ────────────────────────────────────────────────────────────────
@@ -168,17 +184,20 @@ class AdminLoginResponse(BaseModel):
 
 
 class LicenseCreateRequest(BaseModel):
-    plan: str = Field(default="basic", pattern=r"^(basic|pro)$")
+    plan: str = "basic"
     expires_days: int = Field(default=30, ge=1, le=3650)
     note: str | None = Field(default=None, max_length=256)
+    password: str | None = Field(default=None, max_length=64)
 
 
 class LicensePatchRequest(BaseModel):
     active: bool | None = None
-    plan: str | None = Field(default=None, pattern=r"^(basic|pro)$")
-    expires_days: int | None = Field(default=None, ge=1, le=3650)
+    plan: str | None = None
+    expires_days: int | None = None
     schedule_rules: dict | None = None
     note: str | None = Field(default=None, max_length=256)
+    machine_id: str | None = Field(default=None, description="Set to null to unbind machine")
+    password: str | None = Field(default=None, max_length=64)
 
 
 # ── LogEntry ──────────────────────────────────────────────────────────────────

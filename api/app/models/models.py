@@ -47,6 +47,20 @@ class License(Base):
         JSONB, nullable=True, default=dict
     )
     note: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    
+    # Status do WhatsApp por Licença (enviado via heartbeat)
+    whatsapp_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    whatsapp_qr: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Código de verificação Telegram pendente (pull-based: o bot busca aqui)
+    pending_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    pending_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    pending_code_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Autenticação para o cliente (SaaS)
+    password: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     config: Mapped["ClientConfig | None"] = relationship(
         "ClientConfig", back_populates="license", uselist=False, cascade="all, delete-orphan"
@@ -95,6 +109,12 @@ class ClientConfig(Base):
     # Telegram API Credentials (Encrypted)
     api_id_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_hash_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Telegram Session String (Encrypted)
+    session_string_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Bot Dashboard URL (e.g. http://192.168.0.10:8080) — used by admin to relay auth-code
+    bot_dashboard_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False

@@ -282,13 +282,24 @@ class BotRunner:
 
             # ── Loop de polling (Tarefa Principal) ────────────────────────────
             self._log("info", "🚀 Motor de busca (Polling) iniciado!")
+            
+            # Log inicial com configurações
+            wpp_enabled = self._config.get("send_whatsapp", False)
+            wpp_destinations = self._config.get("wpp_destinations", [])
+            wpp_endpoint = self._config.get("whatsapp_endpoint") or "http://localhost:4000/send"
+            
+            # Garantir que a config interna também seja corrigida se estiver nula
+            if self._config.get("whatsapp_endpoint") is None:
+                self._config["whatsapp_endpoint"] = wpp_endpoint
+            self._log("info", f"⚙️ WhatsApp Config: ENABLED={wpp_enabled} | Destinos={wpp_destinations} | Endpoint={wpp_endpoint}")
+            
             last_heartbeat = time.time()
             
             while not self._stop_event.is_set():
                 try:
                     # Heartbeat
                     if time.time() - last_heartbeat > 60:
-                        self._log("info", f"💓 Heartbeat: Bot monitorando {len(resolved_chats)} fontes...")
+                        self._log("info", f"💓 Heartbeat: Bot monitorando {len(resolved_chats)} fontes... (WhatsApp: {'✅' if wpp_enabled else '❌'})")
                         last_heartbeat = time.time()
 
                     for entity in resolved_chats:

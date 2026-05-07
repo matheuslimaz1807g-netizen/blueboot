@@ -12,7 +12,10 @@ import app.models.models  # noqa: F401
 
 settings = get_settings()
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Escape percent signs when writing the URL into Alembic's ConfigParser,
+# because configparser uses % for interpolation.
+escaped_url = settings.DATABASE_URL.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", escaped_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

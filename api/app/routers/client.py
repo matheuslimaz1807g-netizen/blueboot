@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.config import get_settings
+from app.core.security import verify_password
 from app.schemas.schemas import (
     ConfigIn,
     ConfigOut,
@@ -89,10 +90,38 @@ async def heartbeat(
     body: LicenseHeartbeatRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    ok = await license_service.record_heartbeat(db, body.license_key, body.machine_id)
+    ok = await license_service.record_heartbeat(
+        db, 
+        body.license_key, 
+        body.machine_id,
+        whatsapp_status=body.whatsapp_status,
+        whatsapp_qr=body.whatsapp_qr
+    )
     if not ok:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Licença inválida ou máquina não autorizada")
     return OkResponse()
+
+
+@router.get("/license/auth-code")
+async def get_pending_auth_code(
+    license_key: str = Query(..., min_length=5),
+    machine_id: str = Query(..., min_length=10),
+    db: AsyncSession = Depends(get_db),
+):
+    lic = await _get_verified_license(license_key, machine_id, db)
+    if not lic.pending_code:
+        return {"has_code": False}
+    
+    code = lic.pending_code
+    password = lic.pending_password
+    
+    # Consome (zera para não usar de novo)
+    lic.pending_code = None
+    lic.pending_password = None
+    lic.pending_code_at = None
+    await db.commit()
+    
+    return {"has_code": True, "code": code, "password": password}
 
 
 # ── Config ────────────────────────────────────────────────────────────────────

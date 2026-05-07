@@ -29,7 +29,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # API_BASE is set at build time and baked into the compiled module.
 # In production, this is always set. Empty = dev mode only.
 _API_BASE_DEFAULT: str = "https://api.yourdomain.com"
-HEARTBEAT_INTERVAL: int = 15 * 60       # 15 minutes
+HEARTBEAT_INTERVAL: int = 15              # 15 seconds (for faster status sync)
 OFFLINE_GRACE_SECONDS: int = 30 * 60    # 30 minutes (reduced from 4h)
 REQUEST_TIMEOUT: int = 10
 
@@ -55,16 +55,31 @@ class LicenseError(Exception):
 
 # ── Machine fingerprint ────────────────────────────────────────────────────────
 
+_MACHINE_ID_FILE = "/app/data/machine_id"
+
+
 def get_machine_id() -> str:
     """
-    Returns a stable SHA-256 fingerprint of this machine by combining:
-    - Primary network interface MAC address
-    - Hostname
-    - Windows machine GUID (if available)
+    Returns a STABLE machine fingerprint that persists across container restarts.
 
-    The result is deterministic across reboots and does not change unless
-    the NIC or hostname changes.
+    Uses a file-based approach:
+    - If /app/data/machine_id exists, reads and returns it (persistent across restarts)
+    - Otherwise, generates a new ID from hardware fingerprint and saves it
+
+    This ensures the machine_id NEVER changes between Docker container restarts,
+    preventing license validation failures.
     """
+    # Try to read existing persistent machine_id
+    try:
+        if os.path.exists(_MACHINE_ID_FILE):
+            with open(_MACHINE_ID_FILE, "r") as f:
+                stored = f.read().strip()
+                if stored and len(stored) == 64:
+                    return stored
+    except Exception:
+        pass
+
+    # Generate from hardware fingerprint (stable across reboots)
     parts = []
     try:
         mac = str(uuid.getnode())
@@ -77,13 +92,6 @@ def get_machine_id() -> str:
         parts.append(hostname)
     except Exception:
         parts.append("unknown_host")
-
-    # Adiciona ID do Docker se disponível
-    if os.path.exists("/proc/self/cgroup"):
-        try:
-            with open("/proc/self/cgroup", "r") as f:
-                parts.append(f.read())
-        except: pass
 
     # Try to get Windows machine GUID for extra stability
     if platform.system() == "Windows":
@@ -101,7 +109,7 @@ def get_machine_id() -> str:
         except Exception:
             pass
     elif platform.system() == "Linux":
-        # Linux machine-id
+        # Linux machine-id (stable on real machines, may change in Docker)
         for p in ["/etc/machine-id", "/var/lib/dbus/machine-id"]:
             if os.path.exists(p):
                 try:
@@ -111,7 +119,17 @@ def get_machine_id() -> str:
                 except: pass
 
     raw = "|".join(parts)
-    return hashlib.sha256(raw.encode()).hexdigest()
+    mid = hashlib.sha256(raw.encode()).hexdigest()
+
+    # Save to persistent file for future restarts
+    try:
+        os.makedirs(os.path.dirname(_MACHINE_ID_FILE), exist_ok=True)
+        with open(_MACHINE_ID_FILE, "w") as f:
+            f.write(mid)
+    except Exception:
+        pass
+
+    return mid
 
 
 # ── Remote validation ─────────────────────────────────────────────────────────
@@ -156,19 +174,27 @@ def validate_license(key: str, machine_id: str) -> dict:
     return data  # { valid: True, plan: "basic"|"pro", expires_at: "..." | null }
 
 
-def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on_grace_expired=None) -> None:
+def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on_grace_expired=None, status_callback=None) -> None:
     """Background thread that PINGs the server every HEARTBEAT_INTERVAL seconds."""
     last_success: float = time.time()
 
     while not stop_event.is_set():
-        stop_event.wait(timeout=HEARTBEAT_INTERVAL)
-        if stop_event.is_set():
-            break
+        # Payload base do heartbeat
+        payload = {"license_key": key, "machine_id": machine_id}
+        
+        # Coleta status extra (ex: WhatsApp) se houver um callback definido
+        if status_callback:
+            try:
+                extra = status_callback()
+                if isinstance(extra, dict):
+                    payload.update(extra)
+            except:
+                pass
 
         try:
             resp = requests.post(
                 f"{get_api_base()}/license/heartbeat",
-                json={"license_key": key, "machine_id": machine_id},
+                json=payload,
                 timeout=REQUEST_TIMEOUT,
                 verify=False,
             )
@@ -179,6 +205,9 @@ def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on
             if elapsed > OFFLINE_GRACE_SECONDS:
                 if on_grace_expired:
                     on_grace_expired()
+        
+        # Espera pelo próximo ciclo
+        stop_event.wait(timeout=HEARTBEAT_INTERVAL)
 
 
 # Module-level stop event so callers can shut down heartbeat cleanly
@@ -186,14 +215,14 @@ _heartbeat_stop = threading.Event()
 _heartbeat_on_expired = None
 
 
-def start_heartbeat(key: str, machine_id: str, on_grace_expired: Optional[callable] = None) -> None:
+def start_heartbeat(key: str, machine_id: str, on_grace_expired: Optional[callable] = None, status_callback: Optional[callable] = None) -> None:
     """Start the heartbeat daemon thread. Call once after successful validation."""
     global _heartbeat_on_expired
     _heartbeat_on_expired = on_grace_expired
     _heartbeat_stop.clear()
     t = threading.Thread(
         target=_heartbeat_worker,
-        args=(key, machine_id, _heartbeat_stop, on_grace_expired),
+        args=(key, machine_id, _heartbeat_stop, on_grace_expired, status_callback),
         daemon=True,
         name="LicenseHeartbeat",
     )

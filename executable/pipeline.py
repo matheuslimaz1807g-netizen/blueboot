@@ -219,17 +219,15 @@ async def processar_mensagem(
                     log_callback("info", f"[{msg_id}] Link ML detectado após expansão: {expanded_link}")
                     try:
                         aff = await mercadolivre.convert(expanded_link, config.get("ml_token", ""))
-                        if aff:
+                        if aff and aff != expanded_link:
                             text = text.replace(original_link, aff)
                             converted_links[original_link] = aff
                             log_callback("info", f"[{msg_id}] Link ML convertido via Navegador.")
                             any_link_converted = True
                         else:
-                            log_callback("warning", f"[{msg_id}] Link ML nao convertido. Abortando envio. URL: {expanded_link}")
-                            return False, False, False
+                            log_callback("warning", f"[{msg_id}] Link ML nao convertido. Usando link original. URL: {expanded_link}")
                     except Exception as exc:
-                        log_callback("error", f"[{msg_id}] Erro ML ao converter {expanded_link}: {exc}. Abortando envio.")
-                        return False, False, False
+                        log_callback("error", f"[{msg_id}] Erro ML ao converter {expanded_link}: {exc}. Usando link original.")
         else:
             log_callback("info", f"[{msg_id}] Conversão Mercado Livre desativada.")
 
@@ -355,26 +353,43 @@ async def processar_mensagem(
         # ── Step 6: Send to WhatsApp ──────────────────────────────────────────
         wp_sent = False
         wpp_destinations = config.get("wpp_destinations", [])
+        wpp_endpoint = config.get("whatsapp_endpoint") or "http://localhost:4000/send"
+        
+        # Log de debug para diagnosticar problemas
+        log_callback("info", f"[{msg_id}] [WhatsApp Debug] ENABLE_WHATSAPP={config.get('send_whatsapp')} | Endpoint={wpp_endpoint} | Destinos={wpp_destinations} (tipo: {type(wpp_destinations)})")
+        
         if config.get("send_whatsapp"):
-            wpp_endpoint = config.get("whatsapp_endpoint") or "http://localhost:4000/send"
-            if wpp_destinations:
+            if isinstance(wpp_destinations, list) and len(wpp_destinations) > 0:
                 payload: dict = {"text": text, "targets": wpp_destinations}
                 if image_path and os.path.exists(image_path):
                     with open(image_path, "rb") as f:
                         payload["base64Image"] = base64.b64encode(f.read()).decode()
                         payload["mimeType"] = "image/jpeg"
+                    log_callback("info", f"[{msg_id}] [WhatsApp] Enviando com imagem ({os.path.getsize(image_path)} bytes).")
+                else:
+                    log_callback("info", f"[{msg_id}] [WhatsApp] Enviando apenas texto.")
+                
+                log_callback("info", f"[{msg_id}] [WhatsApp] POST para {wpp_endpoint} | Grupos: {', '.join(wpp_destinations)}")
                 try:
                     async with httpx.AsyncClient(timeout=20) as client:
                         resp = await client.post(wpp_endpoint, json=payload)
                         resp.raise_for_status()
-                    log_callback("success", f"[{msg_id}] Enviado para WhatsApp.")
+                    log_callback("success", f"[{msg_id}] ✅ Enviado para WhatsApp com sucesso.")
                     wp_sent = True
+                except httpx.HTTPStatusError as exc:
+                    try:
+                        err_detail = exc.response.json().get("error", exc.response.text)
+                    except:
+                        err_detail = exc.response.text
+                    log_callback("error", f"[{msg_id}] ❌ Erro WhatsApp ({exc.response.status_code}): {err_detail}")
                 except Exception as exc:
-                    log_callback("error", f"[{msg_id}] Erro WhatsApp: {exc}")
+                    log_callback("error", f"[{msg_id}] ❌ Erro ao conectar no WhatsApp: {exc}")
+            elif not isinstance(wpp_destinations, list):
+                log_callback("error", f"[{msg_id}] ❌ ERRO: wpp_destinations não é uma lista! Tipo: {type(wpp_destinations)} | Valor: {wpp_destinations}")
             else:
-                log_callback("warning", f"[{msg_id}] Envio WhatsApp ativo, mas sem grupos de destino.")
+                log_callback("warning", f"[{msg_id}] ⚠️ Envio WhatsApp ativo, mas lista de destinos está vazia.")
         else:
-            log_callback("info", f"[{msg_id}] Envio para WhatsApp desativado.")
+            log_callback("info", f"[{msg_id}] ℹ️ Envio para WhatsApp DESATIVADO no config.")
 
         return True, tg_sent, wp_sent
 

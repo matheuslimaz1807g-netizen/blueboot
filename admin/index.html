@@ -586,11 +586,25 @@
             <div class="card mb-6 border border-accent/30 bg-accent/5">
               <div class="flex items-center gap-3 mb-4">
                 <div class="p-2 bg-accent/20 rounded-lg text-accent">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    ></path>
+                  </svg>
                 </div>
-                <h3 class="text-white font-bold m-0">Novos Robôs Aguardando Aprovação</h3>
+                <h3 class="text-white font-bold m-0">
+                  Novos Robôs Aguardando Aprovação
+                </h3>
               </div>
-              
+
               <div class="table-wrap">
                 <table class="w-full">
                   <thead>
@@ -605,21 +619,59 @@
                     <template x-for="pm in pendingMachines" :key="pm.id">
                       <tr class="border-b border-slate-700/30">
                         <td class="py-3">
-                          <div class="text-white font-bold" x-text="pm.label || 'Sem Nome'"></div>
-                          <div class="text-[10px] font-mono text-slate-500" x-text="pm.machine_id"></div>
+                          <div
+                            class="text-white font-bold"
+                            x-text="pm.label || 'Sem Nome'"
+                          ></div>
+                          <div
+                            class="text-[10px] font-mono text-slate-500"
+                            x-text="pm.machine_id"
+                          ></div>
                         </td>
                         <td class="py-3">
-                          <div class="text-xs text-slate-300" x-text="pm.hostname"></div>
-                          <div class="text-[10px] text-slate-500" x-text="pm.platform"></div>
+                          <div
+                            class="text-xs text-slate-300"
+                            x-text="pm.hostname"
+                          ></div>
+                          <div
+                            class="text-[10px] text-slate-500"
+                            x-text="pm.platform"
+                          ></div>
                         </td>
                         <td class="py-3">
-                          <div class="text-xs text-slate-300" x-text="pm.ip_address"></div>
-                          <div class="text-[10px] text-slate-500" x-text="fmtTime(pm.last_seen)"></div>
+                          <div
+                            class="text-xs text-slate-300"
+                            x-text="pm.ip_address"
+                          ></div>
+                          <div
+                            class="text-[10px] text-slate-500"
+                            x-text="fmtTime(pm.last_seen)"
+                          ></div>
                         </td>
                         <td class="py-3 text-right">
-                          <button @click="openLinkModal(pm)" class="btn btn-blue py-1 px-3 text-[10px]">VINCULAR</button>
-                          <button @click="rejectMachine(pm.machine_id)" class="ml-2 text-slate-500 hover:text-red-400">
-                            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                          <button
+                            @click="openLinkModal(pm)"
+                            class="btn btn-blue py-1 px-3 text-[10px]"
+                          >
+                            VINCULAR
+                          </button>
+                          <button
+                            @click="rejectMachine(pm.machine_id)"
+                            class="ml-2 text-slate-500 hover:text-red-400"
+                          >
+                            <svg
+                              class="w-4 h-4 inline"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              ></path>
+                            </svg>
                           </button>
                         </td>
                       </tr>
@@ -638,6 +690,7 @@
                   <th>Chave</th>
                   <th>Plano</th>
                   <th>Status</th>
+                  <th>WhatsApp</th>
                   <th>Máquina</th>
                   <th>Expiração</th>
                   <th>Heartbeat</th>
@@ -654,7 +707,10 @@
                 </template>
                 <template x-for="lic in licenses" :key="lic.id">
                   <tr>
-                    <td class="text-xs font-medium text-white" x-text="lic.note || '—'"></td>
+                    <td
+                      class="text-xs font-medium text-white"
+                      x-text="lic.note || '—'"
+                    ></td>
                     <td
                       class="font-mono text-xs text-white font-medium"
                       x-text="lic.key"
@@ -671,6 +727,18 @@
                         class="badge"
                         :class="lic.active ? 'badge-green' : 'badge-red'"
                         x-text="lic.active ? 'ATIVA' : 'INATIVA'"
+                      ></span>
+                    </td>
+                    <td>
+                      <span
+                        class="badge"
+                        :class="{
+                          'badge-green': lic.whatsapp_status === 'connected',
+                          'badge-yellow': lic.whatsapp_status === 'qr',
+                          'badge-red': lic.whatsapp_status === 'disconnected' || lic.whatsapp_status === 'error',
+                          'badge-gray': !lic.whatsapp_status
+                        }"
+                        x-text="lic.whatsapp_status ? lic.whatsapp_status.toUpperCase() : '—'"
                       ></span>
                     </td>
                     <td>
@@ -755,6 +823,20 @@
                               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                             />
                           </svg>
+                        </button>
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          @click="openAuthCodeModal(lic)"
+                          title="Código Telegram"
+                        >
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        </button>
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          @click="openWppModal(lic)"
+                          title="WhatsApp do Cliente"
+                        >
+                          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                         </button>
                       </div>
                     </td>
@@ -875,7 +957,10 @@
                   <span x-text="selectedLic?.key?.substring(5,9)"></span>
                 </div>
                 <div>
-                  <p class="text-sm font-medium text-white" x-text="selectedLic?.note || 'Licença sem nome'"></p>
+                  <p
+                    class="text-sm font-medium text-white"
+                    x-text="selectedLic?.note || 'Licença sem nome'"
+                  ></p>
                   <p
                     class="text-xs font-mono text-accent"
                     x-text="selectedLic?.key"
@@ -940,6 +1025,59 @@
                   </template>
                 </tbody>
               </table>
+          </div>
+        </div>
+
+        <!-- WhatsApp tab -->
+        <div x-show="activeTab === 'whatsapp'" class="p-8">
+          <div class="mb-8">
+            <h2 class="text-2xl font-bold text-white">Conexão WhatsApp</h2>
+            <p class="text-sm text-muted mt-1">
+              Conecte o robô ao WhatsApp para enviar mensagens aos grupos
+            </p>
+          </div>
+          
+          <div class="card max-w-md mx-auto text-center py-10" x-data="{ wpp: { status: 'loading', qr: '' } }" x-init="
+            const loadStatus = async () => {
+              if (activeTab !== 'whatsapp' && wpp.status === 'connected') return;
+              try {
+                const r = await fetch('/admin/whatsapp/status', { headers: getHeaders() });
+                const d = await r.json();
+                wpp = d;
+              } catch(e) {}
+            };
+            loadStatus();
+            setInterval(loadStatus, 5000);
+          ">
+            <div x-show="wpp.status === 'connected'">
+               <div class="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                 <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+               </div>
+               <h3 class="text-xl font-bold text-white mb-2">WhatsApp Conectado</h3>
+               <p class="text-muted text-sm">O robô está pronto para enviar mensagens.</p>
+            </div>
+            
+            <div x-show="wpp.status === 'qr'">
+               <h3 class="text-xl font-bold text-white mb-6">Aguardando Escaneamento</h3>
+               <div class="bg-white p-4 rounded-xl inline-block mb-6 shadow-2xl">
+                 <img :src="wpp.qr" width="240" height="240" />
+               </div>
+               <p class="text-muted text-sm px-6">
+                 Abra o WhatsApp no seu celular > Aparelhos Conectados > Conectar um aparelho.
+               </p>
+            </div>
+            
+            <div x-show="wpp.status === 'loading' || wpp.status === 'disconnected'">
+               <div class="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6"></div>
+               <p class="text-muted">Buscando status do serviço...</p>
+            </div>
+            
+            <div x-show="wpp.status === 'error'">
+               <div class="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+               </div>
+               <p class="text-red-400 text-sm mb-4" x-text="wpp.message"></p>
+               <button class="btn btn-secondary btn-sm" @click="location.reload()">Tentar novamente</button>
             </div>
           </div>
         </div>
@@ -958,7 +1096,12 @@
         <div class="space-y-4">
           <div class="field">
             <label>Cliente (Nome)</label>
-            <input class="inp" type="text" x-model="newLicForm.note" placeholder="Ex: Cliente X" />
+            <input
+              class="inp"
+              type="text"
+              x-model="newLicForm.note"
+              placeholder="Ex: Cliente X"
+            />
           </div>
           <div class="field">
             <label>Plano</label>
@@ -975,6 +1118,15 @@
               min="1"
               max="3650"
               x-model="newLicForm.expires_days"
+            />
+          </div>
+          <div class="field">
+            <label>Senha de Acesso (SaaS)</label>
+            <input
+              class="inp"
+              type="text"
+              x-model="newLicForm.password"
+              placeholder="Senha para o cliente logar"
             />
           </div>
         </div>
@@ -1040,6 +1192,10 @@
             <input class="inp" type="text" x-model="editLicForm.note" />
           </div>
           <div class="field">
+            <label>Senha de Acesso (SaaS)</label>
+            <input class="inp" type="text" x-model="editLicForm.password" />
+          </div>
+          <div class="field">
             <label>Plano</label>
             <select class="inp" x-model="editLicForm.plan">
               <option value="basic">Basic</option>
@@ -1062,6 +1218,24 @@
               x-model="editLicForm.expires_days"
               placeholder="Deixe vazio para não alterar"
             />
+          </div>
+          <div class="field">
+            <label>Máquina Vinculada</label>
+            <div class="flex items-center gap-2">
+              <input
+                class="inp flex-1 opacity-70"
+                type="text"
+                :value="editLicForm.machine_id"
+                readonly
+              />
+              <button
+                class="btn btn-secondary text-xs whitespace-nowrap"
+                @click="editLicForm.machine_id = ''"
+                :disabled="!editLicForm.machine_id || editLicForm.machine_id === 'Não vinculado'"
+              >
+                Desvincular
+              </button>
+            </div>
           </div>
 
           <!-- Schedule Rules -->
@@ -1264,6 +1438,15 @@
                 placeholder="—"
               />
             </div>
+            <div class="field">
+              <label>Endpoint WhatsApp</label>
+              <input
+                class="inp"
+                x-model="configData.whatsapp_endpoint"
+                placeholder="http://IP:4000/send"
+              />
+            </div>
+
             <div class="grid grid-cols-3 gap-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
@@ -1373,29 +1556,166 @@
     >
       <div class="modal-box" @click.stop>
         <h3>Vincular Robô à Licença</h3>
-        <p class="text-xs text-muted mb-4">Escolha uma licença para ativar este robô.</p>
-        
+        <p class="text-xs text-muted mb-4">
+          Escolha uma licença para ativar este robô.
+        </p>
+
         <div class="space-y-4">
           <div class="field">
             <label>ID da Máquina</label>
-            <input class="inp opacity-50" type="text" x-model="linkForm.machine_id" readonly />
+            <input
+              class="inp opacity-50"
+              type="text"
+              x-model="linkForm.machine_id"
+              readonly
+            />
           </div>
-          
+
           <div class="field">
             <label>Selecionar Licença</label>
             <select class="inp" x-model="linkForm.license_id">
               <option value="">Selecione uma licença disponível...</option>
               <template x-for="lic in licenses" :key="lic.id">
-                <option :value="lic.id" x-text="`${lic.note || 'Sem Nome'} (${lic.key})`"></option>
+                <option
+                  :value="lic.id"
+                  x-text="`${lic.note || 'Sem Nome'} (${lic.key})`"
+                ></option>
               </template>
             </select>
           </div>
         </div>
-        
+
         <div class="flex justify-end gap-3 pt-6">
-          <button class="btn btn-secondary" @click="showLinkModal = false">Cancelar</button>
-          <button class="btn btn-primary" @click="linkMachine()" :disabled="loading || !linkForm.license_id">
-            <span x-text="loading ? 'Vinculando...' : 'Confirmar Vinculação'"></span>
+          <button class="btn btn-secondary" @click="showLinkModal = false">
+            Cancelar
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="linkMachine()"
+            :disabled="loading || !linkForm.license_id"
+          >
+            <span
+              x-text="loading ? 'Vinculando...' : 'Confirmar Vinculação'"
+            ></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auth Code Modal (Telegram Verification) -->
+    <div
+      x-show="showAuthCodeModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showAuthCodeModal = false"
+    >
+      <div class="modal-box" @click.stop>
+        <h3>Código de Verificação Telegram</h3>
+        <p class="text-xs text-muted mb-4">
+          O bot está aguardando o código de verificação enviado pelo Telegram
+          para o número <strong x-text="authCodeLic?.phone || '...'"></strong>.
+          Digite o código que chegou no app do Telegram.
+        </p>
+
+        <div class="space-y-4">
+          <div class="field">
+            <label>Licença</label>
+            <input
+              class="inp opacity-50"
+              type="text"
+              :value="authCodeLic?.note || authCodeLic?.key || '...'"
+              readonly
+            />
+          </div>
+          <div class="field">
+            <label>Código de Verificação</label>
+            <input
+              class="inp text-2xl text-center font-mono tracking-widest"
+              type="text"
+              x-model="authCodeForm.code"
+              placeholder="12345"
+              maxlength="10"
+              @keydown.enter="sendAuthCode()"
+            />
+          </div>
+          <div class="field">
+            <label>Senha de Duas Etapas (Opcional)</label>
+            <input
+              class="inp"
+              type="password"
+              x-model="authCodeForm.password"
+              placeholder="Só preencha se sua conta exigir (2FA)"
+              @keydown.enter="sendAuthCode()"
+            />
+          </div>
+          <div
+            x-show="authCodeResult"
+            class="px-4 py-3 rounded-xl text-sm"
+            :class="authCodeResult?.type === 'success' ? 'bg-green-900/40 border border-green-500/40 text-green-300' : 'bg-yellow-900/40 border border-yellow-500/40 text-yellow-300'"
+            x-text="authCodeResult?.msg"
+          ></div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-6">
+          <button class="btn btn-secondary" @click="showAuthCodeModal = false">
+            Fechar
+          </button>
+          <button
+            class="btn btn-primary"
+            @click="sendAuthCode()"
+            :disabled="authCodeLoading || (!authCodeForm.code && !authCodeForm.password)"
+          >
+            <span
+              x-text="authCodeLoading ? 'Enviando...' : 'Enviar'"
+            ></span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- WhatsApp License Modal -->
+    <div
+      x-show="showWppModal"
+      x-cloak
+      class="modal-backdrop"
+      @click.self="showWppModal = false"
+    >
+      <div class="modal-box text-center" @click.stop>
+        <h3>WhatsApp do Cliente</h3>
+        <p class="text-xs text-muted mb-6" x-text="selectedLic?.note || selectedLic?.key"></p>
+        
+        <div class="py-4">
+            <template x-if="selectedLic?.whatsapp_status === 'connected'">
+               <div>
+                  <div class="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </div>
+                  <h4 class="text-lg font-bold text-white mb-1">WhatsApp Conectado</h4>
+                  <p class="text-muted text-sm">Este cliente está operando normalmente.</p>
+               </div>
+            </template>
+            
+            <template x-if="selectedLic?.whatsapp_status === 'qr'">
+               <div>
+                  <p class="text-sm text-slate-300 mb-4">Aguardando escaneamento pelo cliente:</p>
+                  <div class="bg-white p-3 rounded-lg inline-block mb-4">
+                    <img :src="selectedLic.whatsapp_qr" width="200" height="200" />
+                  </div>
+                  <p class="text-[10px] text-muted uppercase tracking-wider">O QR Code é atualizado automaticamente</p>
+               </div>
+            </template>
+            
+            <template x-if="!selectedLic?.whatsapp_status || selectedLic?.whatsapp_status === 'disconnected' || selectedLic?.whatsapp_status === 'stopped'">
+               <div class="py-10">
+                  <div class="animate-pulse w-12 h-12 bg-slate-800 rounded-full mx-auto mb-4"></div>
+                  <p class="text-muted text-sm">Aguardando sinal do robô...</p>
+               </div>
+            </template>
+        </div>
+
+        <div class="flex justify-center pt-6">
+          <button class="btn btn-secondary" @click="showWppModal = false">
+            Fechar Janela
           </button>
         </div>
       </div>
@@ -1428,6 +1748,11 @@
               label: "Logs",
               icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>',
             },
+            {
+              id: "whatsapp",
+              label: "WhatsApp",
+              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>',
+            },
           ],
 
           // ── Data Lists ─────────────────────────────────────────────────
@@ -1443,7 +1768,9 @@
           showLinkModal: false,
           showConfigModal: false,
           showVersionModal: false,
-          
+          showAuthCodeModal: false,
+          showWppModal: false,
+
           selectedLic: null,
           selectedMachine: null,
           targetLicenseId: "",
@@ -1451,7 +1778,13 @@
           configLicKey: "",
           configData: null,
 
-          newLicForm: { plan: "basic", expires_days: 30, note: "" },
+          // ── Auth Code (Telegram Verification) ──────────────────────────
+          authCodeLic: null,
+          authCodeLoading: false,
+          authCodeResult: null,
+          authCodeForm: { code: "", password: "", requires_password: false },
+
+          newLicForm: { plan: "basic", expires_days: 30, note: "", password: "" },
           editLicForm: {
             id: null,
             key: "",
@@ -1463,7 +1796,9 @@
             schedule_hora_inicio: "08:00",
             schedule_hora_fim: "18:00",
             schedule_timezone: "America/Sao_Paulo",
-            note: ""
+            note: "",
+            password: "",
+            machine_id: "",
           },
           linkForm: { machine_id: "", license_id: "" },
 
@@ -1474,7 +1809,6 @@
           // ── Version ───────────────────────────────────────────────────
           showVersionModal: false,
           versionForm: { version: "", changelog: "", download_url: "" },
-          apiBase: "/admin",
 
           // ── Init ──────────────────────────────────────────────────────
           init() {
@@ -1484,7 +1818,7 @@
               this.loadLicenses();
               this.loadVersions();
               this.loadPendingMachines();
-              
+
               // Atualiza tudo a cada 15 segundos
               setInterval(() => {
                 if (this.loggedIn) {
@@ -1500,19 +1834,19 @@
             this.loading = true;
             this.loginError = "";
             try {
-              const r = await fetch("/admin/login", {
+              const r = await fetch(`${this.apiBase}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(this.loginForm),
               });
-              
+
               if (!r.ok) {
                 const errData = await r.json();
                 this.loginError = errData.detail || "Erro no servidor";
                 this.loading = false;
                 return;
               }
-              
+
               const d = await r.json();
               if (d.access_token) {
                 localStorage.setItem("admin_token", d.access_token);
@@ -1530,7 +1864,9 @@
 
           async loadPendingMachines() {
             try {
-              const r = await fetch(`${this.apiBase}/pending`, { headers: this.getHeaders() });
+              const r = await fetch(`${this.apiBase}/pending`, {
+                headers: this.getHeaders(),
+              });
               if (r.ok) this.pendingMachines = await r.json();
             } catch (e) {}
           },
@@ -1544,12 +1880,12 @@
           async linkMachine() {
             try {
               const r = await fetch(`${this.apiBase}/link`, {
-                method: 'POST',
+                method: "POST",
                 headers: this.getHeaders(),
                 body: JSON.stringify({
                   machine_id: this.selectedMachine.machine_id,
-                  license_id: this.targetLicenseId
-                })
+                  license_id: this.targetLicenseId,
+                }),
               });
               if (r.ok) {
                 this.showToast("Máquina vinculada com sucesso!", "success");
@@ -1566,8 +1902,8 @@
             if (!confirm("Remover este robô da lista de espera?")) return;
             try {
               await fetch(`${this.apiBase}/pending/${machine_id}`, {
-                method: 'DELETE',
-                headers: this.getHeaders()
+                method: "DELETE",
+                headers: this.getHeaders(),
               });
               this.loadPendingMachines();
             } catch (e) {}
@@ -1596,7 +1932,7 @@
           // ── Licenses ─────────────────────────────────────────────────
           async loadLicenses() {
             try {
-              const r = await fetch("/admin/licenses", {
+              const r = await fetch(`${this.apiBase}/licenses`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -1632,12 +1968,12 @@
           openNewLicenseModal() {
             this.showNewLicModal = true;
             this.generatedKey = "";
-            this.newLicForm = { plan: "basic", expires_days: 365 };
+            this.newLicForm = { plan: "basic", expires_days: 365, note: "", password: "" };
           },
 
           async createLicense() {
             try {
-              const r = await fetch("/admin/licenses", {
+              const r = await fetch(`${this.apiBase}/licenses`, {
                 method: "POST",
                 headers: this.getHeaders(),
                 body: JSON.stringify(this.newLicForm),
@@ -1671,6 +2007,7 @@
               schedule_hora_fim: sr.hora_fim || "18:00",
               schedule_timezone: sr.timezone || "America/Sao_Paulo",
               note: lic.note || "",
+              password: lic.password || "",
               machine_id: lic.machine_id || "Não vinculado",
             };
             this.showEditLicModal = true;
@@ -1678,13 +2015,14 @@
 
           async saveLicense() {
             const body = {
-              plan: this.editLicForm.plan,
+              plan: (this.editLicForm.plan || "basic").toLowerCase(),
               active: this.editLicForm.active,
             };
             if (this.editLicForm.expires_days) {
               body.expires_days = parseInt(this.editLicForm.expires_days);
             }
             body.note = this.editLicForm.note;
+            body.password = this.editLicForm.password;
             body.schedule_rules = {
               enabled: this.editLicForm.schedule_enabled,
               dias_semana: this.editLicForm.schedule_dias,
@@ -1692,23 +2030,108 @@
               hora_fim: this.editLicForm.schedule_hora_fim,
               timezone: this.editLicForm.schedule_timezone,
             };
+
+            // Se o machine_id foi limpo (desvincular), enviar null para liberar
+            if (
+              !this.editLicForm.machine_id ||
+              this.editLicForm.machine_id === "Não vinculado" ||
+              this.editLicForm.machine_id.trim() === ""
+            ) {
+              body.machine_id = null;
+            } else {
+              body.machine_id = this.editLicForm.machine_id;
+            }
+
             try {
-              const r = await fetch(`/admin/licenses/${this.editLicForm.id}`, {
+              const r = await fetch(`${this.apiBase}/licenses/${this.editLicForm.id}`, {
                 method: "PATCH",
                 headers: this.getHeaders(),
                 body: JSON.stringify(body),
               });
               const d = await r.json();
-              if (d.ok) {
+              if (r.ok && d && d.id) {
                 this.showToast("Licença atualizada!", "success");
                 this.showEditLicModal = false;
                 this.loadLicenses();
               } else {
-                this.showToast(d.detail || "Erro ao salvar", "error");
+                const msg = d.detail || JSON.stringify(d);
+                this.showToast("Erro ao salvar: " + msg, "error");
               }
             } catch (e) {
               this.showToast("Erro de conexão", "error");
             }
+          },
+
+          // ── Auth Code (Telegram Verification) ────────────────────────
+          async openAuthCodeModal(lic) {
+            this.authCodeLic = lic;
+            this.authCodeForm = {
+              code: "",
+              password: "",
+              requires_password: false,
+            };
+            this.authCodeResult = null;
+            this.showAuthCodeModal = true;
+            // Carregar config para pegar o phone
+            try {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
+                headers: this.getHeaders(),
+              });
+              const d = await r.json();
+              if (d && !d.detail) {
+                this.authCodeLic = { ...lic, phone: d.phone || "—" };
+              }
+            } catch (e) {}
+          },
+
+          async sendAuthCode() {
+            if (!this.authCodeLic || !this.authCodeForm.code) return;
+            this.authCodeLoading = true;
+            this.authCodeResult = null;
+            try {
+              const body = { code: this.authCodeForm.code };
+              if (this.authCodeForm.password) {
+                body.password = this.authCodeForm.password;
+              }
+              const r = await fetch(
+                `${this.apiBase}/licenses/${this.authCodeLic.id}/auth-code`,
+                {
+                  method: "POST",
+                  headers: this.getHeaders(),
+                  body: JSON.stringify(body),
+                },
+              );
+              const d = await r.json();
+              if (d.ok) {
+                this.authCodeResult = {
+                  type: "success",
+                  msg: d.message || "Autenticado com sucesso!",
+                };
+                setTimeout(() => {
+                  this.showAuthCodeModal = false;
+                }, 2000);
+              } else if (d.detail && d.detail.includes("senha")) {
+                this.authCodeForm.requires_password = true;
+                this.authCodeResult = { type: "info", msg: d.detail };
+              } else {
+                this.authCodeResult = {
+                  type: "info",
+                  msg: d.detail || "Erro ao enviar código",
+                };
+              }
+            } catch (e) {
+              this.authCodeResult = {
+                type: "info",
+                msg: "Erro de conexão com o servidor",
+              };
+            } finally {
+              this.authCodeLoading = false;
+            }
+          },
+
+          openWppModal(lic) {
+            this.selectedLic = lic;
+            this.showWppModal = true;
           },
 
           // ── Config ───────────────────────────────────────────────────
@@ -1717,7 +2140,7 @@
             this.showConfigModal = true;
             this.configData = null;
             try {
-              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -1730,22 +2153,23 @@
                 };
               } else {
                 this.configData = {
-                  api_id: "",
-                  api_hash: "",
-                  phone: "",
-                  sources_str: "",
-                  destination_telegram: "",
+                  api_id: '',
+                  api_hash: '',
+                  phone: '',
+                  sources_str: '',
+                  destination_telegram: '',
                   delay_segundos: 3,
-                  shopee_token: "",
-                  ali_key: "",
-                  ali_secret: "",
-                  ali_tracking: "",
-                  ml_token: "",
+                  shopee_token: '',
+                  ali_key: '',
+                  ali_secret: '',
+                  ali_tracking: '',
+                  ml_token: '',
                   send_telegram: true,
                   send_whatsapp: false,
                   conv_shopee: true,
                   conv_ali: true,
                   conv_ml: true,
+                  whatsapp_endpoint: '',
                 };
               }
             } catch (e) {
@@ -1771,13 +2195,13 @@
               return;
             }
             try {
-              const r = await fetch(`/admin/licenses/${lic.id}/config`, {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
                 method: "PUT",
                 headers: this.getHeaders(),
                 body: JSON.stringify(cfg),
               });
               const d = await r.json();
-              if (d.ok) {
+              if (d && !d.detail) {
                 this.showToast("Configurações salvas!", "success");
                 this.showConfigModal = false;
               } else {
@@ -1794,11 +2218,11 @@
             this.licLogs = [];
             this.activeTab = "log_viewer";
             try {
-              const r = await fetch(`/admin/licenses/${lic.id}/logs`, {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/logs`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
-              this.licLogs = d.logs || [];
+              this.licLogs = Array.isArray(d) ? d : d.logs || [];
             } catch (e) {
               this.showToast("Erro ao carregar logs", "error");
             }
@@ -1807,7 +2231,7 @@
           // ── Versions ─────────────────────────────────────────────────
           async loadVersions() {
             try {
-              const r = await fetch("/admin/versions", {
+              const r = await fetch(`${this.apiBase}/versions`, {
                 headers: this.getHeaders(),
               });
               const d = await r.json();
@@ -1819,7 +2243,7 @@
 
           async publishVersion() {
             try {
-              const r = await fetch("/admin/versions", {
+              const r = await fetch(`${this.apiBase}/versions`, {
                 method: "POST",
                 headers: this.getHeaders(),
                 body: JSON.stringify(this.versionForm),
@@ -1852,7 +2276,7 @@
           // ── Discovery ────────────────────────────────────────────────
           async loadPendingMachines() {
             try {
-              const r = await fetch("/admin/pending", {
+              const r = await fetch(`${this.apiBase}/pending`, {
                 headers: this.getHeaders(),
               });
               this.pendingMachines = await r.json();
@@ -1871,7 +2295,7 @@
             if (!this.linkForm.license_id) return;
             this.loading = true;
             try {
-              const r = await fetch("/admin/link", {
+              const r = await fetch(`${this.apiBase}/link`, {
                 method: "POST",
                 headers: this.getHeaders(),
                 body: JSON.stringify(this.linkForm),
@@ -1895,7 +2319,7 @@
           async rejectMachine(machineId) {
             if (!confirm("Tem certeza que deseja recusar este robô?")) return;
             try {
-              await fetch(`/admin/pending/${machineId}`, {
+              await fetch(`${this.apiBase}/pending/${machineId}`, {
                 method: "DELETE",
                 headers: this.getHeaders(),
               });

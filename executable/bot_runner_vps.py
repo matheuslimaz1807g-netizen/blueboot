@@ -14,10 +14,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
+import requests
 
-# Carrega o .env
-load_dotenv(dotenv_path=".env", override=True)
+# Carrega o .env (Padrão)
+for f in [".env.local", ".env"]:
+    if os.path.exists(f):
+        load_dotenv(dotenv_path=f, override=False)
 
 # ── Log store compartilhado ────────────────────────────────────────────────────
 _logs: deque[dict] = deque(maxlen=300)
@@ -42,7 +45,7 @@ def _load_config() -> dict:
         "destination_telegram": os.getenv("DESTINATION", ""),
         "delay_segundos": int(os.getenv("DELAY", "3")),
         "wpp_destinations": [s.strip() for s in os.getenv("WHATSAPP_DESTINATIONS", "").split(",") if s.strip()],
-        "whatsapp_endpoint": os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send"),
+        "whatsapp_endpoint": os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send") or "http://whatsapp:4000/send",
         "send_telegram": os.getenv("ENABLE_TELEGRAM", "true").lower() == "true",
         "send_whatsapp": os.getenv("ENABLE_WHATSAPP", "false").lower() == "true",
         "conv_shopee": os.getenv("CONV_SHOPEE", "true").lower() == "true",
@@ -140,7 +143,29 @@ DASHBOARD_HTML = """
       <div class="card-label">Erros 24h</div>
       <div class="card-value red">{{ stats.errors_24h }}</div>
     </div>
+    <div class="card" style="cursor:pointer;" onclick="window.location.href='/whatsapp'">
+      <div class="card-label">WhatsApp Status</div>
+      <div id="wpp-status-badge" class="status-badge stopped" style="margin-top:8px;">
+        <span class="dot"></span>
+        CARREGANDO...
+      </div>
+      <div style="font-size:10px; color:#7d8590; margin-top:8px;">Clique para configurar ➔</div>
+    </div>
   </div>
+
+  <script>
+    async function updateWppStatus() {
+      try {
+        const r = await fetch('/api/whatsapp/status');
+        const d = await r.json();
+        const el = document.getElementById('wpp-status-badge');
+        el.className = 'status-badge ' + (d.status === 'connected' ? 'running' : (d.status === 'qr' ? 'reconnecting' : 'stopped'));
+        el.innerHTML = '<span class="dot"></span>' + d.status.toUpperCase();
+      } catch(e) {}
+    }
+    updateWppStatus();
+    setInterval(updateWppStatus, 15000);
+  </script>
 
   <!-- Config -->
   <div class="section-title" style="margin-bottom:12px;">Configuração ativa</div>
@@ -208,6 +233,73 @@ def _start_panel(runner, config: dict) -> None:
     def api_logs():
         with _lock:
             return jsonify(list(_logs))
+
+    @app.get("/whatsapp")
+    def whatsapp_page():
+        return render_template_string("""
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="30">
+    <title>Configurar WhatsApp — BlueBot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0d1117; color: #e6edf3; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .card { background: #161b22; border: 1px solid #21262d; border-radius: 12px; padding: 40px; text-align: center; max-width: 400px; }
+        h1 { margin-bottom: 24px; font-size: 20px; }
+        .qr-container { background: white; padding: 16px; border-radius: 8px; margin-bottom: 24px; display: inline-block; }
+        .status { margin-bottom: 20px; font-weight: 600; }
+        .btn { display: inline-block; background: #21262d; color: #e6edf3; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; transition: 0.2s; }
+        .btn:hover { background: #30363d; }
+        .connected { color: #3fb950; }
+        .disconnected { color: #f85149; }
+        .waiting { color: #d29922; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Conexão WhatsApp</h1>
+        <div id="content">
+            <p>Carregando status...</p>
+        </div>
+        <br>
+        <a href="/" class="btn">Voltar ao Painel</a>
+    </div>
+
+    <script>
+        async function loadStatus() {
+            try {
+                const r = await fetch('/api/whatsapp/status');
+                const d = await r.json();
+                const content = document.getElementById('content');
+                
+                if (d.status === 'connected') {
+                    content.innerHTML = '<p class="status connected">✅ WHATSAPP CONECTADO</p><p style="font-size:13px; color:#7d8590;">O bot está pronto para enviar mensagens.</p>';
+                } else if (d.status === 'qr' && d.qr) {
+                    content.innerHTML = '<p class="status waiting">⏳ AGUARDANDO ESCANEAMENTO</p><div class="qr-container"><img src="' + d.qr + '" width="250" height="250"></div><p style="font-size:13px; color:#7d8590;">Abra o WhatsApp no seu celular > Aparelhos conectados > Conectar um aparelho.</p>';
+                } else {
+                    content.innerHTML = '<p class="status disconnected">❌ DESCONECTADO</p><p style="font-size:13px; color:#7d8590;">Iniciando serviço do WhatsApp... Se demorar, verifique os logs do Docker.</p>';
+                }
+            } catch(e) {
+                document.getElementById('content').innerHTML = '<p class="status disconnected">ERRO AO CONECTAR NA API</p>';
+            }
+        }
+        loadStatus();
+        setInterval(loadStatus, 5000);
+    </script>
+</body>
+</html>
+        """)
+
+    @app.get("/api/whatsapp/status")
+    def whatsapp_api_status():
+        wpp_url = config.get("whatsapp_endpoint", "http://whatsapp:4000/send").replace("/send", "/status")
+        try:
+            r = requests.get(wpp_url, timeout=5)
+            return jsonify(r.json())
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
 
     app.run(host="0.0.0.0", port=8080, debug=False, use_reloader=False)
 
