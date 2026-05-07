@@ -19,7 +19,16 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# Rate limiter - configuração global
+# CORS - Configuração segura por ambiente
+allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "https://admin.bluebotapp.com.br",
+    "https://www.bluebotapp.com.br",
+    "https://bluebotapp.com.br",
+]
+
+logger.info(f"CORS habilitado para origins: {allowed_origins}")
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"],
@@ -52,15 +61,24 @@ async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
         content={"detail": "Muitas requisições. Por favor, aguarde e tente novamente."}
     )
 
-# CORS - Restrito a domínios autorizados (ajustar conforme ambiente)
+# CORS - Configuração segura por ambiente
+allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "https://admin.bluebotapp.com.br",
+    "https://www.bluebotapp.com.br",
+    "https://bluebotapp.com.br",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Temporariamente aberto para debug
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
     expose_headers=["X-Total-Count"],
-)  # Recomendado: Configurar via .env em produção
+    max_age=86400,  # Preflight cache por 24 horas
+)
 
 # 1. Routers da API (Processados Primeiro)
 app.include_router(client.router)
