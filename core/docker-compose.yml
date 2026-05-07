@@ -93,9 +93,6 @@ services:
       - certbot_data:/etc/letsencrypt:ro
       # Pasta de desafio ACME usada pelo certbot para renovação HTTP-01
       - certbot_www:/var/www/certbot:ro
-      # Arquivo de senha para basic auth do painel admin
-      # Gere com: htpasswd -bc core/.htpasswd <usuario> <senha>
-      - ./.htpasswd:/etc/nginx/conf.d/.htpasswd:ro
     depends_on:
       api:
         condition: service_healthy
