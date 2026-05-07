@@ -10,6 +10,7 @@ services:
       - ./cache:/app/.wwebjs_cache
     networks:
       - bluebot_network
+    shm_size: '2gb'
     security_opt:
       - no-new-privileges:true
 

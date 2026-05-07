@@ -94,6 +94,7 @@ services:
     volumes:
       - ./auth:/app/.wwebjs_auth
       - ./cache:/app/.wwebjs_cache
+    shm_size: '2gb'
     security_opt:
       - no-new-privileges:true
     networks:
