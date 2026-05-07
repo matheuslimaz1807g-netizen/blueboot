@@ -23,8 +23,6 @@ services:
   certbot:
     image: certbot/certbot:latest
     container_name: bluebot_certbot
-    ports:
-      - "80:80"
     volumes:
       - certbot_data:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
