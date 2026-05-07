@@ -55,26 +55,6 @@ async def admin_login(body: AdminLoginRequest, request: Request):
     username = body.username.strip()
     password = body.password.strip()
 
-    # Log para depuração (Remover após resolver)
-    from app.main import logger
-    logger.info(f"[AUTH] Tentativa de login para usuário: {username}")
-    logger.info(f"[AUTH] Esperado: {settings.ADMIN_USERNAME} | Recebido: {username}")
-    
-    # Check password length and presence
-    pwd_match = (password == settings.ADMIN_PASSWORD)
-    logger.info(f"[AUTH] Senha coincide: {pwd_match}")
-    if not pwd_match:
-        exp_len = len(settings.ADMIN_PASSWORD)
-        rec_len = len(password)
-        logger.info(f"[AUTH] Comprimento: Esperado {exp_len} | Recebido {rec_len}")
-        
-        if exp_len == rec_len:
-            diffs = []
-            for i in range(exp_len):
-                if settings.ADMIN_PASSWORD[i] != password[i]:
-                    diffs.append(f"Pos {i}: {ord(settings.ADMIN_PASSWORD[i])} vs {ord(password[i])}")
-            logger.info(f"[AUTH] Diferenças: {', '.join(diffs)}")
-
     if username != settings.ADMIN_USERNAME or password != settings.ADMIN_PASSWORD:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
     
@@ -83,8 +63,6 @@ async def admin_login(body: AdminLoginRequest, request: Request):
 
 
 # ── Licenses ──────────────────────────────────────────────────────────────────
-
-# Rate limiter for login is already defined above
 
 @router.get("/licenses", response_model=list[LicenseOut])
 async def list_licenses(
@@ -118,8 +96,8 @@ async def patch_license(
     values: dict = {}
     if body.active is not None:
         values["active"] = body.active
-    if body.plan is not None:
-        values["plan"] = body.plan
+    if body.plan:
+        values["plan"] = body.plan.lower()
     if body.expires_days is not None:
         values["expires_at"] = datetime.now(timezone.utc) + timedelta(days=body.expires_days)
     if body.schedule_rules is not None:
@@ -366,4 +344,3 @@ async def get_whatsapp_status(_admin=Depends(get_admin_user)):
             return resp.json()
     except Exception as e:
         return {"status": "error", "message": f"Não foi possível conectar ao robô: {str(e)}"}
-
