@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "Adm1n-S3cur3-P@ss!2026#"
+    ADMIN_TOTP_SECRET: str | None = None
 
     API_BASE_URL: str = "https://api.bluebotapp.com.br"
     RATE_LIMIT_PER_MINUTE: int = 60

@@ -392,7 +392,7 @@
           class="px-4 py-3 bg-red-900/40 border border-red-500/40 rounded-xl text-red-300 text-sm"
           x-text="loginError"
         ></div>
-        <div class="space-y-4">
+        <div class="space-y-4" x-show="!require2FA">
           <div class="field">
             <label>Usuário</label>
             <input
@@ -418,6 +418,34 @@
             :disabled="loading"
           >
             <span x-text="loading ? 'Entrando...' : 'Entrar'"></span>
+          </button>
+        </div>
+
+        <!-- 2FA Step -->
+        <div class="space-y-4" x-show="require2FA" x-cloak>
+          <div class="text-center pb-2">
+            <p class="text-xs text-indigo-400 font-medium">Autenticação de Dois Fatores</p>
+            <p class="text-[10px] text-muted">Digite o código do seu app autenticador</p>
+          </div>
+          <div class="field">
+            <input
+              class="inp text-center text-2xl tracking-[0.5em] font-mono"
+              x-model="twoFactorCode"
+              @keydown.enter="verify2FA()"
+              placeholder="000000"
+              maxlength="6"
+              autofocus
+            />
+          </div>
+          <button
+            class="btn btn-primary w-full accent-gradient"
+            @click="verify2FA()"
+            :disabled="loading || twoFactorCode.length < 6"
+          >
+            <span x-text="loading ? 'Verificando...' : 'Confirmar Código'"></span>
+          </button>
+          <button @click="require2FA = false; twoFactorCode = ''" class="w-full text-[10px] text-muted hover:text-white transition">
+            Voltar para login
           </button>
         </div>
       </div>
@@ -1731,6 +1759,9 @@
           loginForm: { username: "", password: "" },
           activeTab: "licenses",
           apiBase: "https://api.bluebotapp.com.br/admin",
+          authBase: "https://api.bluebotapp.com.br/auth",
+          require2FA: false,
+          twoFactorCode: "",
           toast: { show: false, msg: "", type: "success" },
           tabs: [
             {
@@ -1834,30 +1865,61 @@
             this.loading = true;
             this.loginError = "";
             try {
-              const r = await fetch(`${this.apiBase}/login`, {
+              const r = await fetch(`${this.authBase}/login/admin`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(this.loginForm),
               });
 
+              const d = await r.json();
               if (!r.ok) {
-                const errData = await r.json();
-                this.loginError = errData.detail || "Erro no servidor";
+                this.loginError = d.detail || "Erro no servidor";
                 this.loading = false;
                 return;
               }
 
-              const d = await r.json();
+              if (d.require_2fa) {
+                this.require2FA = true;
+                this.loading = false;
+                return;
+              }
+
               if (d.access_token) {
                 localStorage.setItem("admin_token", d.access_token);
                 this.loggedIn = true;
                 this.loadLicenses();
                 this.loadVersions();
-              } else {
-                this.loginError = d.detail || "Credenciais inválidas";
+                this.loadPendingMachines();
               }
             } catch (e) {
               this.loginError = "Erro de conexão com o servidor";
+            }
+            this.loading = false;
+          },
+
+          async verify2FA() {
+            this.loading = true;
+            this.loginError = "";
+            try {
+              const r = await fetch(`${this.authBase}/login/admin/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: this.twoFactorCode }),
+              });
+              const d = await r.json();
+              if (r.ok && d.access_token) {
+                localStorage.setItem("admin_token", d.access_token);
+                this.loggedIn = true;
+                this.require2FA = false;
+                this.twoFactorCode = "";
+                this.loadLicenses();
+                this.loadVersions();
+                this.loadPendingMachines();
+              } else {
+                this.loginError = d.detail || "Código inválido";
+              }
+            } catch (e) {
+              this.loginError = "Erro na verificação do 2FA";
             }
             this.loading = false;
           },

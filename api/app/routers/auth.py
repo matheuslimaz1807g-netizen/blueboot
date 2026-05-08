@@ -14,10 +14,12 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 settings = get_settings()
 limiter = Limiter(key_func=get_remote_address)
 
-@router.post("/login/admin", response_model=AdminLoginResponse)
+import pyotp
+
+@router.post("/login/admin")
 @limiter.limit("5/minute")
 async def admin_login(body: AdminLoginRequest, request: Request):
-    """Admin login using username/password from env."""
+    """Admin login with optional 2FA support."""
     username = body.username.strip()
     password = body.password.strip()
 
@@ -27,7 +29,29 @@ async def admin_login(body: AdminLoginRequest, request: Request):
             detail="Credenciais administrativas inválidas"
         )
     
+    # Se o 2FA estiver configurado no .env, não entrega o token ainda
+    if settings.ADMIN_TOTP_SECRET:
+        return {
+            "require_2fa": True,
+            "message": "Código de autenticação de dois fatores necessário"
+        }
+
     token = create_access_token({"sub": username, "role": "admin"}, expires_minutes=120)
+    return AdminLoginResponse(access_token=token)
+
+@router.post("/login/admin/verify")
+@limiter.limit("5/minute")
+async def admin_2fa_verify(body: dict, request: Request):
+    """Verify 2FA code and return the final admin token."""
+    code = body.get("code")
+    if not settings.ADMIN_TOTP_SECRET:
+        raise HTTPException(status_code=400, detail="2FA não está ativado")
+    
+    totp = pyotp.TOTP(settings.ADMIN_TOTP_SECRET)
+    if not totp.verify(code):
+        raise HTTPException(status_code=401, detail="Código 2FA inválido")
+    
+    token = create_access_token({"sub": settings.ADMIN_USERNAME, "role": "admin"}, expires_minutes=120)
     return AdminLoginResponse(access_token=token)
 
 @router.post("/login/client", response_model=AdminLoginResponse)
