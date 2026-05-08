@@ -6,20 +6,16 @@ set -e
 
 echo "🔐 Gerando certificado auto-assinado temporário..."
 
-# Criar diretórios
-mkdir -p ssl/live/bluebotapp.com.br certbot/www
+# Criar diretórios conforme docker-compose.yml
+mkdir -p ssl/letsencrypt/live/bluebotapp.com.br certbot/www
 
 # Gerar certificado auto-assinado
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout ssl/privkey.pem \
-  -out ssl/fullchain.pem \
+  -keyout ssl/letsencrypt/live/bluebotapp.com.br/privkey.pem \
+  -out ssl/letsencrypt/live/bluebotapp.com.br/fullchain.pem \
   -subj "/C=BR/ST=SP/L=Sao Paulo/O=BlueBot/CN=bluebotapp.com.br"
 
-# Criar links simbólicos para compatibilidade com nginx.conf
-ln -sf ../../../fullchain.pem ssl/live/bluebotapp.com.br/fullchain.pem
-ln -sf ../../../privkey.pem ssl/live/bluebotapp.com.br/privkey.pem
-
 echo "✅ Certificado temporário gerado!"
-echo "📍 Localização: ssl/live/bluebotapp.com.br/"
+echo "📍 Localização: ssl/letsencrypt/live/bluebotapp.com.br/"
 echo ""
 echo "🔄 Execute: docker compose restart nginx"
