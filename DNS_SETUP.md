@@ -51,6 +51,7 @@ docker run -it --rm \
   -d www.bluebotapp.com.br \
   -d api.bluebotapp.com.br \
   -d painel.bluebotapp.com.br \
+  -d console.bluebotapp.com.br \
   --email email@seuemail.com \
   --agree-tos \
   --no-eff-email
