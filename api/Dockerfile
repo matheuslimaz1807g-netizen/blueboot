@@ -16,6 +16,10 @@ COPY . .
 # Create non-root user
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 RUN chown -R appuser:appgroup /app
+# ... suas configurações anteriores ...
 USER appuser
 
 EXPOSE 8000
+
+# ADICIONE A LINHA ABAIXO:
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
