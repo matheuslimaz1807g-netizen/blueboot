@@ -21,5 +21,6 @@ USER appuser
 
 EXPOSE 8000
 
-# ADICIONE A LINHA ABAIXO:
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Mude a linha do CMD para esta:
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
