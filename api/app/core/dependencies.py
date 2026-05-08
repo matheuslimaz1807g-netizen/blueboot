@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_token
+from app.models.models import License
 
 bearer_scheme = HTTPBearer()
 
@@ -51,7 +52,6 @@ async def get_current_license(
     if not license_id:
         raise HTTPException(status_code=401, detail="Token malformado")
 
-    from app.models.models import License
     from sqlalchemy import select
 
     result = await db.execute(select(License).where(License.id == license_id))
