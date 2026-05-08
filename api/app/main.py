@@ -13,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
-from app.routers import admin, client
+from app.routers import admin, client, auth
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,9 @@ settings = get_settings()
 allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
-    "https://admin.bluebotapp.com.br",
-    "https://www.bluebotapp.com.br",
+    "https://console.bluebotapp.com.br",
+    "https://app.bluebotapp.com.br",
+    "https://api.bluebotapp.com.br",
     "https://bluebotapp.com.br",
 ]
 
@@ -61,14 +62,7 @@ async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
         content={"detail": "Muitas requisições. Por favor, aguarde e tente novamente."}
     )
 
-# CORS - Configuração segura por ambiente
-allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else [
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "https://admin.bluebotapp.com.br",
-    "https://www.bluebotapp.com.br",
-    "https://bluebotapp.com.br",
-]
+# O middleware CORS usará o allowed_origins definido acima
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,6 +75,7 @@ app.add_middleware(
 )
 
 # 1. Routers da API (Processados Primeiro)
+app.include_router(auth.router)
 app.include_router(client.router)
 app.include_router(admin.router)
 
@@ -98,9 +93,22 @@ if os.path.exists(admin_path):
     logger.info(f"Montando Painel Admin em /panel a partir de: {admin_path}")
     app.mount("/panel", StaticFiles(directory=admin_path, html=True), name="panel")
 
+# 3. Painel do Cliente (SaaS Unificado)
+client_app_path = "/app/client_app"
+if not os.path.exists(client_app_path):
+    client_app_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../client_app"))
+
+if os.path.exists(client_app_path):
+    logger.info(f"Montando Painel Cliente em /app_static a partir de: {client_app_path}")
+    app.mount("/app_static", StaticFiles(directory=client_app_path, html=True), name="app_static")
+
 @app.get("/")
-async def root():
-    # Redireciona a raiz direto para o painel
+async def root(request: Request):
+    host = request.headers.get("host", "")
+    # Se o acesso for pelo subdomínio de cliente
+    if "app.bluebotapp.com.br" in host:
+        return RedirectResponse(url="/app_static/")
+    # Se for pelo subdomínio de admin ou geral
     return RedirectResponse(url="/panel/")
 
 @app.get("/health")
