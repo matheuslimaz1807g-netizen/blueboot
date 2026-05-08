@@ -34,7 +34,7 @@ services:
 
   panel:
     build:
-      context: ./frontend
+      context: ./web
       dockerfile: Dockerfile
     container_name: bluebot_panel
     restart: unless-stopped
