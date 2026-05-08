@@ -20,7 +20,8 @@ Configuração completa de HTTPS para o domínio bluebotapp.com.br utilizando Le
   - `bluebotapp.com.br` - Site principal
   - `www.bluebotapp.com.br` - Alias
   - `api.bluebotapp.com.br` - API dedicada
-  - `painel.bluebotapp.com.br` - Painel admin
+  - `console.bluebotapp.com.br` - Painel admin
+  - `app.bluebotapp.com.br` - Painel do cliente
 - **Adicionado:** HSTS (Strict-Transport-Security) - 1 ano
 - **Atualizado:** Headers de segurança
 - **Adicionado:** Configurações SSL/TLS (TLSv1.2+, TLSv1.3)
@@ -119,8 +120,8 @@ docker run -it --rm \
   -d bluebotapp.com.br \
   -d www.bluebotapp.com.br \
   -d api.bluebotapp.com.br \
-  -d painel.bluebotapp.com.br \
   -d console.bluebotapp.com.br \
+  -d app.bluebotapp.com.br \
   --email email@seuemail.com \
   --agree-tos \
   --no-eff-email
@@ -152,7 +153,8 @@ openssl s_client -connect bluebotapp.com.br:443 -servername bluebotapp.com.br
 | https://bluebotapp.com.br | Site principal (redireciona para painel/admin) |
 | https://www.bluebotapp.com.br | Site (alias) |
 | https://api.bluebotapp.com.br | API REST |
-| https://painel.bluebotapp.com.br | Painel administração |
+| https://console.bluebotapp.com.br | Painel administração |
+| https://app.bluebotapp.com.br | Painel do cliente |
 | https://bluebotapp.com.br/admin | API Admin docs |
 
 ---
