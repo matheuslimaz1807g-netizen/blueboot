@@ -105,7 +105,7 @@ async def patch_license(
     if body.note is not None:
         values["note"] = body.note
     if body.password is not None:
-        values["password"] = body.password
+        values["password"] = hash_password(body.password)
     if body.machine_id is not None:
         values["machine_id"] = body.machine_id
     elif "machine_id" in body.model_dump(exclude_unset=True) and body.machine_id is None:
