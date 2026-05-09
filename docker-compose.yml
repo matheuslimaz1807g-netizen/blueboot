@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,25 +11,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-bluebot}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Porta 5432 NÃO exposta externamente — apenas rede interna
     expose:
       - "5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bluebot}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - bluebot_network
-
-  certbot:
-    image: certbot/certbot:latest
-    container_name: bluebot_certbot
-    volumes:
-      - ./ssl/letsencrypt:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
     networks:
       - bluebot_network
 
@@ -40,101 +25,61 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: "postgresql+asyncpg://bluebot:S3cur3P%40ss%212026%23BlueBot@postgres:5432/bluebot"
-    # Porta 8000 NÃO exposta externamente — apenas nginx acessa
+    depends_on:
+      - postgres
     expose:
       - "8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./api:/app
-      - ./admin:/app/admin:ro
-    command: >
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-    security_opt:
-      - no-new-privileges:true
+    networks:
+      - bluebot_network
+
+  panel:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: bluebot_panel
+    restart: unless-stopped
+    expose:
+      - "3000"
     networks:
       - bluebot_network
 
   nginx:
-    image: nginx:alpine
+    image: nginx:latest
     container_name: bluebot_nginx
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./admin:/usr/share/nginx/html/admin:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./ssl/letsencrypt:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot
+      # ✅ CORREÇÃO PRINCIPAL AQUI
+      - /usr/blueboot/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+      - /usr/blueboot/ssl/letsencrypt:/etc/letsencrypt
+      - /usr/blueboot/certbot/www:/var/www/certbot
     depends_on:
-      api:
-        condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
+      - api
+      - panel
     networks:
       - bluebot_network
 
-  whatsapp:
-    profiles: ["manual"]
-    build:
-      context: .
-      dockerfile: Dockerfile.whatsapp
-    container_name: bluebot_whatsapp
-    restart: unless-stopped
-    expose:
-      - "4000"
+  certbot:
+    image: certbot/certbot:latest
+    container_name: bluebot_certbot
     volumes:
-      - ./auth:/app/.wwebjs_auth
-      - ./cache:/app/.wwebjs_cache
-    shm_size: '2gb'
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - bluebot_network
-
-  bot:
-    profiles: ["manual"]
-    build:
-      context: .
-      dockerfile: Dockerfile.bot
-    container_name: bluebot_bot
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      - APRO_API_BASE=https://api.bluebotapp.com.br
-      - DOCKER_CONTAINER=1
-    expose:
-      - "8080"
-    volumes:
-      - bot_sessions:/app/sessions
-      - bot_data:/app/data
-    depends_on:
-      api:
-        condition: service_healthy
-      whatsapp:
-        condition: service_started
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - bluebot_network
+      - /usr/blueboot/ssl/letsencrypt:/etc/letsencrypt
+      - /usr/blueboot/certbot/www:/var/www/certbot
+    entrypoint: >
+      sh -c "certbot certonly --webroot
+      --webroot-path=/var/www/certbot
+      --email suporte@bluebotapp.com.br
+      --agree-tos
+      --no-eff-email
+      -d api.bluebotapp.com.br
+      -d app.bluebotapp.com.br"
 
 volumes:
   postgres_data:
-  certbot_data:
-  whatsapp_auth:
-  whatsapp_cache:
-  bot_sessions:
-  bot_data:
 
 networks:
   bluebot_network:
-    external: true
+    driver: bridge

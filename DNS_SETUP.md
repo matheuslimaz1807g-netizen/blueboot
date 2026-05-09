@@ -14,7 +14,8 @@
 | A     | @                   | [IP_DO_SEU_SERVIDOR]       | 1 hora  |
 | A     | www                 | [IP_DO_SEU_SERVIDOR]       | 1 hora  |
 | A     | api                 | [IP_DO_SEU_SERVIDOR]       | 1 hora  |
-| A     | painel              | [IP_DO_SEU_SERVIDOR]       | 1 hora  |
+| A     | console             | [IP_DO_SEU_SERVIDOR]       | 1 hora  |
+| A     | app                 | [IP_DO_SEU_SERVIDOR]       | 1 hora  |
 | AAAA  | @                   | [IPV6, se aplicável]       | 1 hora  |
 | CNAME | www (opcional)      | bluebotapp.com.br          | 1 hora  |
 
@@ -50,7 +51,8 @@ docker run -it --rm \
   -d bluebotapp.com.br \
   -d www.bluebotapp.com.br \
   -d api.bluebotapp.com.br \
-  -d painel.bluebotapp.com.br \
+  -d console.bluebotapp.com.br \
+  -d app.bluebotapp.com.br \
   --email email@seuemail.com \
   --agree-tos \
   --no-eff-email
@@ -80,7 +82,8 @@ docker compose logs -f
 
 - **Site:** https://bluebotapp.com.br
 - **API:** https://api.bluebotapp.com.br
-- **Painel:** https://painel.bluebotapp.com.br
+- **Painel de Administração:** https://console.bluebotapp.com.br
+- **Painel Cliente:** https://app.bluebotapp.com.br
 - **Admin API:** https://bluebotapp.com.br/admin
 - **Swagger (dev):** https://api.bluebotapp.com.br/docs
 
