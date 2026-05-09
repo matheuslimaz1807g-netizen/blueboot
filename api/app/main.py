@@ -22,11 +22,14 @@ settings = get_settings()
 # CORS - Configuração segura por ambiente
 allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv("CORS_ALLOWED_ORIGINS") else [
     "http://localhost:8080",
+    "http://localhost:3000",
+    "http://localhost:5173",
     "http://127.0.0.1:8080",
     "https://console.bluebotapp.com.br",
     "https://app.bluebotapp.com.br",
     "https://api.bluebotapp.com.br",
     "https://bluebotapp.com.br",
+    "https://www.bluebotapp.com.br",
 ]
 
 logger.info(f"CORS habilitado para origins: {allowed_origins}")
@@ -68,8 +71,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    allow_methods=["*"],
+    allow_headers=["*"],
     expose_headers=["X-Total-Count"],
     max_age=86400,  # Preflight cache por 24 horas
 )
