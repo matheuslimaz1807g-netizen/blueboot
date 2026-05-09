@@ -72,7 +72,10 @@ services:
       --email suporte@bluebotapp.com.br
       --agree-tos
       --no-eff-email
+      -d bluebotapp.com.br
+      -d www.bluebotapp.com.br
       -d api.bluebotapp.com.br
+      -d console.bluebotapp.com.br
       -d app.bluebotapp.com.br"
 
 volumes:
