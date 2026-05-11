@@ -28,6 +28,7 @@ allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if os.getenv(
     "https://console.bluebotapp.com.br",
     "https://app.bluebotapp.com.br",
     "https://api.bluebotapp.com.br",
+    "https://admin.bluebotapp.com.br",
     "https://bluebotapp.com.br",
     "https://www.bluebotapp.com.br",
 ]

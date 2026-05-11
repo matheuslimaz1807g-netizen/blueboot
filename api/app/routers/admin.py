@@ -88,35 +88,42 @@ async def patch_license(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_admin_user),
 ):
-    result = await db.execute(select(License).where(License.id == license_id))
-    lic = result.scalar_one_or_none()
-    if not lic:
-        raise HTTPException(status_code=404, detail="Licença não encontrada")
+    try:
+        result = await db.execute(select(License).where(License.id == license_id))
+        lic = result.scalar_one_or_none()
+        if not lic:
+            raise HTTPException(status_code=404, detail="Licença não encontrada")
 
-    values: dict = {}
-    if body.active is not None:
-        values["active"] = body.active
-    if body.plan:
-        values["plan"] = body.plan.lower()
-    if body.expires_days is not None:
-        values["expires_at"] = datetime.now(timezone.utc) + timedelta(days=body.expires_days)
-    if body.schedule_rules is not None:
-        values["schedule_rules"] = body.schedule_rules
-    if body.note is not None:
-        values["note"] = body.note
-    if body.password is not None:
-        values["password"] = hash_password(body.password)
-    if body.machine_id is not None:
-        values["machine_id"] = body.machine_id
-    elif "machine_id" in body.model_dump(exclude_unset=True) and body.machine_id is None:
-        # Explicitly set to null to unbind the machine
-        values["machine_id"] = None
+        values: dict = {}
+        if body.active is not None:
+            values["active"] = body.active
+        if body.plan:
+            values["plan"] = body.plan.lower()
+        if body.expires_days is not None:
+            values["expires_at"] = datetime.now(timezone.utc) + timedelta(days=body.expires_days)
+        if body.schedule_rules is not None:
+            values["schedule_rules"] = body.schedule_rules
+        if body.note is not None:
+            values["note"] = body.note
+        if body.password is not None:
+            values["password"] = hash_password(body.password)
+        if body.machine_id is not None:
+            values["machine_id"] = body.machine_id
+        elif "machine_id" in body.model_dump(exclude_unset=True) and body.machine_id is None:
+            # Explicitly set to null to unbind the machine
+            values["machine_id"] = None
 
-    if values:
-        await db.execute(update(License).where(License.id == license_id).values(**values))
-        await db.commit()
-        await db.refresh(lic)
-    return lic
+        if values:
+            await db.execute(update(License).where(License.id == license_id).values(**values))
+            await db.commit()
+            await db.refresh(lic)
+        return lic
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao atualizar licença {license_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno ao atualizar licença: {str(e)}")
+
 
 
 # ── Per-license config ────────────────────────────────────────────────────────

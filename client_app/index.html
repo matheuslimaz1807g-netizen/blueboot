@@ -205,7 +205,15 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(this.loginForm)
                         });
-                        const d = await r.json();
+                        
+                        let d;
+                        const contentType = r.headers.get("content-type");
+                        if (contentType && contentType.includes("application/json")) {
+                            d = await r.json();
+                        } else {
+                            d = { detail: await r.text() || `Erro HTTP ${r.status}` };
+                        }
+
                         if (r.ok) {
                             localStorage.setItem('client_token', d.access_token);
                             this.loggedIn = true;
@@ -215,7 +223,7 @@
                             this.showToast(d.detail || 'Falha no login', 'error');
                         }
                     } catch (e) {
-                        this.showToast('Erro de conexão', 'error');
+                        this.showToast('Erro de conexão: ' + e.message, 'error');
                     } finally { this.loading = false; }
                 },
 
@@ -241,7 +249,11 @@
                 async saveConfig() {
                     this.loading = true;
                     const body = { ...this.config };
-                    body.sources = this.config.sources_str.split(',').map(s => s.trim()).filter(Boolean);
+                    if (this.config.sources_str) {
+                        body.sources = this.config.sources_str.split(',').map(s => s.trim()).filter(Boolean);
+                    } else {
+                        body.sources = [];
+                    }
                     delete body.sources_str;
 
                     const res = await this.fetchApi('/client/config', 'PUT', body);
@@ -260,8 +272,26 @@
 
                         const r = await fetch(`${this.apiBase}${endpoint}`, options);
                         if (r.status === 401) { this.logout(); return null; }
-                        return await r.json();
-                    } catch (e) { return null; }
+                        
+                        let d;
+                        const contentType = r.headers.get("content-type");
+                        if (contentType && contentType.includes("application/json")) {
+                            d = await r.json();
+                        } else {
+                            const text = await r.text();
+                            d = { detail: text || `Erro HTTP ${r.status}` };
+                        }
+
+                        if (!r.ok) {
+                            let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
+                            this.showToast('Erro: ' + msg, 'error');
+                            return null;
+                        }
+                        return d;
+                    } catch (e) { 
+                        this.showToast('Erro de conexão: ' + e.message, 'error');
+                        return null; 
+                    }
                 },
 
                 logout() {

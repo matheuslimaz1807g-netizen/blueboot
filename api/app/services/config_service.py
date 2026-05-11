@@ -113,3 +113,30 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
         bot_dashboard_url=cfg.bot_dashboard_url,
     )
+
+
+async def get_or_create_config(db: AsyncSession, license_id: any) -> ConfigOut:
+    """Helper for client router — get or create config by license_id."""
+    # Find the license object first
+    result = await db.execute(select(License).where(License.id == license_id))
+    lic = result.scalar_one_or_none()
+    if not lic:
+        raise ValueError("Licença não encontrada")
+    
+    cfg_out = await get_config(db, lic)
+    if cfg_out:
+        return cfg_out
+    
+    # Create empty config if missing
+    return await upsert_config(db, lic, ConfigIn(phone="", sources=[]))
+
+
+async def update_config(db: AsyncSession, license_id: any, data: ConfigIn) -> ConfigOut:
+    """Helper for client router — update config by license_id."""
+    result = await db.execute(select(License).where(License.id == license_id))
+    lic = result.scalar_one_or_none()
+    if not lic:
+        raise ValueError("Licença não encontrada")
+    
+    return await upsert_config(db, lic, data)
+

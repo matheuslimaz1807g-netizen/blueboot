@@ -2110,17 +2110,27 @@
                 headers: this.getHeaders(),
                 body: JSON.stringify(body),
               });
-              const d = await r.json();
+              
+              let d;
+              const contentType = r.headers.get("content-type");
+              if (contentType && contentType.includes("application/json")) {
+                d = await r.json();
+              } else {
+                const errorText = await r.text();
+                d = { detail: errorText || `Erro HTTP ${r.status}` };
+              }
+
               if (r.ok && d && d.id) {
                 this.showToast("Licença atualizada!", "success");
                 this.showEditLicModal = false;
                 this.loadLicenses();
               } else {
-                const msg = d.detail || JSON.stringify(d);
+                let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
+                if (typeof msg === 'object') msg = JSON.stringify(msg);
                 this.showToast("Erro ao salvar: " + msg, "error");
               }
             } catch (e) {
-              this.showToast("Erro de conexão", "error");
+              this.showToast("Erro de conexão: " + e.message, "error");
             }
           },
 
@@ -2262,15 +2272,24 @@
                 headers: this.getHeaders(),
                 body: JSON.stringify(cfg),
               });
-              const d = await r.json();
-              if (d && !d.detail) {
+              
+              let d;
+              const contentType = r.headers.get("content-type");
+              if (contentType && contentType.includes("application/json")) {
+                d = await r.json();
+              } else {
+                d = { detail: await r.text() || `Erro HTTP ${r.status}` };
+              }
+
+              if (r.ok && d && !d.detail) {
                 this.showToast("Configurações salvas!", "success");
                 this.showConfigModal = false;
               } else {
-                this.showToast(d.detail || "Erro ao salvar", "error");
+                let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
+                this.showToast("Erro ao salvar: " + msg, "error");
               }
             } catch (e) {
-              this.showToast("Erro de conexão", "error");
+              this.showToast("Erro de conexão: " + e.message, "error");
             }
           },
 

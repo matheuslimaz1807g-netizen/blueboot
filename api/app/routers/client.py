@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_license
@@ -21,12 +24,16 @@ async def get_my_config(
     db: AsyncSession = Depends(get_db)
 ):
     """Return the configuration for the current license only."""
-    result = await db.execute(select(ClientConfig).where(ClientConfig.license_id == lic.id))
-    cfg = result.scalar_one_or_none()
-    if not cfg:
-        # Create default config if missing
-        return await config_service.get_or_create_config(db, lic.id)
-    return cfg
+    try:
+        result = await db.execute(select(ClientConfig).where(ClientConfig.license_id == lic.id))
+        cfg = result.scalar_one_or_none()
+        if not cfg:
+            # Create default config if missing
+            return await config_service.get_or_create_config(db, lic.id)
+        return cfg
+    except Exception as e:
+        logger.error(f"Erro ao buscar config para licença {lic.id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Erro interno ao buscar configurações")
 
 @router.put("/config", response_model=ConfigOut)
 async def update_my_config(
@@ -35,7 +42,11 @@ async def update_my_config(
     db: AsyncSession = Depends(get_db)
 ):
     """Update configuration for the current license only."""
-    return await config_service.update_config(db, lic.id, body)
+    try:
+        return await config_service.update_config(db, lic.id, body)
+    except Exception as e:
+        logger.error(f"Erro ao atualizar config para licença {lic.id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar configurações: {str(e)}")
 
 @router.get("/logs", response_model=list[LogEntryOut])
 async def get_my_logs(
