@@ -1,3 +1,4 @@
+import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,9 +53,15 @@ async def get_current_license(
     if not license_id:
         raise HTTPException(status_code=401, detail="Token malformado")
 
+    # Converter string UUID para objeto UUID para evitar erro 500 no SQLAlchemy
+    try:
+        license_uuid = uuid.UUID(license_id)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
     from sqlalchemy import select
 
-    result = await db.execute(select(License).where(License.id == license_id))
+    result = await db.execute(select(License).where(License.id == license_uuid))
     lic = result.scalar_one_or_none()
 
     if not lic or not lic.active:

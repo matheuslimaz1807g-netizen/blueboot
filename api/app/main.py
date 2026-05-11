@@ -66,6 +66,36 @@ async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
         content={"detail": "Muitas requisições. Por favor, aguarde e tente novamente."}
     )
 
+
+@app.middleware("http")
+async def add_cors_headers_on_error(request: Request, call_next):
+    """Garante headers CORS mesmo em respostas de erro (500, etc)."""
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        # Se houver exceção não tratada, retornar 500 com CORS headers
+        origin = request.headers.get("origin", "")
+        if origin in allowed_origins or allowed_origins == ["*"]:
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Erro interno do servidor"},
+                headers={
+                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
+        raise
+    # Adicionar CORS header em respostas de erro (quando o CORSMiddleware não adicionou)
+    if response.status_code >= 400:
+        origin = request.headers.get("origin", "")
+        if origin in allowed_origins or allowed_origins == ["*"]:
+            response.headers.setdefault("Access-Control-Allow-Origin", origin)
+            response.headers.setdefault("Access-Control-Allow-Credentials", "true")
+    return response
+
+
 # O middleware CORS usará o allowed_origins definido acima
 
 app.add_middleware(
