@@ -2069,7 +2069,7 @@
               schedule_hora_fim: sr.hora_fim || "18:00",
               schedule_timezone: sr.timezone || "America/Sao_Paulo",
               note: lic.note || "",
-              password: lic.password || "",
+              password: "", // Não carregar o hash no campo de senha
               machine_id: lic.machine_id || "Não vinculado",
             };
             this.showEditLicModal = true;
@@ -2084,7 +2084,9 @@
               body.expires_days = parseInt(this.editLicForm.expires_days);
             }
             body.note = this.editLicForm.note;
-            body.password = this.editLicForm.password;
+            if (this.editLicForm.password && this.editLicForm.password.trim() !== "") {
+              body.password = this.editLicForm.password;
+            }
             body.schedule_rules = {
               enabled: this.editLicForm.schedule_enabled,
               dias_semana: this.editLicForm.schedule_dias,
