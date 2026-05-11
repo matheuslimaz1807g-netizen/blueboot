@@ -317,7 +317,7 @@ def main():
             try:
                 import requests
                 # Pega a URL do WhatsApp da config e muda /send para /status
-                wpp_url = config.get("whatsapp_endpoint", "http://whatsapp:4000/send").replace("/send", "/status")
+                wpp_url = os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send").replace("/send", "/status")
                 r = requests.get(wpp_url, timeout=5)
                 if r.status_code == 200:
                     d = r.json()

@@ -183,7 +183,13 @@ class BotRunner:
 
         from telethon.sessions import StringSession
         session_string = config.get("session_string", "")
-        session = StringSession(session_string) if session_string else StringSession()
+        session = StringSession()
+        if session_string:
+            try:
+                session = StringSession(session_string)
+            except Exception:
+                self._log("warning", "⚠️ Session string inválida ou corrompida. Iniciando nova sessão.")
+                session = StringSession()
 
         self._client = TelegramClient(session, api_id, api_hash)
 
