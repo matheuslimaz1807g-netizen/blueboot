@@ -114,7 +114,7 @@ async def seed():
     print("   - APRO-DDDD-EEEE-FFFF  (pro, valid)")
     print("   - APRO-GGGG-HHHH-IIII  (basic, expired)")
     print("   - APRO-JJJJ-KKKK-LLLL  (basic, inactive)")
-    print("\n📋 Admin login: admin / admin123")
+    print("\nAdmin login: use ADMIN_USERNAME and ADMIN_PASSWORD from your environment")
     print("🌐 API docs: http://localhost:8000/docs")
 
 

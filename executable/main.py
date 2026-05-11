@@ -112,7 +112,9 @@ def create_app(mode: str, initial_config: dict):
     
     # Credenciais do Painel
     DASH_USER = os.getenv("DASHBOARD_USER", "admin")
-    DASH_PWD = os.getenv("DASHBOARD_PASSWORD", "admin123")
+    DASH_PWD = os.getenv("DASHBOARD_PASSWORD")
+    if not DASH_PWD:
+        raise RuntimeError("DASHBOARD_PASSWORD e obrigatorio para iniciar o painel local")
 
     def check_auth(username, password):
         return username == DASH_USER and password == DASH_PWD

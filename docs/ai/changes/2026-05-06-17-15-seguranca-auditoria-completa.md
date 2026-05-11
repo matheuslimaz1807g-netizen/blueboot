@@ -31,8 +31,8 @@ Implementação de correções críticas de segurança identificadas na auditori
 - **Impacto:** Tokens antigos inválidos, requer nova configuração em ambientes
 
 ### 3. Senhas Fortes em Configurações
-- **POSTGRES_PASSWORD:** `bluebot_secret` → `S3cur3P@ss!2026#BlueBot`
-- **ADMIN_PASSWORD:** `change_me` → `Adm1n-S3cur3-P@ss!2026#`
+- **POSTGRES_PASSWORD:** substituido por segredo forte gerado no ambiente
+- **ADMIN_PASSWORD:** substituido por segredo forte gerado no ambiente
 - **DASHBOARD_PASSWORD:** Atualizado para mesma senha forte
 - **Impacto:** Necessário atualizar senhas em todos os ambientes
 

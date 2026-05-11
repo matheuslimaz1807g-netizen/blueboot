@@ -13,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
-from app.routers import admin, client, auth
+from app.routers import admin, client, auth, license
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,7 @@ app.add_middleware(
 
 # 1. Routers da API (Processados Primeiro)
 app.include_router(auth.router)
+app.include_router(license.router)
 app.include_router(client.router)
 app.include_router(admin.router)
 
