@@ -1,86 +1,52 @@
-
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: bluebot_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-bluebot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: ${POSTGRES_DB:-bluebot}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    expose:
-      - "5432"
-    networks:
-      - bluebot_network
-
-  api:
+  whatsapp_matheus:
     build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: bluebot_api
+      context: /usr/blueboot
+      dockerfile: Dockerfile.whatsapp
+    image: blueboot-whatsapp
+    container_name: whatsapp_matheus
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "4000"
+    volumes:
+      - whatsapp_auth_matheus:/.wwebjs_auth
+      - whatsapp_cache_matheus:/.wwebjs_cache
+    networks:
+      - blueboot_bluebot_network
+    security_opt:
+      - no-new-privileges:true
+    shm_size: "256m"
+
+  bot_matheus:
+    build:
+      context: /usr/blueboot
+      dockerfile: Dockerfile.bot
+    image: blueboot-bot
+    container_name: bot_matheus
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-    depends_on:
-      - postgres
-    expose:
-      - "8000"
-    networks:
-      - bluebot_network
-
-  panel:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    container_name: bluebot_panel
-    restart: unless-stopped
-    expose:
-      - "3000"
-    networks:
-      - bluebot_network
-
-  nginx:
-    image: nginx:latest
-    container_name: bluebot_nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+      CLIENTE_SLUG: matheus
+      APRO_API_BASE: "http://bluebot_api:8000"
+      WHATSAPP_ENDPOINT: "http://whatsapp_matheus:4000"
+      DOCKER_CONTAINER: "1"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./certbot/www:/var/www/certbot:ro
-      - ./admin:/usr/share/nginx/html/admin:ro
-      - ./client_app:/usr/share/nginx/html/client:ro
+      - bot_sessions_matheus:/app/sessions
+      - bot_data_matheus:/app/data
     depends_on:
-      - api
+      - whatsapp_matheus
     networks:
-      - bluebot_network
-
-  certbot:
-    image: certbot/certbot:latest
-    container_name: bluebot_certbot
-    volumes:
-      - ./ssl/letsencrypt:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: >
-      sh -c "certbot certonly --webroot
-      --webroot-path=/var/www/certbot
-      --email suporte@bluebotapp.com.br
-      --agree-tos
-      --no-eff-email
-      -d bluebotapp.com.br
-      -d www.bluebotapp.com.br
-      -d api.bluebotapp.com.br
-      -d console.bluebotapp.com.br
-      -d app.bluebotapp.com.br"
+      - blueboot_bluebot_network
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
-  postgres_data:
+  whatsapp_auth_matheus:
+  whatsapp_cache_matheus:
+  bot_sessions_matheus:
+  bot_data_matheus:
 
 networks:
-  bluebot_network:
-    driver: bridge
+  blueboot_bluebot_network:
+    external: true
