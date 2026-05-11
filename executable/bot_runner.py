@@ -11,6 +11,7 @@ pois o Telegram nem sempre entrega eventos para canais onde a conta
 from __future__ import annotations
 
 import asyncio
+import base64
 import threading
 import time
 from collections import deque
@@ -186,9 +187,11 @@ class BotRunner:
         session = StringSession()
         if session_string:
             try:
+                # Validate session_string is valid base64 before using
+                base64.b64decode(session_string, validate=True)
                 session = StringSession(session_string)
-            except Exception:
-                self._log("warning", "⚠️ Session string inválida ou corrompida. Iniciando nova sessão.")
+            except Exception as e:
+                self._log("warning", f"⚠️ Session string inválida ou corrompida ({str(e)[:50]}...). Iniciando nova sessão.")
                 session = StringSession()
 
         self._client = TelegramClient(session, api_id, api_hash)
