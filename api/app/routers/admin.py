@@ -7,6 +7,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select, update, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.dependencies import get_admin_user
