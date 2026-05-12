@@ -22,8 +22,11 @@ from typing import Optional
 
 import requests
 
-# Suppress SSL warnings for self-signed certificates (local dev/testing)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from utils import should_verify_ssl
+
+# Suppress SSL warnings only when verification is disabled
+if not should_verify_ssl("https://example.com"):
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 # API_BASE is set at build time and baked into the compiled module.
@@ -144,12 +147,13 @@ def validate_license(key: str, machine_id: str) -> dict:
         LicenseError: if the license is invalid, expired, or machine mismatch
         requests.RequestException: if the server is unreachable
     """
+    url = f"{get_api_base()}/license/validate"
     try:
         resp = requests.post(
-            f"{get_api_base()}/license/validate",
+            url,
             json={"license_key": key, "machine_id": machine_id},
             timeout=REQUEST_TIMEOUT,
-            verify=False,
+            verify=should_verify_ssl(url),
         )
         resp.raise_for_status()
         data = resp.json()
@@ -191,12 +195,13 @@ def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on
             except:
                 pass
 
+        url = f"{get_api_base()}/license/heartbeat"
         try:
             resp = requests.post(
-                f"{get_api_base()}/license/heartbeat",
+                url,
                 json=payload,
                 timeout=REQUEST_TIMEOUT,
-                verify=False,
+                verify=should_verify_ssl(url),
             )
             resp.raise_for_status()
             last_success = time.time()

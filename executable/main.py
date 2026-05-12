@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -22,6 +23,7 @@ from flask import Flask, jsonify, redirect, render_template, render_template_str
 import config_loader
 from bot_runner import BotRunner
 from functools import wraps
+from utils import should_verify_ssl
 
 # ── Configurações Globais ──────────────────────────────────────────────────────
 VERSION = "2.0.0"
@@ -42,69 +44,60 @@ def add_log(nivel: str, mensagem: str) -> None:
     print(f"[{ts}] [{nivel.upper()}] {mensagem}", flush=True)
 
 
-# ── Templates HTML (Embutidos para Portabilidade na VPS) ──────────────────────
-DASHBOARD_HTML = """
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>BlueBot v{{ version }} — Painel</title>
-    <meta http-equiv="refresh" content="10">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 20px; }
-        .status-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; display: flex; gap: 20px; }
-        .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        .badge-running { background: #238636; color: white; }
-        .badge-stopped { background: #da3633; color: white; }
-        .log-container { background: #010409; border: 1px solid #30363d; border-radius: 8px; padding: 15px; height: 500px; overflow-y: auto; font-family: monospace; font-size: 13px; margin-top: 20px; }
-        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #161b22; padding-bottom: 2px; }
-        .ts { color: #8b949e; }
-        .nivel-info { color: #58a6ff; }
-        .nivel-success { color: #3fb950; }
-        .nivel-warning { color: #d29922; }
-        .nivel-error { color: #f85149; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>BlueBot <small style="font-size: 12px; color: #8b949e;">v{{ version }}</small></h1>
-            <div>
-                {% if status == 'running' %}
-                <span class="badge badge-running">Rodando</span>
-                {% else %}
-                <span class="badge badge-stopped">Parado</span>
-                {% endif %}
-            </div>
-        </div>
+def save_session_to_env(session_string: str) -> bool:
+    """
+    Salva a TELEGRAM_SESSION_STRING no arquivo .env local.
+    Isso garante que a sessão persista mesmo após restart do container.
+    
+    Procura pelos arquivos .env ou .env.local no diretório atual.
+    Se a variável já existir, substitui; senão, adiciona ao final.
+    """
+    env_files = [".env.local", ".env"]
+    env_path = None
+    
+    for f in env_files:
+        if Path(f).exists():
+            env_path = Path(f)
+            break
+    
+    if not env_path:
+        # Se nenhum .env existir, cria um .env
+        env_path = Path(".env")
+        add_log("warning", f"⚠️ Arquivo .env não encontrado. Criando {env_path}...")
+    
+    try:
+        content = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+        lines = content.splitlines()
+        
+        # Procura por TELEGRAM_SESSION_STRING nas linhas existentes
+        found = False
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith("TELEGRAM_SESSION_STRING"):
+                new_lines.append(f"TELEGRAM_SESSION_STRING={session_string}")
+                found = True
+            else:
+                new_lines.append(line)
+        
+        if not found:
+            # Adiciona ao final do arquivo
+            if new_lines and new_lines[-1] != "":
+                new_lines.append("")
+            new_lines.append(f"TELEGRAM_SESSION_STRING={session_string}")
+        
+        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        add_log("success", f"✅ Session string salva em {env_path.name} com sucesso!")
+        return True
+        
+    except Exception as e:
+        add_log("error", f"❌ Erro ao salvar session string no .env: {e}")
+        return False
 
-        <div class="status-card">
-            <div>
-                <strong>Modo:</strong> {{ mode }}<br>
-                <strong>Plataformas:</strong> Telegram {% if wpp %} + WhatsApp{% endif %}
-            </div>
-            <div style="margin-left: auto; text-align: right;">
-                <strong>Mensagens Processadas:</strong> {{ stats.get('processed', 0) }}<br>
-                <strong>Links Convertidos:</strong> {{ stats.get('converted', 0) }}
-            </div>
-        </div>
 
-        <div class="log-container">
-            {% for log in logs|reverse %}
-            <div class="log-entry">
-                <span class="ts">[{{ log.horario }}]</span> 
-                <span class="nivel-{{ log.nivel }}">[{{ log.nivel|upper }}]</span> 
-                {{ log.mensagem }}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</body>
-</html>
-"""
+# ── Templates HTML ─────────────────────────────────────────────────────────────
+# Template carregado de arquivo externo para facilitar manutenção.
+# Localização: executable/templates/dashboard.html
+DASHBOARD_HTML = (Path(__file__).parent / "templates" / "dashboard.html").read_text(encoding="utf-8")
 
 
 def create_app(mode: str, initial_config: dict):
@@ -170,6 +163,11 @@ def create_app(mode: str, initial_config: dict):
             return jsonify({"ok": False, "error": "Código ou senha é obrigatório"}), 400
         
         result = _runner.submit_code(code, password)
+        
+        # Salva a session string localmente se a autenticação foi bem-sucedida
+        if result.get("ok") and result.get("session_string"):
+            save_session_to_env(result["session_string"])
+        
         return jsonify(result)
 
     @app.route("/api/whatsapp/status")
@@ -237,8 +235,9 @@ def main():
             
             try:
                 # Tenta descobrir automaticamente no painel
+                discover_url = f"{api_base}/license/discover"
                 resp = requests.post(
-                    f"{api_base}/license/discover",
+                    discover_url,
                     headers={"X-Install-Token": install_token or ""},
                     json={
                         "machine_id": mid,
@@ -247,7 +246,7 @@ def main():
                         "label": robot_label or "BlueBot"
                     },
                     timeout=10,
-                    verify=False
+                    verify=should_verify_ssl(discover_url)
                 )
                 
                 if resp.status_code == 200:
@@ -374,10 +373,11 @@ def main():
         while True:
             try:
                 if _runner.status() == "waiting_code":
+                    auth_code_url = f"{api_base}/license/auth-code"
                     resp = requests.get(
-                        f"{api_base}/license/auth-code",
+                        auth_code_url,
                         params={"license_key": license_key, "machine_id": mid},
-                        verify=False,
+                        verify=should_verify_ssl(auth_code_url),
                         timeout=5
                     )
                     if resp.status_code == 200:
@@ -391,21 +391,25 @@ def main():
                                 add_log("success", "✅ Autenticação Telegram concluída via painel!")
                                 session_str = res.get("session_string")
                                 if session_str:
-                                    # Update remote config with new session_string
+                                    # 1. Salva LOCALMENTE no .env para persistir após restart
+                                    save_session_to_env(session_str)
+                                    
+                                    # 2. Update remote config with new session_string
+                                    cfg_url = f"{api_base}/config/{license_key}"
                                     cfg_resp = requests.get(
-                                        f"{api_base}/config/{license_key}",
+                                        cfg_url,
                                         params={"machine_id": mid},
-                                        verify=False,
+                                        verify=should_verify_ssl(cfg_url),
                                         timeout=5
                                     )
                                     if cfg_resp.status_code == 200:
                                         cfg = cfg_resp.json()
                                         cfg["session_string"] = session_str
                                         requests.put(
-                                            f"{api_base}/config/{license_key}",
+                                            cfg_url,
                                             params={"machine_id": mid},
                                             json=cfg,
-                                            verify=False,
+                                            verify=should_verify_ssl(cfg_url),
                                             timeout=5
                                         )
                             elif res.get("requires_password"):

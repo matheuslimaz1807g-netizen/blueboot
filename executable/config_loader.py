@@ -11,7 +11,11 @@ import requests
 import urllib3
 from dotenv import load_dotenv
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from utils import should_verify_ssl
+
+# Suppress SSL warnings only when verification is disabled
+if not should_verify_ssl("https://example.com"):
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 _API_BASE_DEFAULT: str = "https://api.bluebot.com.br"
 REQUEST_TIMEOUT: int = 15
@@ -96,12 +100,13 @@ def merge_configs(local: dict, remote: dict) -> dict:
 
 
 def fetch_remote_config(license_key: str, machine_id: str) -> dict:
+    url = f"{get_api_base()}/config/{license_key}"
     try:
         resp = requests.get(
-            f"{get_api_base()}/config/{license_key}",
+            url,
             params={"machine_id": machine_id},
             timeout=REQUEST_TIMEOUT,
-            verify=False,
+            verify=should_verify_ssl(url),
         )
         resp.raise_for_status()
         return resp.json()
@@ -110,13 +115,14 @@ def fetch_remote_config(license_key: str, machine_id: str) -> dict:
 
 
 def push_remote_config(license_key: str, machine_id: str, config: dict) -> dict:
+    url = f"{get_api_base()}/config/{license_key}"
     try:
         resp = requests.put(
-            f"{get_api_base()}/config/{license_key}",
+            url,
             params={"machine_id": machine_id},
             json=config,
             timeout=REQUEST_TIMEOUT,
-            verify=False,
+            verify=should_verify_ssl(url),
         )
         resp.raise_for_status()
         return resp.json()
