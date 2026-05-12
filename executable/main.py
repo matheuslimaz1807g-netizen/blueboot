@@ -368,6 +368,50 @@ def main():
     else:
         add_log("warning", "⚠️ API_ID/HASH ausentes. Bot de Telegram não iniciado.")
 
+    # Iniciar Config Watcher: verifica periodicamente se a config remota mudou
+    # e reinicia o bot se necessário (ex: telefone alterado no painel)
+    def config_watcher():
+        last_phone = config.get("phone", "")
+        last_sources = config.get("sources", [])
+        while True:
+            try:
+                time.sleep(30)  # Verifica a cada 30 segundos
+                if not license_key:
+                    continue
+                    
+                remote = config_loader.fetch_remote_config(license_key, mid)
+                if not remote:
+                    continue
+                    
+                new_phone = remote.get("phone", last_phone)
+                new_sources = remote.get("sources", last_sources)
+                
+                # Se o telefone ou fontes mudaram, reinicia o bot
+                if new_phone != last_phone or new_sources != last_sources:
+                    add_log("info", "🔄 Configuração remota alterada! Reiniciando bot...")
+                    
+                    # Atualiza config local mesclada
+                    merged = config_loader.merge_configs(config, remote)
+                    
+                    # Para o bot atual
+                    _runner.stop()
+                    time.sleep(2)
+                    
+                    # Inicia com nova config
+                    try:
+                        _runner.start(merged)
+                        config.update(merged)
+                        last_phone = new_phone
+                        last_sources = new_sources
+                        add_log("success", "✅ Bot reiniciado com nova configuração!")
+                    except Exception as e:
+                        add_log("error", f"❌ Falha ao reiniciar bot: {e}")
+                        
+            except Exception:
+                pass  # Silencia erros no watcher
+
+    threading.Thread(target=config_watcher, daemon=True, name="ConfigWatcher").start()
+
     # Iniciar Polling de Autenticação para buscar códigos remotos via Painel
     def poll_auth_code():
         while True:
