@@ -142,13 +142,11 @@ volumes:
     driver: local
 
 # =============================================================================
-# Redes — "bluebot_network" com nome fixo (sem prefixo do diretório)
-# Criada automaticamente pelo compose, não precisa criar manualmente
+# Redes — "bluebot_network" fixa (já criada manualmente uma vez)
 # Demais containers (clientes) conectam-se com:
 #   docker network connect bluebot_network <container>
 # =============================================================================
 networks:
   bluebot_network:
+    external: true
     name: bluebot_network
-    driver: bridge
-    attachable: true
