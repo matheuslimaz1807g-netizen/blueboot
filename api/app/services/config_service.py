@@ -11,15 +11,12 @@ from app.schemas.schemas import ConfigIn, ConfigOut
 
 async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
     """Return decrypted config for a license, or None if not configured yet."""
-    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(License).where(License.id == license.id).options(selectinload(License.config))
+        select(ClientConfig).where(ClientConfig.license_id == license.id)
     )
-    lic = result.scalar_one_or_none()
-    if not lic or not lic.config:
+    cfg = result.scalar_one_or_none()
+    if not cfg:
         return None
-
-    cfg = lic.config
     return ConfigOut(
         phone=cfg.phone,
         sources=cfg.sources or [],
