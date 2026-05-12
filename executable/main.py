@@ -371,24 +371,27 @@ def main():
     # Iniciar Config Watcher: verifica periodicamente se a config remota mudou
     # e reinicia o bot se necessário (qualquer campo alterado no painel)
     def config_watcher():
-        # Campos que, se alterados, exigem reinicialização do bot
-        CRITICAL_FIELDS = {"phone", "api_id", "api_hash", "sources", "session_string"}
-        # Campos que podem ser atualizados sem reiniciar (apenas atualiza config)
-        HOT_RELOAD_FIELDS = {"destination_telegram", "delay_segundos", "send_telegram", 
-                             "send_whatsapp", "wpp_destinations", "whatsapp_endpoint",
-                             "conv_shopee", "conv_ali", "conv_ml",
-                             "shopee_token", "ali_key", "ali_secret", "ali_tracking",
-                             "ml_token", "web_api_url", "send_to_web_api"}
+        # Campos monitorados (exclui session_string para evitar loop de reinicialização)
+        MONITORED_FIELDS = {
+            "phone", "api_id", "api_hash", "sources",
+            "destination_telegram", "delay_segundos", "send_telegram", 
+            "send_whatsapp", "wpp_destinations", "whatsapp_endpoint",
+            "conv_shopee", "conv_ali", "conv_ml",
+            "shopee_token", "ali_key", "ali_secret", "ali_tracking",
+            "ml_token", "web_api_url", "send_to_web_api"
+        }
+        # Campos que exigem reinicialização do bot
+        RESTART_FIELDS = {"phone", "api_id", "api_hash", "sources"}
         
-        # Snapshot inicial de todos os campos relevantes
+        # Snapshot inicial
         def make_snapshot(cfg):
-            return {k: cfg.get(k) for k in (CRITICAL_FIELDS | HOT_RELOAD_FIELDS)}
+            return {k: cfg.get(k) for k in MONITORED_FIELDS}
         
         last_snapshot = make_snapshot(config)
         
         while True:
             try:
-                time.sleep(30)  # Verifica a cada 30 segundos
+                time.sleep(30)
                 if not license_key:
                     continue
                     
@@ -396,19 +399,16 @@ def main():
                 if not remote:
                     continue
                 
-                # Mescla remota sobre a config atual
                 merged = config_loader.merge_configs(dict(config), remote)
                 new_snapshot = make_snapshot(merged)
                 
-                # Verifica se algo mudou
                 changed_fields = []
                 needs_restart = False
                 
-                for field in new_snapshot:
+                for field in MONITORED_FIELDS:
                     old_val = last_snapshot.get(field)
                     new_val = new_snapshot.get(field)
                     
-                    # Normaliza listas para comparação
                     if isinstance(old_val, list):
                         old_val = sorted(old_val) if old_val else []
                     if isinstance(new_val, list):
@@ -416,34 +416,32 @@ def main():
                     
                     if old_val != new_val:
                         changed_fields.append(field)
-                        if field in CRITICAL_FIELDS:
+                        if field in RESTART_FIELDS:
                             needs_restart = True
                 
                 if changed_fields:
-                    add_log("info", f"🔄 Campos alterados no painel: {', '.join(changed_fields)}")
+                    add_log("info", f"🔄 Painel alterou: {', '.join(changed_fields)}")
                     
                     if needs_restart:
-                        add_log("info", "🔄 Reiniciando bot para aplicar mudanças críticas...")
+                        add_log("info", "🔄 Reiniciando bot...")
                         _runner.stop()
                         time.sleep(2)
                     
-                    # Atualiza a config local
                     config.update(merged)
                     last_snapshot = new_snapshot
                     
                     if needs_restart:
                         try:
                             _runner.start(merged)
-                            add_log("success", "✅ Bot reiniciado com nova configuração do painel!")
+                            add_log("success", "✅ Bot reiniciado!")
                         except Exception as e:
-                            add_log("error", f"❌ Falha ao reiniciar bot: {e}")
+                            add_log("error", f"❌ Falha ao reiniciar: {e}")
                     else:
-                        # Hot reload: apenas atualiza a config do runner
                         _runner.update_config(merged)
-                        add_log("success", "✅ Configuração atualizada sem reinicialização!")
+                        add_log("success", "✅ Config atualizada!")
                         
             except Exception:
-                pass  # Silencia erros no watcher
+                pass
 
     threading.Thread(target=config_watcher, daemon=True, name="ConfigWatcher").start()
 
