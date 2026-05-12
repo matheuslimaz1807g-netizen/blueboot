@@ -25,12 +25,7 @@ async def get_my_config(
 ):
     """Return the configuration for the current license only."""
     try:
-        result = await db.execute(select(ClientConfig).where(ClientConfig.license_id == lic.id))
-        cfg = result.scalar_one_or_none()
-        if not cfg:
-            # Create default config if missing
-            return await config_service.get_or_create_config(db, lic.id)
-        return cfg
+        return await config_service.get_or_create_config(db, lic.id)
     except Exception as e:
         logger.error(f"Erro ao buscar config para licença {lic.id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erro interno ao buscar configurações")
