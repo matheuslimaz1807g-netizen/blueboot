@@ -65,6 +65,16 @@ logs/
 *.log
 temp_*.jpg
 
+# BlueBot — Dados persistentes (NÃO versionar)
+data/
+certbot/www/
+backups/
+ssl/
+
+# Secrets de clientes
+clientes/*/.env
+clientes/*/frontend/
+
 # IDEs
 .vscode/
 .idea/
