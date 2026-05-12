@@ -29,6 +29,7 @@ services:
     expose:
       - "8080"
     volumes:
+      - ./.env:/app/.env
       - ./sessions:/app/sessions
       - ./data:/app/data
     depends_on:
