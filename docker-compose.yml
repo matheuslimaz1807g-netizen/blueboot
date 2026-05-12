@@ -13,7 +13,7 @@ services:
       - whatsapp_auth_matheus:/.wwebjs_auth
       - whatsapp_cache_matheus:/.wwebjs_cache
     networks:
-      - blueboot_bluebot_network
+      - bluebot_network
     security_opt:
       - no-new-privileges:true
     shm_size: "256m"
@@ -37,7 +37,7 @@ services:
     depends_on:
       - whatsapp_matheus
     networks:
-      - blueboot_bluebot_network
+      - bluebot_network
     security_opt:
       - no-new-privileges:true
 
@@ -48,5 +48,5 @@ volumes:
   bot_data_matheus:
 
 networks:
-  blueboot_bluebot_network:
+  bluebot_network:
     external: true

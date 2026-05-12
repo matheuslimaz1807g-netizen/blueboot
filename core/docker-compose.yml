@@ -3,9 +3,8 @@
 # Serviços: postgres, api, nginx, certbot
 #
 # Antes de subir:
-#   1. Crie a rede externa:  docker network create bluebot_network
-#   2. Copie .env.example → .env e preencha TODAS as variáveis
-#   3. docker compose up -d
+#   1. Copie .env.example → .env e preencha TODAS as variáveis
+#   2. docker compose up -d
 # =============================================================================
 
 services:
@@ -143,10 +142,13 @@ volumes:
     driver: local
 
 # =============================================================================
-# Redes — "bluebot_network" é EXTERNA (criada manualmente uma vez)
-# Isso permite que os containers de clientes se conectem a ela
-# Comando: docker network create bluebot_network
+# Redes — "bluebot_network" com nome fixo (sem prefixo do diretório)
+# Criada automaticamente pelo compose, não precisa criar manualmente
+# Demais containers (clientes) conectam-se com:
+#   docker network connect bluebot_network <container>
 # =============================================================================
 networks:
   bluebot_network:
-    external: true
+    name: bluebot_network
+    driver: bridge
+    attachable: true
