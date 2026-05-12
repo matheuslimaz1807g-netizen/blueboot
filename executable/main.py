@@ -369,10 +369,23 @@ def main():
         add_log("warning", "⚠️ API_ID/HASH ausentes. Bot de Telegram não iniciado.")
 
     # Iniciar Config Watcher: verifica periodicamente se a config remota mudou
-    # e reinicia o bot se necessário (ex: telefone alterado no painel)
+    # e reinicia o bot se necessário (qualquer campo alterado no painel)
     def config_watcher():
-        last_phone = config.get("phone", "")
-        last_sources = config.get("sources", [])
+        # Campos que, se alterados, exigem reinicialização do bot
+        CRITICAL_FIELDS = {"phone", "api_id", "api_hash", "sources", "session_string"}
+        # Campos que podem ser atualizados sem reiniciar (apenas atualiza config)
+        HOT_RELOAD_FIELDS = {"destination_telegram", "delay_segundos", "send_telegram", 
+                             "send_whatsapp", "wpp_destinations", "whatsapp_endpoint",
+                             "conv_shopee", "conv_ali", "conv_ml",
+                             "shopee_token", "ali_key", "ali_secret", "ali_tracking",
+                             "ml_token", "web_api_url", "send_to_web_api"}
+        
+        # Snapshot inicial de todos os campos relevantes
+        def make_snapshot(cfg):
+            return {k: cfg.get(k) for k in (CRITICAL_FIELDS | HOT_RELOAD_FIELDS)}
+        
+        last_snapshot = make_snapshot(config)
+        
         while True:
             try:
                 time.sleep(30)  # Verifica a cada 30 segundos
@@ -382,30 +395,52 @@ def main():
                 remote = config_loader.fetch_remote_config(license_key, mid)
                 if not remote:
                     continue
-                    
-                new_phone = remote.get("phone", last_phone)
-                new_sources = remote.get("sources", last_sources)
                 
-                # Se o telefone ou fontes mudaram, reinicia o bot
-                if new_phone != last_phone or new_sources != last_sources:
-                    add_log("info", "🔄 Configuração remota alterada! Reiniciando bot...")
+                # Mescla remota sobre a config atual
+                merged = config_loader.merge_configs(dict(config), remote)
+                new_snapshot = make_snapshot(merged)
+                
+                # Verifica se algo mudou
+                changed_fields = []
+                needs_restart = False
+                
+                for field in new_snapshot:
+                    old_val = last_snapshot.get(field)
+                    new_val = new_snapshot.get(field)
                     
-                    # Atualiza config local mesclada
-                    merged = config_loader.merge_configs(config, remote)
+                    # Normaliza listas para comparação
+                    if isinstance(old_val, list):
+                        old_val = sorted(old_val) if old_val else []
+                    if isinstance(new_val, list):
+                        new_val = sorted(new_val) if new_val else []
                     
-                    # Para o bot atual
-                    _runner.stop()
-                    time.sleep(2)
+                    if old_val != new_val:
+                        changed_fields.append(field)
+                        if field in CRITICAL_FIELDS:
+                            needs_restart = True
+                
+                if changed_fields:
+                    add_log("info", f"🔄 Campos alterados no painel: {', '.join(changed_fields)}")
                     
-                    # Inicia com nova config
-                    try:
-                        _runner.start(merged)
-                        config.update(merged)
-                        last_phone = new_phone
-                        last_sources = new_sources
-                        add_log("success", "✅ Bot reiniciado com nova configuração!")
-                    except Exception as e:
-                        add_log("error", f"❌ Falha ao reiniciar bot: {e}")
+                    if needs_restart:
+                        add_log("info", "🔄 Reiniciando bot para aplicar mudanças críticas...")
+                        _runner.stop()
+                        time.sleep(2)
+                    
+                    # Atualiza a config local
+                    config.update(merged)
+                    last_snapshot = new_snapshot
+                    
+                    if needs_restart:
+                        try:
+                            _runner.start(merged)
+                            add_log("success", "✅ Bot reiniciado com nova configuração do painel!")
+                        except Exception as e:
+                            add_log("error", f"❌ Falha ao reiniciar bot: {e}")
+                    else:
+                        # Hot reload: apenas atualiza a config do runner
+                        _runner.update_config(merged)
+                        add_log("success", "✅ Configuração atualizada sem reinicialização!")
                         
             except Exception:
                 pass  # Silencia erros no watcher
