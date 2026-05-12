@@ -89,6 +89,7 @@ services:
     volumes:
       - ../nginx.conf:/etc/nginx/nginx.conf:ro
       - ../admin:/usr/share/nginx/html/admin:ro
+      - ../client_app:/usr/share/nginx/html/client:ro
       # Certificados gerados pelo certbot (volume nomeado compartilhado)
       - certbot_data:/etc/letsencrypt:ro
       # Pasta de desafio ACME usada pelo certbot para renovação HTTP-01
