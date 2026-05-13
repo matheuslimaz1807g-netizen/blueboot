@@ -33,6 +33,14 @@ LOCAL_PORT = 8080
 _logs: deque[dict] = deque(maxlen=MAX_LOGS)
 _lock = threading.Lock()
 _runner: BotRunner = None
+ENV_SYNC_FIELDS = {
+    "ml_cookies": "ML_COOKIES",
+    "ml_token": "ML_TOKEN",
+    "shopee_token": "SHOPEE_TOKEN",
+    "ali_key": "ALIEXPRESS_APP_KEY",
+    "ali_secret": "ALIEXPRESS_APP_SECRET",
+    "ali_tracking": "ALIEXPRESS_TRACKING_ID",
+}
 
 
 def add_log(nivel: str, mensagem: str) -> None:
@@ -44,6 +52,67 @@ def add_log(nivel: str, mensagem: str) -> None:
     print(f"[{ts}] [{nivel.upper()}] {mensagem}", flush=True)
 
 
+def find_env_file() -> Path | None:
+    for f in [".env.local", ".env"]:
+        path = Path(f)
+        if path.exists():
+            return path
+    return None
+
+
+def save_values_to_env(values: dict[str, str]) -> bool:
+    env_path = find_env_file()
+    if not env_path:
+        if os.getenv("DOCKER_CONTAINER"):
+            add_log("warning", "Arquivo .env nao encontrado no container. Monte ./.env:/app/.env para persistir configs remotas.")
+            return False
+        env_path = Path(".env")
+
+    try:
+        content = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+        lines = content.splitlines()
+        pending = dict(values)
+        new_lines = []
+
+        for line in lines:
+            stripped = line.strip()
+            key = stripped.split("=", 1)[0] if "=" in stripped and not stripped.startswith("#") else None
+            if key in pending:
+                new_lines.append(f"{key}={pending.pop(key)}")
+            else:
+                new_lines.append(line)
+
+        if pending and new_lines and new_lines[-1] != "":
+            new_lines.append("")
+        for key, value in pending.items():
+            new_lines.append(f"{key}={value}")
+
+        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        return True
+    except Exception as exc:
+        add_log("warning", f"Nao foi possivel atualizar o .env: {exc}")
+        return False
+
+
+def sync_env_vars(config: dict, persist: bool = False) -> None:
+    updates: dict[str, str] = {}
+    for cfg_key, env_key in ENV_SYNC_FIELDS.items():
+        val = config.get(cfg_key)
+        if val is not None:
+            updates[env_key] = str(val)
+            os.environ[env_key] = str(val)
+    
+    if persist and updates:
+        if save_values_to_env(updates):
+            add_log("success", f"✅ {len(updates)} variáveis salvas em .env com sucesso!")
+    
+    if "ML_COOKIES" in updates and updates["ML_COOKIES"]:
+        add_log("info", f"🍪 ML_COOKIES recebido! (Tam: {len(updates['ML_COOKIES'])} chars)")
+
+    if "ML_COOKIES" in updates:
+        add_log("info", f"ML_COOKIES sincronizado: {len(updates['ML_COOKIES'])} caracteres.")
+
+
 def save_session_to_env(session_string: str) -> bool:
     """
     Salva a TELEGRAM_SESSION_STRING no arquivo .env local.
@@ -52,20 +121,12 @@ def save_session_to_env(session_string: str) -> bool:
     Procura pelos arquivos .env ou .env.local no diretório atual.
     Se a variável já existir, substitui; senão, adiciona ao final.
     """
-    env_files = [".env.local", ".env"]
-    env_path = None
-    
-    for f in env_files:
-        if Path(f).exists():
-            env_path = Path(f)
-            break
+    env_path = find_env_file()
     
     if not env_path:
         # Se nenhum .env existir, cria um .env
         env_path = Path(".env")
-        if os.getenv("DOCKER_CONTAINER"):
-            add_log("warning", "⚠️ Arquivo .env não encontrado. Se você estiver usando Docker, certifique-se de mapear o volume: - ./.env:/app/.env")
-        add_log("warning", f"⚠️ Criando {env_path} interno para persistência temporária...")
+        add_log("warning", f"⚠️ Arquivo .env não encontrado. Criando {env_path}...")
     
     try:
         content = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
@@ -345,23 +406,6 @@ def main():
 
         start_heartbeat(license_key, mid, on_grace_expired=on_expired, status_callback=get_wpp_status_callback)
         
-        def sync_env_vars(cfg):
-            """Injeta campos de credenciais no os.environ para módulos que lêem diretamente."""
-            ENV_SYNC_FIELDS = {
-                "ml_cookies": "ML_COOKIES",
-                "ml_token": "ML_TOKEN",
-                "shopee_token": "SHOPEE_TOKEN",
-                "ali_key": "ALIEXPRESS_APP_KEY",
-                "ali_secret": "ALIEXPRESS_APP_SECRET",
-                "ali_tracking": "ALIEXPRESS_TRACKING_ID",
-            }
-            for cfg_key, env_key in ENV_SYNC_FIELDS.items():
-                val = cfg.get(cfg_key)
-                if val:
-                    os.environ[env_key] = str(val)
-                    if cfg_key == "ml_cookies":
-                        add_log("info", f"🍪 ML_COOKIES sincronizado: {len(str(val))} caracteres.")
-
         # 3. Carregar Configuração (Remota primeiro, fallback para local)
         # Carrega a local como base
         config = config_loader.load_config_from_env()
@@ -371,10 +415,8 @@ def main():
             remote_config = config_loader.fetch_remote_config(license_key, mid)
             # Mescla remota sobre a local
             config = config_loader.merge_configs(config, remote_config)
-            sync_env_vars(config)
-            
-            ml_count = len(str(config.get("ml_cookies") or ""))
-            add_log("success", f"✅ Configurações remotas aplicadas! ML_COOKIES: {ml_count} chars.")
+            sync_env_vars(config, persist=True)
+            add_log("success", "✅ Configurações remotas aplicadas e mescladas com local!")
         except Exception as e:
             add_log("warning", f"⚠️ Config remota indisponível ou vazia ({e})")
             add_log("info", "📁 Mantendo configurações locais (.env).")
@@ -457,8 +499,9 @@ def main():
                         time.sleep(2)
                     
                     config.update(merged)
-                    sync_env_vars(merged)
                     last_snapshot = new_snapshot
+                    
+                    sync_env_vars(merged, persist=True)
                     
                     if needs_restart:
                         try:

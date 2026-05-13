@@ -1,2673 +1,341 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Painel Admin</title>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueBot - Painel Administrativo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
-    ></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              surface: "#0f172a",
-              card: "#1e293b",
-              border: "#334155",
-              accent: "#6366f1",
-              accentHo: "#818cf8",
-              muted: "#94a3b8",
-            },
-            fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
-          },
-        },
-      };
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      [x-cloak] {
-        display: none !important;
-      }
-
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 9999px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
-      }
-
-      .nav-link {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.625rem 0.875rem;
-        border-radius: 0.625rem;
-        color: #94a3b8;
-        font-size: 0.875rem;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all 0.15s ease;
-        width: 100%;
-        text-align: left;
-        border: none;
-        background: none;
-        cursor: pointer;
-      }
-      .nav-link:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: #fff;
-      }
-      .nav-link.active {
-        background: rgba(99, 102, 241, 0.15);
-        color: #818cf8;
-      }
-
-      .card {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 1rem;
-        padding: 1.5rem;
-      }
-
-      .stat-card {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 1rem;
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        transition: border-color 0.2s;
-      }
-      .stat-card:hover {
-        border-color: #6366f1;
-      }
-      .stat-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 0.625rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1;
-      }
-      .stat-label {
-        font-size: 0.75rem;
-        color: #94a3b8;
-        font-weight: 500;
-      }
-
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1.25rem;
-        border-radius: 0.625rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        transition: all 0.15s ease;
-        cursor: pointer;
-        border: none;
-        justify-content: center;
-      }
-      .btn-primary {
-        background: #6366f1;
-        color: #fff;
-      }
-      .btn-primary:hover {
-        background: #818cf8;
-      }
-      .btn-primary:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .btn-secondary {
-        background: transparent;
-        color: #94a3b8;
-        border: 1px solid #334155;
-      }
-      .btn-secondary:hover {
-        color: #fff;
-        border-color: #64748b;
-      }
-      .btn-danger {
-        background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-      }
-      .btn-danger:hover {
-        background: rgba(239, 68, 68, 0.25);
-      }
-      .btn-sm {
-        padding: 0.375rem 0.75rem;
-        font-size: 0.75rem;
-      }
-
-      .badge {
-        display: inline-block;
-        padding: 0.2rem 0.6rem;
-        border-radius: 0.375rem;
-        font-size: 0.7rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-      .badge-green {
-        background: rgba(34, 197, 94, 0.2);
-        color: #4ade80;
-      }
-      .badge-red {
-        background: rgba(239, 68, 68, 0.2);
-        color: #f87171;
-      }
-      .badge-yellow {
-        background: rgba(234, 179, 8, 0.2);
-        color: #eab308;
-      }
-      .badge-blue {
-        background: rgba(59, 130, 246, 0.2);
-        color: #60a5fa;
-      }
-      .badge-gray {
-        background: rgba(100, 116, 139, 0.2);
-        color: #94a3b8;
-      }
-
-      .field {
-        display: flex;
-        flex-direction: column;
-        gap: 0.375rem;
-      }
-      .field label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #cbd5e1;
-      }
-      .inp {
-        width: 100%;
-        background: #0f172a;
-        border: 1px solid #334155;
-        border-radius: 0.75rem;
-        padding: 0.625rem 1rem;
-        color: #fff;
-        font-size: 0.875rem;
-        transition:
-          border-color 0.15s,
-          box-shadow 0.15s;
-      }
-      .inp::placeholder {
-        color: #475569;
-      }
-      .inp:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-        outline: none;
-      }
-      select.inp {
-        cursor: pointer;
-      }
-      textarea.inp {
-        resize: vertical;
-        min-height: 80px;
-      }
-
-      .table-wrap {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 1rem;
-        overflow: hidden;
-      }
-      .table-wrap table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .table-wrap th {
-        padding: 0.75rem 1.25rem;
-        text-align: left;
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #94a3b8;
-        border-bottom: 1px solid #334155;
-        background: rgba(15, 23, 42, 0.3);
-      }
-      .table-wrap td {
-        padding: 0.75rem 1.25rem;
-        font-size: 0.875rem;
-        border-bottom: 1px solid rgba(51, 65, 85, 0.5);
-      }
-      .table-wrap tr:last-child td {
-        border-bottom: none;
-      }
-      .table-wrap tr:hover td {
-        background: rgba(255, 255, 255, 0.02);
-      }
-
-      .modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-      }
-      .modal-box {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 1.25rem;
-        width: 100%;
-        max-width: 32rem;
-        padding: 1.75rem;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      }
-      .modal-box h3 {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: #fff;
-        margin-bottom: 1.25rem;
-      }
-
-      .toast {
-        position: fixed;
-        top: 1.25rem;
-        right: 1.25rem;
-        z-index: 100;
-        padding: 0.75rem 1.25rem;
-        border-radius: 0.75rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-      }
-      .toast-success {
-        background: #16a34a;
-        color: #fff;
-      }
-      .toast-error {
-        background: #dc2626;
-        color: #fff;
-      }
-
-      .empty-state {
-        padding: 3rem 1.25rem;
-        text-align: center;
-        color: #94a3b8;
-        font-size: 0.875rem;
-      }
-      .section-title {
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #64748b;
-        margin-bottom: 0.75rem;
-      }
-
-      .day-chip {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.25rem;
-        cursor: pointer;
-        padding: 0.375rem;
-        border-radius: 0.5rem;
-        transition: all 0.15s;
-        border: 1px solid transparent;
-        font-size: 0.75rem;
-        color: #94a3b8;
-      }
-      .day-chip:hover {
-        background: rgba(255, 255, 255, 0.05);
-      }
-      .day-chip.selected {
-        background: rgba(99, 102, 241, 0.2);
-        border-color: rgba(99, 102, 241, 0.5);
-        color: #a5b4fc;
-      }
-      .day-chip input {
-        display: none;
-      }
+        [x-cloak] { display: none !important; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 1.5rem; }
+        .inp { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem; color: #fff; width: 100%; transition: border-color 0.2s; }
+        .inp:focus { border-color: #3b82f6; outline: none; }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; display: inline-flex; items-center; gap: 0.5rem; }
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #334155; color: #fff; }
+        .btn-secondary:hover { background: #475569; }
+        .badge { padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .badge-green { background: #10b98120; color: #10b981; }
+        .badge-yellow { background: #f59e0b20; color: #f59e0b; }
+        .badge-red { background: #ef444420; color: #ef4444; }
+        .badge-blue { background: #3b82f620; color: #3b82f6; }
+        .badge-gray { background: #334155; color: #94a3b8; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th { text-align: left; padding: 1rem; border-bottom: 1px solid #334155; color: #94a3b8; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        td { padding: 1rem; border-bottom: 1px solid #334155; }
+        .sidebar-btn { display: flex; items-center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.75rem; width: 100%; transition: all 0.2s; color: #94a3b8; }
+        .sidebar-btn.active { background: #3b82f620; color: #3b82f6; }
+        .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: flex; items-center; justify-center; z-index: 50; }
+        .modal-box { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 2rem; position: relative; }
     </style>
-  </head>
-  <body
-    class="bg-surface text-slate-200 font-sans antialiased min-h-screen"
-    x-data="adminApp()"
-    x-init="init()"
-  >
-    <!-- Toast -->
-    <div
-      x-show="toast.show"
-      x-cloak
-      x-transition
-      class="toast"
-      :class="toast.type === 'success' ? 'toast-success' : 'toast-error'"
-      x-text="toast.msg"
-    ></div>
-
-    <!-- Login -->
-    <div
-      x-show="!loggedIn"
-      x-cloak
-      class="min-h-screen flex items-center justify-center p-4"
-    >
-      <div
-        class="w-full max-w-sm bg-card border border-border rounded-2xl p-8 space-y-6 shadow-2xl"
-      >
-        <div class="text-center">
-          <div
-            class="w-12 h-12 rounded-xl bg-accent mx-auto flex items-center justify-center mb-3 text-white font-bold text-lg"
-          >
-            AP
-          </div>
-          <h1 class="text-xl font-bold text-white">Painel Admin</h1>
-          <p class="text-muted text-sm mt-1">ApenasPromo — Acesso restrito</p>
-        </div>
-        <div
-          x-show="loginError"
-          class="px-4 py-3 bg-red-900/40 border border-red-500/40 rounded-xl text-red-300 text-sm"
-          x-text="loginError"
-        ></div>
-        <div class="space-y-4" x-show="!require2FA">
-          <div class="field">
-            <label>Usuário</label>
-            <input
-              class="inp"
-              x-model="loginForm.username"
-              @keydown.enter="doLogin()"
-              placeholder="admin"
-            />
-          </div>
-          <div class="field">
-            <label>Senha</label>
-            <input
-              class="inp"
-              type="password"
-              x-model="loginForm.password"
-              @keydown.enter="doLogin()"
-              placeholder="••••••"
-            />
-          </div>
-          <button
-            class="btn btn-primary w-full"
-            @click="doLogin()"
-            :disabled="loading"
-          >
-            <span x-text="loading ? 'Entrando...' : 'Entrar'"></span>
-          </button>
-        </div>
-
-        <!-- 2FA Step -->
-        <div class="space-y-4" x-show="require2FA" x-cloak>
-          <div class="text-center pb-2">
-            <p class="text-xs text-indigo-400 font-medium">Autenticação de Dois Fatores</p>
-            <p class="text-[10px] text-muted">Digite o código do seu app autenticador</p>
-          </div>
-          <div class="field">
-            <input
-              class="inp text-center text-2xl tracking-[0.5em] font-mono"
-              x-model="twoFactorCode"
-              @keydown.enter="verify2FA()"
-              placeholder="000000"
-              maxlength="6"
-              autofocus
-            />
-          </div>
-          <button
-            class="btn btn-primary w-full accent-gradient"
-            @click="verify2FA()"
-            :disabled="loading || twoFactorCode.length < 6"
-          >
-            <span x-text="loading ? 'Verificando...' : 'Confirmar Código'"></span>
-          </button>
-          <button @click="require2FA = false; twoFactorCode = ''" class="w-full text-[10px] text-muted hover:text-white transition">
-            Voltar para login
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main app -->
-    <div x-show="loggedIn" x-cloak class="flex min-h-screen">
-      <!-- Sidebar -->
-      <aside class="w-64 bg-card border-r border-border flex flex-col shrink-0">
-        <div class="px-6 py-5 border-b border-border flex items-center gap-3">
-          <div
-            class="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center text-sm font-bold"
-          >
-            AP
-          </div>
-          <span class="font-semibold text-white text-sm tracking-wide"
-            >Admin</span
-          >
-        </div>
-        <nav class="flex-1 px-3 py-4 space-y-1">
-          <template x-for="tab in tabs" :key="tab.id">
-            <button
-              class="nav-link"
-              :class="activeTab === tab.id ? 'active' : ''"
-              @click="activeTab = tab.id; loadTab(tab.id)"
-            >
-              <span x-html="tab.icon"></span>
-              <span x-text="tab.label"></span>
-            </button>
-          </template>
-        </nav>
-        <div class="px-6 py-4 border-t border-border">
-          <button
-            class="text-xs text-muted hover:text-red-400 transition flex items-center gap-2"
-            @click="logout()"
-          >
-            <svg
-              class="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            Sair
-          </button>
-        </div>
-      </aside>
-
-      <!-- Content -->
-      <main class="flex-1 overflow-y-auto">
-        <!-- Licenses tab -->
-        <div x-show="activeTab === 'licenses'" class="p-8">
-          <div class="flex items-center justify-between mb-8">
-            <div>
-              <h2 class="text-2xl font-bold text-white">Licenças</h2>
-              <p class="text-sm text-muted mt-1">
-                Gerencie as chaves de licença dos clientes
-              </p>
+</head>
+<body x-data="adminApp()">
+    
+    <!-- Login Screen -->
+    <div x-show="!loggedIn" class="min-h-screen flex items-center justify-center p-4">
+        <div class="card w-full max-w-md space-y-6">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-white">BlueBot Admin</h1>
+                <p class="text-muted text-slate-400 mt-2">Entre com suas credenciais</p>
             </div>
-            <button class="btn btn-primary" @click="openNewLicenseModal()">
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Nova Licença
-            </button>
-          </div>
-
-          <!-- Stats -->
-          <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-            <div class="stat-card">
-              <div class="stat-icon bg-indigo-500/20 text-indigo-400">
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-                  />
-                </svg>
-              </div>
-              <div class="stat-value" x-text="stats.total"></div>
-              <div class="stat-label">Total de Licenças</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon bg-green-500/20 text-green-400">
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div class="stat-value" x-text="stats.active"></div>
-              <div class="stat-label">Ativas</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon bg-red-500/20 text-red-400">
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div class="stat-value" x-text="stats.inactive"></div>
-              <div class="stat-label">Inativas</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon bg-blue-500/20 text-blue-400">
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-              </div>
-              <div class="stat-value" x-text="stats.online"></div>
-              <div class="stat-label">Online (1h)</div>
-            </div>
-          </div>
-
-          <!-- Novos Robôs (Discovery) -->
-          <template x-if="pendingMachines.length > 0">
-            <div class="card mb-6 border border-accent/30 bg-accent/5">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="p-2 bg-accent/20 rounded-lg text-accent">
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    ></path>
-                  </svg>
-                </div>
-                <h3 class="text-white font-bold m-0">
-                  Novos Robôs Aguardando Aprovação
-                </h3>
-              </div>
-
-              <div class="table-wrap">
-                <table class="w-full">
-                  <thead>
-                    <tr class="bg-slate-800/50">
-                      <th class="text-xs text-slate-400">Identificação</th>
-                      <th class="text-xs text-slate-400">Hostname / SO</th>
-                      <th class="text-xs text-slate-400">IP / Último Sinal</th>
-                      <th class="text-xs text-slate-400 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <template x-for="pm in pendingMachines" :key="pm.id">
-                      <tr class="border-b border-slate-700/30">
-                        <td class="py-3">
-                          <div
-                            class="text-white font-bold"
-                            x-text="pm.label || 'Sem Nome'"
-                          ></div>
-                          <div
-                            class="text-[10px] font-mono text-slate-500"
-                            x-text="pm.machine_id"
-                          ></div>
-                        </td>
-                        <td class="py-3">
-                          <div
-                            class="text-xs text-slate-300"
-                            x-text="pm.hostname"
-                          ></div>
-                          <div
-                            class="text-[10px] text-slate-500"
-                            x-text="pm.platform"
-                          ></div>
-                        </td>
-                        <td class="py-3">
-                          <div
-                            class="text-xs text-slate-300"
-                            x-text="pm.ip_address"
-                          ></div>
-                          <div
-                            class="text-[10px] text-slate-500"
-                            x-text="fmtTime(pm.last_seen)"
-                          ></div>
-                        </td>
-                        <td class="py-3 text-right">
-                          <button
-                            @click="openLinkModal(pm)"
-                            class="btn btn-blue py-1 px-3 text-[10px]"
-                          >
-                            VINCULAR
-                          </button>
-                          <button
-                            @click="rejectMachine(pm.machine_id)"
-                            class="ml-2 text-slate-500 hover:text-red-400"
-                          >
-                            <svg
-                              class="w-4 h-4 inline"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              ></path>
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    </template>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </template>
-
-          <!-- Table -->
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Chave</th>
-                  <th>Plano</th>
-                  <th>Status</th>
-                  <th>WhatsApp</th>
-                  <th>Máquina</th>
-                  <th>Expiração</th>
-                  <th>Heartbeat</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-if="licenses.length === 0">
-                  <tr>
-                    <td colspan="9" class="empty-state">
-                      Nenhuma licença cadastrada.
-                    </td>
-                  </tr>
-                </template>
-                <template x-for="lic in licenses" :key="lic.id">
-                  <tr>
-                    <td
-                      class="text-xs font-medium text-white"
-                      x-text="lic.note || '—'"
-                    ></td>
-                    <td
-                      class="font-mono text-xs text-white font-medium"
-                      x-text="lic.key"
-                    ></td>
-                    <td>
-                      <span
-                        class="badge"
-                        :class="lic.plan === 'pro' ? 'badge-blue' : 'badge-gray'"
-                        x-text="lic.plan.toUpperCase()"
-                      ></span>
-                    </td>
-                    <td>
-                      <span
-                        class="badge"
-                        :class="lic.active ? 'badge-green' : 'badge-red'"
-                        x-text="lic.active ? 'ATIVA' : 'INATIVA'"
-                      ></span>
-                    </td>
-                    <td>
-                      <span
-                        class="badge"
-                        :class="{
-                          'badge-green': lic.whatsapp_status === 'connected',
-                          'badge-yellow': lic.whatsapp_status === 'qr',
-                          'badge-red': lic.whatsapp_status === 'disconnected' || lic.whatsapp_status === 'error',
-                          'badge-gray': !lic.whatsapp_status
-                        }"
-                        x-text="lic.whatsapp_status ? lic.whatsapp_status.toUpperCase() : '—'"
-                      ></span>
-                    </td>
-                    <td>
-                      <span
-                        class="text-xs font-mono"
-                        :class="lic.machine_id ? 'text-slate-300' : 'text-muted'"
-                        x-text="lic.machine_id ? lic.machine_id.substring(0,16)+'...' : '—'"
-                      ></span>
-                    </td>
-                    <td
-                      class="text-xs"
-                      x-text="fmtDate(lic.expires_at) || '—'"
-                    ></td>
-                    <td>
-                      <span
-                        class="badge"
-                        :class="heartbeatBadge(lic.last_heartbeat)"
-                        x-text="fmtRelative(lic.last_heartbeat) || 'Nunca'"
-                      ></span>
-                    </td>
-                    <td>
-                      <div class="flex gap-1.5">
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          @click="editLic(lic)"
-                          title="Editar"
-                        >
-                          <svg
-                            class="w-3.5 h-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          @click="viewConfig(lic)"
-                          title="Configurações"
-                        >
-                          <svg
-                            class="w-3.5 h-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                            />
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          @click="viewLogs(lic)"
-                          title="Logs"
-                        >
-                          <svg
-                            class="w-3.5 h-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          @click="openAuthCodeModal(lic)"
-                          title="Código Telegram"
-                        >
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                        </button>
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          @click="openWppModal(lic)"
-                          title="WhatsApp do Cliente"
-                        >
-                          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Versions tab -->
-        <div x-show="activeTab === 'versions'" class="p-8">
-          <div class="flex items-center justify-between mb-8">
-            <div>
-              <h2 class="text-2xl font-bold text-white">Versões</h2>
-              <p class="text-sm text-muted mt-1">
-                Gerencie as versões do executável
-              </p>
-            </div>
-            <button class="btn btn-primary" @click="showVersionModal = true">
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Publicar Versão
-            </button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Versão</th>
-                  <th>Status</th>
-                  <th>Publicada em</th>
-                  <th>Changelog</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-if="versions.length === 0">
-                  <tr>
-                    <td colspan="4" class="empty-state">
-                      Nenhuma versão publicada.
-                    </td>
-                  </tr>
-                </template>
-                <template x-for="v in versions" :key="v.version">
-                  <tr>
-                    <td
-                      class="font-mono text-white font-medium"
-                      x-text="v.version"
-                    ></td>
-                    <td>
-                      <span
-                        class="badge"
-                        :class="v.is_latest ? 'badge-green' : 'badge-yellow'"
-                        x-text="v.is_latest ? 'MAIS RECENTE' : 'ANTIGA'"
-                      ></span>
-                    </td>
-                    <td
-                      class="text-xs text-slate-300"
-                      x-text="fmtDate(v.released_at)"
-                    ></td>
-                    <td
-                      class="text-xs text-muted max-w-xs truncate"
-                      x-text="v.changelog || '—'"
-                    ></td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Log viewer tab -->
-        <div x-show="activeTab === 'log_viewer'" class="p-8">
-          <div class="mb-8">
-            <h2 class="text-2xl font-bold text-white">Logs de Licença</h2>
-            <p class="text-sm text-muted mt-1">
-              Visualize os eventos de cada licença
-            </p>
-          </div>
-          <div x-show="!selectedLic" class="card text-center py-12">
-            <div class="text-muted flex flex-col items-center gap-3">
-              <svg
-                class="w-12 h-12 opacity-30"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
-              <p>
-                Selecione uma licença na aba <strong>Licenças</strong> e clique
-                em <strong>"Logs"</strong>.
-              </p>
-            </div>
-          </div>
-          <div x-show="selectedLic">
-            <div class="card mb-6 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div
-                  class="w-10 h-10 rounded-lg bg-accent/20 text-accent flex items-center justify-center font-mono text-xs font-bold"
-                >
-                  <span x-text="selectedLic?.key?.substring(5,9)"></span>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm font-medium mb-1 block">Usuário</label>
+                    <input type="text" class="inp" x-model="loginForm.username" @keyup.enter="doLogin">
                 </div>
                 <div>
-                  <p
-                    class="text-sm font-medium text-white"
-                    x-text="selectedLic?.note || 'Licença sem nome'"
-                  ></p>
-                  <p
-                    class="text-xs font-mono text-accent"
-                    x-text="selectedLic?.key"
-                  ></p>
+                    <label class="text-sm font-medium mb-1 block">Senha</label>
+                    <input type="password" class="inp" x-model="loginForm.password" @keyup.enter="doLogin">
                 </div>
-              </div>
-              <button
-                class="btn btn-secondary btn-sm"
-                @click="selectedLic = null; licLogs = []"
-              >
-                <svg
-                  class="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                Fechar
-              </button>
+                <p x-show="loginError" class="text-red-400 text-sm" x-text="loginError"></p>
+                <button class="btn btn-primary w-full justify-center" @click="doLogin" :disabled="loading">
+                    <span x-text="loading ? 'Entrando...' : 'Entrar'"></span>
+                </button>
             </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Horário</th>
-                    <th>Tipo</th>
-                    <th>Mensagem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template x-if="licLogs.length === 0">
-                    <tr>
-                      <td colspan="3" class="empty-state">
-                        Nenhum log registrado.
-                      </td>
-                    </tr>
-                  </template>
-                  <template x-for="l in licLogs" :key="l.id">
-                    <tr>
-                      <td
-                        class="font-mono text-xs text-slate-400"
-                        x-text="fmtDate(l.created_at)"
-                      ></td>
-                      <td>
-                        <span
-                          class="badge"
-                          :class="{'badge-blue': l.nivel==='info','badge-green': l.nivel==='success','badge-red': l.nivel==='error'}"
-                          x-text="l.nivel.toUpperCase()"
-                        ></span>
-                      </td>
-                      <td
-                        class="text-slate-300 break-all text-xs"
-                        x-text="l.mensagem"
-                      ></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-          </div>
         </div>
+    </div>
 
-        <!-- WhatsApp tab -->
-        <div x-show="activeTab === 'whatsapp'" class="p-8">
-          <div class="mb-8">
-            <h2 class="text-2xl font-bold text-white">Conexão WhatsApp</h2>
-            <p class="text-sm text-muted mt-1">
-              Conecte o robô ao WhatsApp para enviar mensagens aos grupos
-            </p>
-          </div>
-          
-          <div class="card max-w-md mx-auto text-center py-10" x-data="{ wpp: { status: 'loading', qr: '' } }" x-init="
-            const loadStatus = async () => {
-              if (activeTab !== 'whatsapp' && wpp.status === 'connected') return;
-              try {
-                const r = await fetch('/admin/whatsapp/status', { headers: getHeaders() });
-                const d = await r.json();
-                wpp = d;
-              } catch(e) {}
-            };
-            loadStatus();
-            setInterval(loadStatus, 5000);
-          ">
-            <div x-show="wpp.status === 'connected'">
-               <div class="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                 <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-               </div>
-               <h3 class="text-xl font-bold text-white mb-2">WhatsApp Conectado</h3>
-               <p class="text-muted text-sm">O robô está pronto para enviar mensagens.</p>
+    <!-- Main Dashboard -->
+    <div x-show="loggedIn" x-cloak class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 border-r border-slate-800 p-6 space-y-8">
+            <div class="flex items-center gap-3 px-2">
+                <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">B</div>
+                <span class="text-xl font-bold text-white">BlueBot</span>
             </div>
-            
-            <div x-show="wpp.status === 'qr'">
-               <h3 class="text-xl font-bold text-white mb-6">Aguardando Escaneamento</h3>
-               <div class="bg-white p-4 rounded-xl inline-block mb-6 shadow-2xl">
-                 <img :src="wpp.qr" width="240" height="240" />
-               </div>
-               <p class="text-muted text-sm px-6">
-                 Abra o WhatsApp no seu celular > Aparelhos Conectados > Conectar um aparelho.
-               </p>
+            <nav class="space-y-2">
+                <button @click="loadTab('licenses')" :class="activeTab === 'licenses' ? 'active' : ''" class="sidebar-btn">
+                    <span>Licenças</span>
+                </button>
+                <button @click="loadTab('clients')" :class="activeTab === 'clients' ? 'active' : ''" class="sidebar-btn">
+                    <span>Clientes</span>
+                </button>
+                <button @click="loadTab('versions')" :class="activeTab === 'versions' ? 'active' : ''" class="sidebar-btn">
+                    <span>Versões</span>
+                </button>
+            </nav>
+            <div class="pt-8 mt-auto border-t border-slate-800">
+                <button @click="logout" class="sidebar-btn text-red-400">Sair</button>
             </div>
-            
-            <div x-show="wpp.status === 'loading' || wpp.status === 'disconnected'">
-               <div class="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-6"></div>
-               <p class="text-muted">Buscando status do serviço...</p>
-            </div>
-            
-            <div x-show="wpp.status === 'error'">
-               <div class="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-               </div>
-               <p class="text-red-400 text-sm mb-4" x-text="wpp.message"></p>
-               <button class="btn btn-secondary btn-sm" @click="location.reload()">Tentar novamente</button>
-            </div>
-          </div>
-        </div>
+        </aside>
 
-        <!-- Clients Health View tab -->
-        <div x-show="activeTab === 'clients'" class="p-8">
-          <div class="flex items-center justify-between mb-8">
-            <div>
-              <h2 class="text-2xl font-bold text-white">Saúde dos Clientes</h2>
-              <p class="text-sm text-muted mt-1">
-                Visão geral do status de todos os robôs
-              </p>
+        <!-- Content Area -->
+        <main class="flex-1 p-8">
+            <!-- Licenças Tab -->
+            <div x-show="activeTab === 'licenses'">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold">Gerenciamento de Licenças</h2>
+                    <button class="btn btn-primary" @click="showNewLicModal = true">Nova Licença</button>
+                </div>
+                <div class="card overflow-hidden p-0">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Chave</th>
+                                <th>Status</th>
+                                <th>Plano</th>
+                                <th>Expiração</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="lic in licenses" :key="lic.id">
+                                <tr>
+                                    <td class="font-medium" x-text="lic.note || '—'"></td>
+                                    <td class="font-mono text-xs text-blue-400" x-text="lic.key"></td>
+                                    <td>
+                                        <span class="badge" :class="lic.active ? 'badge-green' : 'badge-red'" x-text="lic.active ? 'Ativa' : 'Inativa'"></span>
+                                    </td>
+                                    <td x-text="lic.plan.toUpperCase()"></td>
+                                    <td class="text-sm text-slate-400" x-text="fmtDate(lic.expires_at)"></td>
+                                    <td class="flex gap-2">
+                                        <button @click="editLic(lic)" class="btn btn-secondary p-2">Editar</button>
+                                        <button @click="fetchConfig(lic)" class="btn btn-primary p-2">Config</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <button class="btn btn-secondary btn-sm" @click="loadClients()">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-              Atualizar
-            </button>
-          </div>
 
-          <!-- Health Stats -->
-          <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-            <div class="stat-card">
-              <div class="stat-icon bg-green-500/20 text-green-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-              </div>
-              <div class="stat-value" x-text="clientHealth.online">0</div>
-              <div class="stat-label">Online</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon bg-yellow-500/20 text-yellow-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-              </div>
-              <div class="stat-value" x-text="clientHealth.warning">0</div>
-              <div class="stat-label">Atenção</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon bg-red-500/20 text-red-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
-              <div class="stat-value" x-text="clientHealth.offline">0</div>
-              <div class="stat-label">Offline</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon bg-blue-500/20 text-blue-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              </div>
-              <div class="stat-value" x-text="clientHealth.total">0</div>
-              <div class="stat-label">Total</div>
-            </div>
-          </div>
+            <!-- Clientes Health Tab -->
+            <div x-show="activeTab === 'clients'">
+                <h2 class="text-2xl font-bold mb-8">Saúde dos Clientes</h2>
+                <div class="grid grid-cols-4 gap-6 mb-8">
+                    <div class="card bg-slate-800/50">
+                        <p class="text-sm text-slate-400">Total de Robôs</p>
+                        <p class="text-3xl font-bold" x-text="clientHealth.total">0</p>
+                    </div>
+                    <div class="card bg-green-500/10 border-green-500/20">
+                        <p class="text-sm text-green-400">Online</p>
+                        <p class="text-3xl font-bold text-green-500" x-text="clientHealth.online">0</p>
+                    </div>
+                    <div class="card bg-yellow-500/10 border-yellow-500/20">
+                        <p class="text-sm text-yellow-400">Atenção</p>
+                        <p class="text-3xl font-bold text-yellow-500" x-text="clientHealth.warning">0</p>
+                    </div>
+                    <div class="card bg-red-500/10 border-red-500/20">
+                        <p class="text-sm text-red-400">Offline</p>
+                        <p class="text-3xl font-bold text-red-500" x-text="clientHealth.offline">0</p>
+                    </div>
+                </div>
 
-          <!-- Client Cards -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            <template x-for="cl in clientList" :key="cl.id">
-              <div class="card transition-all hover:border-accent/40" :class="{
-                'border-green-500/30': cl._health === 'online',
-                'border-yellow-500/30': cl._health === 'warning',
-                'border-red-500/30': cl._health === 'offline',
-                'border-slate-700/30': cl._health === 'never'
-              }">
-                <!-- Header -->
-                <div class="flex items-center justify-between mb-4">
-                  <div class="flex items-center gap-3">
-                    <div class="relative">
-                      <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold" :class="{
-                        'bg-green-500/20 text-green-400': cl._health === 'online',
-                        'bg-yellow-500/20 text-yellow-400': cl._health === 'warning',
-                        'bg-red-500/20 text-red-400': cl._health === 'offline',
-                        'bg-slate-700/50 text-slate-500': cl._health === 'never'
-                      }" x-text="(cl.note || cl.key).substring(0,2).toUpperCase()"></div>
-                      <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900" :class="{
-                        'bg-green-500': cl._health === 'online',
-                        'bg-yellow-500': cl._health === 'warning',
-                        'bg-red-500': cl._health === 'offline',
-                        'bg-slate-600': cl._health === 'never'
-                      }"></div>
+                <div class="card p-0 overflow-hidden">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Robô</th>
+                                <th>Status</th>
+                                <th>WhatsApp</th>
+                                <th>Último Sinal</th>
+                                <th>Versão</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="c in clientList" :key="c.id">
+                                <tr>
+                                    <td class="font-bold" x-text="c.note || 'Desconhecido'"></td>
+                                    <td>
+                                        <span class="badge" :class="{
+                                            'badge-green': c.health_status === 'online',
+                                            'badge-yellow': c.health_status === 'warning',
+                                            'badge-red': c.health_status === 'offline'
+                                        }" x-text="c.health_status.toUpperCase()"></span>
+                                    </td>
+                                    <td x-text="c.whatsapp_status || 'Offline'"></td>
+                                    <td class="text-xs text-slate-400" x-text="fmtRelative(c.last_heartbeat)"></td>
+                                    <td x-text="c.version || 'v2.0.0'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Configuração -->
+    <div x-show="showConfigModal" x-cloak class="modal-bg">
+        <div class="modal-box max-w-2xl">
+            <h3 class="text-xl font-bold mb-6">Configurações Remotas</h3>
+            <div x-show="!configData" class="py-10 text-center">Carregando...</div>
+            <div x-show="configData" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium">Fontes Telegram (CSV)</label>
+                        <input type="text" class="inp" x-model="configData.sources_str">
                     </div>
                     <div>
-                      <p class="text-sm font-semibold text-white" x-text="cl.note || 'Sem nome'"></p>
-                      <p class="text-[10px] font-mono text-muted" x-text="cl.key"></p>
+                        <label class="text-sm font-medium">Delay (seg)</label>
+                        <input type="number" class="inp" x-model="configData.delay_segundos">
                     </div>
-                  </div>
-                  <span class="badge" :class="{
-                    'badge-green': cl._health === 'online',
-                    'badge-yellow': cl._health === 'warning',
-                    'badge-red': cl._health === 'offline',
-                    'badge-gray': cl._health === 'never'
-                  }" x-text="cl._healthLabel"></span>
                 </div>
-
-                <!-- Status Grid -->
-                <div class="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span class="text-muted">Plano</span>
-                    <p class="text-white font-medium" x-text="cl.plan.toUpperCase()"></p>
-                  </div>
-                  <div>
-                    <span class="text-muted">Status</span>
-                    <p :class="cl.active ? 'text-green-400' : 'text-red-400'" x-text="cl.active ? 'Ativa' : 'Inativa'"></p>
-                  </div>
-                  <div>
-                    <span class="text-muted">WhatsApp</span>
-                    <p :class="{
-                      'text-green-400': cl.whatsapp_status === 'connected',
-                      'text-yellow-400': cl.whatsapp_status === 'qr',
-                      'text-red-400': cl.whatsapp_status === 'disconnected' || cl.whatsapp_status === 'error',
-                      'text-muted': !cl.whatsapp_status
-                    }" x-text="cl.whatsapp_status ? cl.whatsapp_status.toUpperCase() : '—'"></p>
-                  </div>
-                  <div>
-                    <span class="text-muted">Heartbeat</span>
-                    <p class="text-white" x-text="fmtRelative(cl.last_heartbeat) || 'Nunca'"></p>
-                  </div>
-                  <div>
-                    <span class="text-muted">Máquina</span>
-                    <p class="text-white font-mono text-[10px]" x-text="cl.machine_id ? cl.machine_id.substring(0,12)+'...' : '—'"></p>
-                  </div>
-                  <div>
-                    <span class="text-muted">Expira</span>
-                    <p class="text-white" x-text="fmtDate(cl.expires_at) || '—'"></p>
-                  </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="flex gap-2 mt-4 pt-3 border-t border-border">
-                  <button class="btn btn-secondary btn-sm flex-1" @click="editLic(cl)" title="Editar">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    Editar
-                  </button>
-                  <button class="btn btn-secondary btn-sm flex-1" @click="viewConfig(cl)" title="Config">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Config
-                  </button>
-                  <button class="btn btn-secondary btn-sm flex-1" @click="viewLogs(cl)" title="Logs">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                    Logs
-                  </button>
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <div x-show="clientList.length === 0" class="card text-center py-12">
-            <div class="text-muted flex flex-col items-center gap-3">
-              <svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              <p>Nenhum cliente com licença ativa encontrado.</p>
-            </div>
-          </div>
-        </div>
-
-      </main>
-    </div>
-
-    <!-- New License Modal -->
-    <div
-      x-show="showNewLicModal"
-      x-cloak
-      class="modal-backdrop"
-      @click.self="showNewLicModal = false"
-    >
-      <div class="modal-box" @click.stop>
-        <h3>Nova Licença</h3>
-        <div class="space-y-4">
-          <div class="field">
-            <label>Cliente (Nome)</label>
-            <input
-              class="inp"
-              type="text"
-              x-model="newLicForm.note"
-              placeholder="Ex: Cliente X"
-            />
-          </div>
-          <div class="field">
-            <label>Plano</label>
-            <select class="inp" x-model="newLicForm.plan">
-              <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Duração (dias)</label>
-            <input
-              class="inp"
-              type="number"
-              min="1"
-              max="3650"
-              x-model="newLicForm.expires_days"
-            />
-          </div>
-          <div class="field">
-            <label>Senha de Acesso (SaaS)</label>
-            <input
-              class="inp"
-              type="text"
-              x-model="newLicForm.password"
-              placeholder="Senha para o cliente logar"
-            />
-          </div>
-        </div>
-        <div class="flex justify-end gap-3 pt-4">
-          <button class="btn btn-secondary" @click="showNewLicModal = false">
-            Cancelar
-          </button>
-          <button class="btn btn-primary" @click="createLicense()">
-            Gerar Licença
-          </button>
-        </div>
-        <div
-          x-show="generatedKey"
-          x-cloak
-          x-transition
-          class="mt-6 bg-surface border border-border rounded-xl p-5 text-center"
-        >
-          <p class="text-xs text-muted mb-2">Chave gerada:</p>
-          <div class="flex items-center justify-center gap-2">
-            <p
-              class="text-lg font-mono font-bold text-accent select-all"
-              x-text="generatedKey"
-            ></p>
-            <button
-              class="text-muted hover:text-white transition p-1"
-              @click="copyKey(generatedKey)"
-              title="Copiar"
-            >
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z"
-                />
-              </svg>
-            </button>
-          </div>
-          <p class="text-xs text-muted mt-2">
-            Copie agora — não será exibida novamente.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Edit License Modal -->
-    <div
-      x-show="showEditLicModal"
-      x-cloak
-      class="modal-backdrop"
-      @click.self="showEditLicModal = false"
-    >
-      <div class="modal-box" @click.stop>
-        <h3>Editar Licença</h3>
-        <div class="space-y-4">
-          <div class="field">
-            <label>Cliente (Nome)</label>
-            <input class="inp" type="text" x-model="editLicForm.note" />
-          </div>
-          <div class="field">
-            <label>Senha de Acesso (SaaS)</label>
-            <input class="inp" type="text" x-model="editLicForm.password" />
-          </div>
-          <div class="field">
-            <label>Plano</label>
-            <select class="inp" x-model="editLicForm.plan">
-              <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Status</label>
-            <select class="inp" x-model="editLicForm.active">
-              <option :value="true">Ativa</option>
-              <option :value="false">Inativa</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Renovar por (dias a partir de hoje)</label>
-            <input
-              class="inp"
-              type="number"
-              min="1"
-              x-model="editLicForm.expires_days"
-              placeholder="Deixe vazio para não alterar"
-            />
-          </div>
-          <div class="field">
-            <label>Máquina Vinculada</label>
-            <div class="flex items-center gap-2">
-              <input
-                class="inp flex-1 opacity-70"
-                type="text"
-                :value="editLicForm.machine_id"
-                readonly
-              />
-              <button
-                class="btn btn-secondary text-xs whitespace-nowrap"
-                @click="editLicForm.machine_id = ''"
-                :disabled="!editLicForm.machine_id || editLicForm.machine_id === 'Não vinculado'"
-              >
-                Desvincular
-              </button>
-            </div>
-          </div>
-
-          <!-- Schedule Rules -->
-          <div class="border-t border-border pt-4 mt-2">
-            <p class="section-title">Restrição de Horário</p>
-            <label class="flex items-center gap-2 cursor-pointer mb-3">
-              <input
-                type="checkbox"
-                x-model="editLicForm.schedule_enabled"
-                class="rounded border-border bg-surface text-accent focus:ring-accent"
-              />
-              <span class="text-sm text-slate-300"
-                >Ativar restrição de horário</span
-              >
-            </label>
-            <template x-if="editLicForm.schedule_enabled">
-              <div class="space-y-3">
                 <div>
-                  <label class="text-sm font-medium text-slate-300 block mb-2"
-                    >Dias da semana permitidos</label
-                  >
-                  <div class="grid grid-cols-7 gap-1">
-                    <template
-                      x-for="(label, idx) in ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']"
-                      :key="idx"
-                    >
-                      <label
-                        class="day-chip"
-                        :class="editLicForm.schedule_dias.includes(idx) ? 'selected' : ''"
-                      >
-                        <input
-                          type="checkbox"
-                          :value="idx"
-                          x-model="editLicForm.schedule_dias"
-                        />
-                        <span x-text="label"></span>
-                      </label>
-                    </template>
-                  </div>
+                    <label class="text-sm font-medium">ML Cookies (Cookies de Sessão)</label>
+                    <textarea class="inp" x-model="configData.ml_cookies" rows="4" placeholder="cookie1=valor1; cookie2=valor2;"></textarea>
+                    <p class="text-[10px] text-slate-500 mt-1">Cole aqui os cookies para conversão via navegador.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                  <div class="field">
-                    <label>Hora início</label>
-                    <input
-                      class="inp"
-                      type="time"
-                      x-model="editLicForm.schedule_hora_inicio"
-                    />
-                  </div>
-                  <div class="field">
-                    <label>Hora fim</label>
-                    <input
-                      class="inp"
-                      type="time"
-                      x-model="editLicForm.schedule_hora_fim"
-                    />
-                  </div>
+                <div class="flex justify-end gap-3 pt-6">
+                    <button class="btn btn-secondary" @click="showConfigModal = false">Cancelar</button>
+                    <button class="btn btn-primary" @click="saveConfig">Salvar Configurações</button>
                 </div>
-                <div class="field">
-                  <label>Fuso horário</label>
-                  <select class="inp" x-model="editLicForm.schedule_timezone">
-                    <option value="America/Sao_Paulo">
-                      América/São Paulo (UTC-3)
-                    </option>
-                    <option value="America/New_York">
-                      América/Nova York (UTC-5)
-                    </option>
-                    <option value="America/Chicago">
-                      América/Chicago (UTC-6)
-                    </option>
-                    <option value="America/Denver">
-                      América/Denver (UTC-7)
-                    </option>
-                    <option value="America/Los_Angeles">
-                      América/Los Angeles (UTC-8)
-                    </option>
-                    <option value="Europe/London">
-                      Europa/Londres (UTC+0)
-                    </option>
-                    <option value="Europe/Lisbon">Europa/Lisboa (UTC+0)</option>
-                    <option value="Europe/Madrid">Europa/Madrid (UTC+1)</option>
-                    <option value="UTC">UTC</option>
-                  </select>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-        <div class="flex justify-end gap-3 pt-4">
-          <button class="btn btn-secondary" @click="showEditLicModal = false">
-            Cancelar
-          </button>
-          <button class="btn btn-primary" @click="saveLicense()">Salvar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Config Modal -->
-    <div
-      x-show="showConfigModal"
-      x-cloak
-      class="modal-backdrop"
-      @click.self="showConfigModal = false"
-    >
-      <div class="modal-box max-w-2xl" @click.stop>
-        <h3>Configurações da Licença</h3>
-        <div x-show="!configData" class="text-center py-8 text-muted text-sm">
-          Carregando...
-        </div>
-        <template x-if="configData">
-          <div class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div class="field">
-                <label>API ID</label>
-                <input
-                  class="inp"
-                  x-model="configData.api_id"
-                  placeholder="—"
-                />
-              </div>
-              <div class="field">
-                <label>API Hash</label>
-                <input
-                  class="inp"
-                  x-model="configData.api_hash"
-                  placeholder="—"
-                />
-              </div>
             </div>
-            <div class="field">
-              <label>Telefone</label>
-              <input class="inp" x-model="configData.phone" placeholder="—" />
-            </div>
-            <div class="field">
-              <label>Grupos de origem (separados por vírgula)</label>
-              <input
-                class="inp"
-                x-model="configData.sources_str"
-                placeholder="https://t.me/grupo1,https://t.me/grupo2"
-              />
-            </div>
-            <div class="field">
-              <label>Destino Telegram</label>
-              <input
-                class="inp"
-                x-model="configData.destination_telegram"
-                placeholder="—"
-              />
-            </div>
-            <div class="field">
-              <label>Delay (segundos)</label>
-              <input
-                class="inp"
-                type="number"
-                min="1"
-                x-model="configData.delay_segundos"
-              />
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="field">
-                <label>Shopee Token</label>
-                <input
-                  class="inp"
-                  x-model="configData.shopee_token"
-                  placeholder="—"
-                />
-              </div>
-              <div class="field">
-                <label>AliExpress App Key</label>
-                <input
-                  class="inp"
-                  x-model="configData.ali_key"
-                  placeholder="—"
-                />
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="field">
-                <label>AliExpress Secret</label>
-                <input
-                  class="inp"
-                  x-model="configData.ali_secret"
-                  placeholder="—"
-                />
-              </div>
-              <div class="field">
-                <label>AliExpress Tracking ID</label>
-                <input
-                  class="inp"
-                  x-model="configData.ali_tracking"
-                  placeholder="—"
-                />
-              </div>
-            </div>
-            <div class="field">
-              <label>Mercado Livre Token</label>
-              <input
-                class="inp"
-                x-model="configData.ml_token"
-                placeholder="—"
-              />
-            </div>
-            <div class="field">
-              <label>ML Cookies (sessão do navegador)</label>
-              <textarea
-                class="inp"
-                x-model="configData.ml_cookies"
-                placeholder="cookie1=valor1; cookie2=valor2; ..."
-                rows="2"
-                style="min-height: 50px"
-              ></textarea>
-            </div>
-            <div class="field">
-              <label>Endpoint WhatsApp</label>
-              <input
-                class="inp"
-                x-model="configData.whatsapp_endpoint"
-                placeholder="http://IP:4000/send"
-              />
-            </div>
-
-            <div class="grid grid-cols-3 gap-3">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  x-model="configData.send_telegram"
-                  class="rounded border-border bg-surface text-accent focus:ring-accent"
-                />
-                <span class="text-sm text-slate-300">Enviar Telegram</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  x-model="configData.send_whatsapp"
-                  class="rounded border-border bg-surface text-accent focus:ring-accent"
-                />
-                <span class="text-sm text-slate-300">Enviar WhatsApp</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  x-model="configData.conv_shopee"
-                  class="rounded border-border bg-surface text-accent focus:ring-accent"
-                />
-                <span class="text-sm text-slate-300">Shopee</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  x-model="configData.conv_ali"
-                  class="rounded border-border bg-surface text-accent focus:ring-accent"
-                />
-                <span class="text-sm text-slate-300">AliExpress</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  x-model="configData.conv_ml"
-                  class="rounded border-border bg-surface text-accent focus:ring-accent"
-                />
-                <span class="text-sm text-slate-300">Mercado Livre</span>
-              </label>
-            </div>
-          </div>
-        </template>
-        <div class="flex justify-end gap-3 pt-4">
-          <button class="btn btn-secondary" @click="showConfigModal = false">
-            Fechar
-          </button>
-          <button class="btn btn-primary" @click="saveConfig()">
-            Salvar Configurações
-          </button>
         </div>
-      </div>
-    </div>
-
-    <!-- Version Modal -->
-    <div
-      x-show="showVersionModal"
-      x-cloak
-      class="modal-backdrop"
-      @click.self="showVersionModal = false"
-    >
-      <div class="modal-box" @click.stop>
-        <h3>Publicar Nova Versão</h3>
-        <div class="space-y-4">
-          <div class="field">
-            <label>Versão (ex: 1.0.1)</label>
-            <input
-              class="inp"
-              x-model="versionForm.version"
-              placeholder="1.0.1"
-            />
-          </div>
-          <div class="field">
-            <label>Changelog</label>
-            <textarea
-              class="inp"
-              x-model="versionForm.changelog"
-              placeholder="Descreva as mudanças desta versão..."
-            ></textarea>
-          </div>
-          <div class="field">
-            <label>URL do download</label>
-            <input
-              class="inp"
-              x-model="versionForm.download_url"
-              placeholder="https://..."
-            />
-          </div>
-        </div>
-        <div class="flex justify-end gap-3 pt-4">
-          <button class="btn btn-secondary" @click="showVersionModal = false">
-            Cancelar
-          </button>
-          <button class="btn btn-primary" @click="publishVersion()">
-            Publicar
-          </button>
-        </div>
-      </div>
-    </div>
-    <!-- Link Modal -->
-    <div
-      x-show="showLinkModal"
-      x-cloak
-      class="modal-backdrop"
-      @click.self="showLinkModal = false"
-    >
-      <div class="modal-box" @click.stop>
-        <h3>Vincular Robô à Licença</h3>
-        <p class="text-xs text-muted mb-4">
-          Escolha uma licença para ativar este robô.
-        </p>
-
-        <div class="space-y-4">
-          <div class="field">
-            <label>ID da Máquina</label>
-            <input
-              class="inp opacity-50"
-              type="text"
-              x-model="linkForm.machine_id"
-              readonly
-            />
-          </div>
-
-          <div class="field">
-            <label>Selecionar Licença</label>
-            <select class="inp" x-model="linkForm.license_id">
-              <option value="">Selecione uma licença disponível...</option>
-              <template x-for="lic in licenses" :key="lic.id">
-                <option
-                  :value="lic.id"
-                  x-text="`${lic.note || 'Sem Nome'} (${lic.key})`"
-                ></option>
-              </template>
-            </select>
-          </div>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-6">
-          <button class="btn btn-secondary" @click="showLinkModal = false">
-            Cancelar
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="linkMachine()"
-            :disabled="loading || !linkForm.license_id"
-          >
-            <span
-              x-text="loading ? 'Vinculando...' : 'Confirmar Vinculação'"
-            ></span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Auth Code Modal (Telegram Verification) -->
-    <div
-      x-show="showAuthCodeModal"
-      x-cloak
-      class="modal-backdrop"
-      @click.self="showAuthCodeModal = false"
-    >
-      <div class="modal-box" @click.stop>
-        <h3>Código de Verificação Telegram</h3>
-        <p class="text-xs text-muted mb-4">
-          O bot está aguardando o código de verificação enviado pelo Telegram
-          para o número <strong x-text="authCodeLic?.phone || '...'"></strong>.
-          Digite o código que chegou no app do Telegram.
-        </p>
-
-        <div class="space-y-4">
-          <div class="field">
-            <label>Licença</label>
-            <input
-              class="inp opacity-50"
-              type="text"
-              :value="authCodeLic?.note || authCodeLic?.key || '...'"
-              readonly
-            />
-          </div>
-          <div class="field">
-            <label>Código de Verificação</label>
-            <input
-              class="inp text-2xl text-center font-mono tracking-widest"
-              type="text"
-              x-model="authCodeForm.code"
-              placeholder="12345"
-              maxlength="10"
-              @keydown.enter="sendAuthCode()"
-            />
-          </div>
-          <div class="field">
-            <label>Senha de Duas Etapas (Opcional)</label>
-            <input
-              class="inp"
-              type="password"
-              x-model="authCodeForm.password"
-              placeholder="Só preencha se sua conta exigir (2FA)"
-              @keydown.enter="sendAuthCode()"
-            />
-          </div>
-          <div
-            x-show="authCodeResult"
-            class="px-4 py-3 rounded-xl text-sm"
-            :class="authCodeResult?.type === 'success' ? 'bg-green-900/40 border border-green-500/40 text-green-300' : 'bg-yellow-900/40 border border-yellow-500/40 text-yellow-300'"
-            x-text="authCodeResult?.msg"
-          ></div>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-6">
-          <button class="btn btn-secondary" @click="showAuthCodeModal = false">
-            Fechar
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="sendAuthCode()"
-            :disabled="authCodeLoading || (!authCodeForm.code && !authCodeForm.password)"
-          >
-            <span
-              x-text="authCodeLoading ? 'Enviando...' : 'Enviar'"
-            ></span>
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- WhatsApp License Modal -->
-    <div
-      x-show="showWppModal"
-      x-cloak
-      class="modal-backdrop"
-      @click.self="showWppModal = false"
-    >
-      <div class="modal-box text-center" @click.stop>
-        <h3>WhatsApp do Cliente</h3>
-        <p class="text-xs text-muted mb-6" x-text="selectedLic?.note || selectedLic?.key"></p>
-        
-        <div class="py-4">
-            <template x-if="selectedLic?.whatsapp_status === 'connected'">
-               <div>
-                  <div class="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                  </div>
-                  <h4 class="text-lg font-bold text-white mb-1">WhatsApp Conectado</h4>
-                  <p class="text-muted text-sm">Este cliente está operando normalmente.</p>
-               </div>
-            </template>
-            
-            <template x-if="selectedLic?.whatsapp_status === 'qr'">
-               <div>
-                  <p class="text-sm text-slate-300 mb-4">Aguardando escaneamento pelo cliente:</p>
-                  <div class="bg-white p-3 rounded-lg inline-block mb-4">
-                    <img :src="selectedLic.whatsapp_qr" width="200" height="200" />
-                  </div>
-                  <p class="text-[10px] text-muted uppercase tracking-wider">O QR Code é atualizado automaticamente</p>
-               </div>
-            </template>
-            
-            <template x-if="!selectedLic?.whatsapp_status || selectedLic?.whatsapp_status === 'disconnected' || selectedLic?.whatsapp_status === 'stopped'">
-               <div class="py-10">
-                  <div class="animate-pulse w-12 h-12 bg-slate-800 rounded-full mx-auto mb-4"></div>
-                  <p class="text-muted text-sm">Aguardando sinal do robô...</p>
-               </div>
-            </template>
-        </div>
-
-        <div class="flex justify-center pt-6">
-          <button class="btn btn-secondary" @click="showWppModal = false">
-            Fechar Janela
-          </button>
-        </div>
-      </div>
     </div>
 
     <script>
-      function adminApp() {
-        return {
-          // ── Auth & UI ──────────────────────────────────────────────────
-          loggedIn: false,
-          loading: false,
-          loginError: "",
-          loginForm: { username: "", password: "" },
-          activeTab: "licenses",
-          apiBase: "https://api.bluebotapp.com.br/admin",
-          authBase: "https://api.bluebotapp.com.br/auth",
-          require2FA: false,
-          twoFactorCode: "",
-          toast: { show: false, msg: "", type: "success" },
-          tabs: [
-            {
-              id: "licenses",
-              label: "Licenças",
-              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>',
-            },
-            {
-              id: "clients",
-              label: "Clientes",
-              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>',
-            },
-            {
-              id: "versions",
-              label: "Versões",
-              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>',
-            },
-            {
-              id: "log_viewer",
-              label: "Logs",
-              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>',
-            },
-            {
-              id: "whatsapp",
-              label: "WhatsApp",
-              icon: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>',
-            },
-          ],
-
-          // ── Data Lists ─────────────────────────────────────────────────
-          licenses: [],
-          pendingMachines: [],
-          versions: [],
-          licLogs: [],
-          clientList: [],
-          clientHealth: { total: 0, online: 0, warning: 0, offline: 0 },
-          stats: { total: 0, active: 0, inactive: 0, online: 0 },
-
-          // ── Modals & Forms ─────────────────────────────────────────────
-          showNewLicModal: false,
-          showEditLicModal: false,
-          showLinkModal: false,
-          showConfigModal: false,
-          showVersionModal: false,
-          showAuthCodeModal: false,
-          showWppModal: false,
-
-          selectedLic: null,
-          selectedMachine: null,
-          targetLicenseId: "",
-          generatedKey: "",
-          configLicKey: "",
-          configData: null,
-
-          // ── Auth Code (Telegram Verification) ──────────────────────────
-          authCodeLic: null,
-          authCodeLoading: false,
-          authCodeResult: null,
-          authCodeForm: { code: "", password: "", requires_password: false },
-
-          newLicForm: { plan: "basic", expires_days: 30, note: "", password: "" },
-          editLicForm: {
-            id: null,
-            key: "",
-            plan: "basic",
-            active: true,
-            expires_days: null,
-            schedule_enabled: false,
-            schedule_dias: [1, 2, 3, 4, 5],
-            schedule_hora_inicio: "08:00",
-            schedule_hora_fim: "18:00",
-            schedule_timezone: "America/Sao_Paulo",
-            note: "",
-            password: "",
-            machine_id: "",
-          },
-          linkForm: { machine_id: "", license_id: "" },
-
-          // ── Logs ──────────────────────────────────────────────────────
-          selectedLic: null,
-          licLogs: [],
-
-          // ── Version ───────────────────────────────────────────────────
-          showVersionModal: false,
-          versionForm: { version: "", changelog: "", download_url: "" },
-
-          // ── Init ──────────────────────────────────────────────────────
-          // (primary init is at bottom of adminApp)
-
-          // ── Auth methods ──────────────────────────────────────────────
-          async doLogin() {
-            this.loading = true;
-            this.loginError = "";
-            try {
-              const r = await fetch(`${this.authBase}/login/admin`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(this.loginForm),
-              });
-
-              const d = await r.json();
-              if (!r.ok) {
-                this.loginError = d.detail || "Erro no servidor";
-                this.loading = false;
-                return;
-              }
-
-              if (d.require_2fa) {
-                this.require2FA = true;
-                this.loading = false;
-                return;
-              }
-
-              if (d.access_token) {
-                localStorage.setItem("admin_token", d.access_token);
-                this.loggedIn = true;
-                this.loadLicenses();
-                this.loadVersions();
-                this.loadPendingMachines();
-              }
-            } catch (e) {
-              this.loginError = "Erro de conexão com o servidor";
-            }
-            this.loading = false;
-          },
-
-          async verify2FA() {
-            this.loading = true;
-            this.loginError = "";
-            try {
-              const r = await fetch(`${this.authBase}/login/admin/verify`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code: this.twoFactorCode }),
-              });
-              const d = await r.json();
-              if (r.ok && d.access_token) {
-                localStorage.setItem("admin_token", d.access_token);
-                this.loggedIn = true;
-                this.require2FA = false;
-                this.twoFactorCode = "";
-                this.loadLicenses();
-                this.loadVersions();
-                this.loadPendingMachines();
-              } else {
-                this.loginError = d.detail || "Código inválido";
-              }
-            } catch (e) {
-              this.loginError = "Erro na verificação do 2FA";
-            }
-            this.loading = false;
-          },
-
-          async loadPendingMachines() {
-            try {
-              const r = await fetch(`${this.apiBase}/pending`, {
-                headers: this.getHeaders(),
-              });
-              if (r.ok) this.pendingMachines = await r.json();
-            } catch (e) {}
-          },
-
-          openLinkModal(machine) {
-            this.selectedMachine = machine;
-            this.targetLicenseId = "";
-            this.showLinkModal = true;
-          },
-
-          async linkMachine() {
-            try {
-              const r = await fetch(`${this.apiBase}/link`, {
-                method: "POST",
-                headers: this.getHeaders(),
-                body: JSON.stringify({
-                  machine_id: this.selectedMachine.machine_id,
-                  license_id: this.targetLicenseId,
-                }),
-              });
-              if (r.ok) {
-                this.showToast("Máquina vinculada com sucesso!", "success");
-                this.showLinkModal = false;
-                this.loadLicenses();
-                this.loadPendingMachines();
-              }
-            } catch (e) {
-              this.showToast("Erro ao vincular máquina", "error");
-            }
-          },
-
-          async rejectMachine(machine_id) {
-            if (!confirm("Remover este robô da lista de espera?")) return;
-            try {
-              await fetch(`${this.apiBase}/pending/${machine_id}`, {
-                method: "DELETE",
-                headers: this.getHeaders(),
-              });
-              this.loadPendingMachines();
-            } catch (e) {}
-          },
-          logout() {
-            localStorage.removeItem("admin_token");
-            this.loggedIn = false;
-            this.licenses = [];
-            this.versions = [];
-          },
-
-          getHeaders() {
-            const t = localStorage.getItem("admin_token");
+        function adminApp() {
             return {
-              "Content-Type": "application/json",
-              ...(t ? { Authorization: `Bearer ${t}` } : {}),
-            };
-          },
+                loggedIn: false,
+                loading: false,
+                loginError: "",
+                loginForm: { username: "", password: "" },
+                activeTab: "licenses",
+                apiBase: "https://api.bluebotapp.com.br/admin",
+                authBase: "https://api.bluebotapp.com.br/auth",
+                toast: { show: false, msg: "" },
+                
+                licenses: [],
+                clientList: [],
+                clientHealth: { total: 0, online: 0, warning: 0, offline: 0 },
+                
+                showNewLicModal: false,
+                showConfigModal: false,
+                configData: null,
 
-          // ── Tab loading ──────────────────────────────────────────────
-          loadTab(tabId) {
-            if (tabId === "licenses") this.loadLicenses();
-            if (tabId === "versions") this.loadVersions();
-            if (tabId === "clients") this.loadClients();
-          },
-
-          // ── Clients Health ─────────────────────────────────────────────
-          loadClients() {
-            console.log('[HealthView] licenses count:', this.licenses.length, 'active:', this.licenses.filter(l => l.active).length);
-            const now = new Date();
-            const fiveMin = 5 * 60 * 1000;
-            const oneHour = 60 * 60 * 1000;
-            const mapped = this.licenses
-              .filter(l => l.active)
-              .map(l => {
-                let health = 'never';
-                let healthLabel = 'Nunca Conectou';
-                if (l.last_heartbeat) {
-                  const diff = now - new Date(l.last_heartbeat);
-                  if (diff < fiveMin) {
-                    health = 'online';
-                    healthLabel = 'Online';
-                  } else if (diff < oneHour) {
-                    health = 'warning';
-                    healthLabel = 'Recente';
-                  } else {
-                    health = 'offline';
-                    healthLabel = 'Offline';
-                  }
-                }
-                return { ...l, _health: health, _healthLabel: healthLabel };
-              })
-              .sort((a, b) => {
-                const order = { online: 0, warning: 1, offline: 2, never: 3 };
-                return (order[a._health] || 9) - (order[b._health] || 9);
-              });
-            this.clientList = mapped;
-            this.clientHealth = {
-              total: mapped.length,
-              online: mapped.filter(c => c._health === 'online').length,
-              warning: mapped.filter(c => c._health === 'warning').length,
-              offline: mapped.filter(c => c._health === 'offline' || c._health === 'never').length,
-            };
-          },
-
-          // ── Licenses ─────────────────────────────────────────────────
-          async loadLicenses() {
-            try {
-              const r = await fetch(`${this.apiBase}/licenses`, {
-                headers: this.getHeaders(),
-              });
-              const d = await r.json();
-              // API returns an array directly, not {licenses: [], stats: {}}
-              if (Array.isArray(d)) {
-                this.licenses = d;
-                const now = new Date();
-                const oneHourAgo = new Date(now.getTime() - 3600000);
-                this.stats = {
-                  total: d.length,
-                  active: d.filter((l) => l.active).length,
-                  inactive: d.filter((l) => !l.active).length,
-                  online: d.filter(
-                    (l) =>
-                      l.last_heartbeat &&
-                      new Date(l.last_heartbeat) > oneHourAgo,
-                  ).length,
-                };
-              } else {
-                this.licenses = d.licenses || [];
-                this.stats = d.stats || {
-                  total: 0,
-                  active: 0,
-                  inactive: 0,
-                  online: 0,
-                };
-              }
-              // Auto-update health view
-              this.loadClients();
-            } catch (e) {
-              this.showToast("Erro ao carregar licenças", "error");
-            }
-          },
-
-          openNewLicenseModal() {
-            this.showNewLicModal = true;
-            this.generatedKey = "";
-            this.newLicForm = { plan: "basic", expires_days: 365, note: "", password: "" };
-          },
-
-          async createLicense() {
-            try {
-              const r = await fetch(`${this.apiBase}/licenses`, {
-                method: "POST",
-                headers: this.getHeaders(),
-                body: JSON.stringify(this.newLicForm),
-              });
-              const d = await r.json();
-              if (d.key) {
-                this.generatedKey = d.key;
-                this.showToast("Licença gerada com sucesso!", "success");
-                this.loadLicenses();
-              } else {
-                this.showToast(d.detail || "Erro ao gerar licença", "error");
-              }
-            } catch (e) {
-              this.showToast("Erro de conexão", "error");
-            }
-          },
-
-          editLic(lic) {
-            const sr = lic.schedule_rules || {};
-            this.editLicForm = {
-              id: lic.id,
-              key: lic.key,
-              plan: lic.plan,
-              active: lic.active,
-              expires_days: null,
-              schedule_enabled: sr.enabled === true,
-              schedule_dias: Array.isArray(sr.dias_semana)
-                ? sr.dias_semana
-                : [1, 2, 3, 4, 5],
-              schedule_hora_inicio: sr.hora_inicio || "08:00",
-              schedule_hora_fim: sr.hora_fim || "18:00",
-              schedule_timezone: sr.timezone || "America/Sao_Paulo",
-              note: lic.note || "",
-              password: "", // Não carregar o hash no campo de senha
-              machine_id: lic.machine_id || "Não vinculado",
-            };
-            this.showEditLicModal = true;
-          },
-
-          async saveLicense() {
-            const body = {
-              plan: (this.editLicForm.plan || "basic").toLowerCase(),
-              active: this.editLicForm.active,
-            };
-            if (this.editLicForm.expires_days) {
-              body.expires_days = parseInt(this.editLicForm.expires_days);
-            }
-            body.note = this.editLicForm.note;
-            if (this.editLicForm.password && this.editLicForm.password.trim() !== "") {
-              body.password = this.editLicForm.password;
-            }
-            body.schedule_rules = {
-              enabled: this.editLicForm.schedule_enabled,
-              dias_semana: this.editLicForm.schedule_dias,
-              hora_inicio: this.editLicForm.schedule_hora_inicio,
-              hora_fim: this.editLicForm.schedule_hora_fim,
-              timezone: this.editLicForm.schedule_timezone,
-            };
-
-            // Se o machine_id foi limpo (desvincular), enviar null para liberar
-            if (
-              !this.editLicForm.machine_id ||
-              this.editLicForm.machine_id === "Não vinculado" ||
-              this.editLicForm.machine_id.trim() === ""
-            ) {
-              body.machine_id = null;
-            } else {
-              body.machine_id = this.editLicForm.machine_id;
-            }
-
-            try {
-              const r = await fetch(`${this.apiBase}/licenses/${this.editLicForm.id}`, {
-                method: "PATCH",
-                headers: this.getHeaders(),
-                body: JSON.stringify(body),
-              });
-              
-              let d;
-              const contentType = r.headers.get("content-type");
-              if (contentType && contentType.includes("application/json")) {
-                d = await r.json();
-              } else {
-                const errorText = await r.text();
-                d = { detail: errorText || `Erro HTTP ${r.status}` };
-              }
-
-              if (r.ok && d && d.id) {
-                this.showToast("Licença atualizada!", "success");
-                this.showEditLicModal = false;
-                this.loadLicenses();
-              } else {
-                let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
-                if (typeof msg === 'object') msg = JSON.stringify(msg);
-                this.showToast("Erro ao salvar: " + msg, "error");
-              }
-            } catch (e) {
-              this.showToast("Erro de conexão: " + e.message, "error");
-            }
-          },
-
-          // ── Auth Code (Telegram Verification) ────────────────────────
-          async openAuthCodeModal(lic) {
-            this.authCodeLic = lic;
-            this.authCodeForm = {
-              code: "",
-              password: "",
-              requires_password: false,
-            };
-            this.authCodeResult = null;
-            this.showAuthCodeModal = true;
-            // Carregar config para pegar o phone
-            try {
-              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
-                headers: this.getHeaders(),
-              });
-              const d = await r.json();
-              if (d && !d.detail) {
-                this.authCodeLic = { ...lic, phone: d.phone || "—" };
-              }
-            } catch (e) {}
-          },
-
-          async sendAuthCode() {
-            if (!this.authCodeLic || !this.authCodeForm.code) return;
-            this.authCodeLoading = true;
-            this.authCodeResult = null;
-            try {
-              const body = { code: this.authCodeForm.code };
-              if (this.authCodeForm.password) {
-                body.password = this.authCodeForm.password;
-              }
-              const r = await fetch(
-                `${this.apiBase}/licenses/${this.authCodeLic.id}/auth-code`,
-                {
-                  method: "POST",
-                  headers: this.getHeaders(),
-                  body: JSON.stringify(body),
+                async doLogin() {
+                    this.loading = true;
+                    try {
+                        const r = await fetch(`${this.authBase}/login/admin`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(this.loginForm)
+                        });
+                        const d = await r.json();
+                        if (r.ok && d.access_token) {
+                            localStorage.setItem("admin_token", d.access_token);
+                            this.loggedIn = true;
+                            this.loadLicenses();
+                        } else {
+                            this.loginError = d.detail || "Erro no login";
+                        }
+                    } catch (e) { this.loginError = "Erro de conexão"; }
+                    this.loading = false;
                 },
-              );
-              const d = await r.json();
-              if (d.ok) {
-                this.authCodeResult = {
-                  type: "success",
-                  msg: d.message || "Autenticado com sucesso!",
-                };
-                setTimeout(() => {
-                  this.showAuthCodeModal = false;
-                }, 2000);
-              } else if (d.detail && d.detail.includes("senha")) {
-                this.authCodeForm.requires_password = true;
-                this.authCodeResult = { type: "info", msg: d.detail };
-              } else {
-                this.authCodeResult = {
-                  type: "info",
-                  msg: d.detail || "Erro ao enviar código",
-                };
-              }
-            } catch (e) {
-              this.authCodeResult = {
-                type: "info",
-                msg: "Erro de conexão com o servidor",
-              };
-            } finally {
-              this.authCodeLoading = false;
-            }
-          },
 
-          openWppModal(lic) {
-            this.selectedLic = lic;
-            this.showWppModal = true;
-          },
+                getHeaders() {
+                    const t = localStorage.getItem("admin_token");
+                    return { "Content-Type": "application/json", "Authorization": `Bearer ${t}` };
+                },
 
-          // ── Config ───────────────────────────────────────────────────
-          async viewConfig(lic) {
-            this.configLicKey = lic.key;
-            this.showConfigModal = true;
-            this.configData = null;
-            try {
-              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
-                headers: this.getHeaders(),
-              });
-              const d = await r.json();
-              if (d && !d.detail) {
-                this.configData = {
-                  ...d,
-                  sources_str: Array.isArray(d.sources)
-                    ? d.sources.join(",")
-                    : "",
-                };
-              } else {
-                this.configData = {
-                  api_id: '',
-                  api_hash: '',
-                  phone: '',
-                  sources_str: '',
-                  destination_telegram: '',
-                  delay_segundos: 3,
-                  shopee_token: '',
-                  ali_key: '',
-                  ali_secret: '',
-                  ali_tracking: '',
-                  ml_token: '',
-                  ml_cookies: '',
-                  send_telegram: true,
-                  send_whatsapp: false,
-                  conv_shopee: true,
-                  conv_ali: true,
-                  conv_ml: true,
-                  whatsapp_endpoint: '',
-                };
-              }
-            } catch (e) {
-              this.showToast("Erro ao carregar configurações", "error");
-              this.showConfigModal = false;
-            }
-          },
+                loadTab(tab) {
+                    this.activeTab = tab;
+                    if (tab === 'licenses') this.loadLicenses();
+                    if (tab === 'clients') this.loadClients();
+                },
 
-          async saveConfig() {
-            if (!this.configData || !this.configLicKey) return;
-            const cfg = { ...this.configData };
-            cfg.sources = cfg.sources_str
-              ? cfg.sources_str
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-              : [];
-            delete cfg.sources_str;
-            // Find the license ID from the key
-            const lic = this.licenses.find((l) => l.key === this.configLicKey);
-            if (!lic) {
-              this.showToast("Licença não encontrada", "error");
-              return;
-            }
-            try {
-              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
-                method: "PUT",
-                headers: this.getHeaders(),
-                body: JSON.stringify(cfg),
-              });
-              
-              let d;
-              const contentType = r.headers.get("content-type");
-              if (contentType && contentType.includes("application/json")) {
-                d = await r.json();
-              } else {
-                d = { detail: await r.text() || `Erro HTTP ${r.status}` };
-              }
+                async loadLicenses() {
+                    try {
+                        const r = await fetch(`${this.apiBase}/licenses`, { headers: this.getHeaders() });
+                        this.licenses = await r.json();
+                        if (this.activeTab === 'clients') this.loadClients();
+                    } catch (e) { console.error(e); }
+                },
 
-              if (r.ok && d && !d.detail) {
-                this.showToast("Configurações salvas!", "success");
-                this.showConfigModal = false;
-              } else {
-                let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
-                this.showToast("Erro ao salvar: " + msg, "error");
-              }
-            } catch (e) {
-              this.showToast("Erro de conexão: " + e.message, "error");
-            }
-          },
+                async loadClients() {
+                    if (this.licenses.length === 0) await this.loadLicenses();
+                    const now = new Date();
+                    this.clientList = this.licenses.map(l => {
+                        let status = 'offline';
+                        if (l.last_heartbeat) {
+                            const diff = (now - new Date(l.last_heartbeat)) / 1000;
+                            if (diff < 300) status = 'online';
+                            else if (diff < 3600) status = 'warning';
+                        }
+                        return { ...l, health_status: status };
+                    });
+                    this.clientHealth = {
+                        total: this.clientList.length,
+                        online: this.clientList.filter(c => c.health_status === 'online').length,
+                        warning: this.clientList.filter(c => c.health_status === 'warning').length,
+                        offline: this.clientList.filter(c => c.health_status === 'offline').length
+                    };
+                },
 
-          // ── Logs ─────────────────────────────────────────────────────
-          async viewLogs(lic) {
-            this.selectedLic = lic;
-            this.licLogs = [];
-            this.activeTab = "log_viewer";
-            try {
-              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/logs`, {
-                headers: this.getHeaders(),
-              });
-              const d = await r.json();
-              this.licLogs = Array.isArray(d) ? d : d.logs || [];
-            } catch (e) {
-              this.showToast("Erro ao carregar logs", "error");
-            }
-          },
+                async fetchConfig(lic) {
+                    this.showConfigModal = true;
+                    this.configData = null;
+                    try {
+                        const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, { headers: this.getHeaders() });
+                        const d = await r.json();
+                        d.sources_str = (d.sources || []).join(", ");
+                        this.configData = d;
+                    } catch (e) { console.error(e); }
+                },
 
-          // ── Versions ─────────────────────────────────────────────────
-          async loadVersions() {
-            try {
-              const r = await fetch(`${this.apiBase}/versions`, {
-                headers: this.getHeaders(),
-              });
-              const d = await r.json();
-              this.versions = d || [];
-            } catch (e) {
-              // silent
-            }
-          },
+                async saveConfig() {
+                    try {
+                        const body = {
+                            ...this.configData,
+                            delay_segundos: parseInt(this.configData.delay_segundos),
+                            sources: this.configData.sources_str.split(",").map(s => s.trim()).filter(s => s)
+                        };
+                        const r = await fetch(`${this.apiBase}/licenses/${this.configData.license_id}/config`, {
+                            method: "PUT",
+                            headers: this.getHeaders(),
+                            body: JSON.stringify(body)
+                        });
+                        if (r.ok) {
+                            alert("Configurações salvas com sucesso!");
+                            this.showConfigModal = false;
+                        }
+                    } catch (e) { alert("Erro ao salvar"); }
+                },
 
-          async publishVersion() {
-            try {
-              const r = await fetch(`${this.apiBase}/versions`, {
-                method: "POST",
-                headers: this.getHeaders(),
-                body: JSON.stringify(this.versionForm),
-              });
-              const d = await r.json();
-              if (d.version) {
-                this.showToast("Versão publicada!", "success");
-                this.showVersionModal = false;
-                this.versionForm = {
-                  version: "",
-                  changelog: "",
-                  download_url: "",
-                };
-                this.loadVersions();
-              } else {
-                this.showToast(d.detail || "Erro ao publicar", "error");
-              }
-            } catch (e) {
-              this.showToast("Erro de conexão", "error");
-            }
-          },
-
-          getHeaders() {
-            return {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-            };
-          },
-
-          // ── Discovery ────────────────────────────────────────────────
-          async loadPendingMachines() {
-            try {
-              const r = await fetch(`${this.apiBase}/pending`, {
-                headers: this.getHeaders(),
-              });
-              this.pendingMachines = await r.json();
-            } catch (e) {
-              // silent
-            }
-          },
-
-          openLinkModal(pm) {
-            this.linkForm.machine_id = pm.machine_id;
-            this.linkForm.license_id = "";
-            this.showLinkModal = true;
-          },
-
-          async linkMachine() {
-            if (!this.linkForm.license_id) return;
-            this.loading = true;
-            try {
-              const r = await fetch(`${this.apiBase}/link`, {
-                method: "POST",
-                headers: this.getHeaders(),
-                body: JSON.stringify(this.linkForm),
-              });
-              const d = await r.json();
-              if (d.ok) {
-                this.showToast("Robô vinculado!", "success");
-                this.showLinkModal = false;
-                this.loadPendingMachines();
-                this.loadLicenses();
-              } else {
-                this.showToast(d.detail || "Erro ao vincular", "error");
-              }
-            } catch (e) {
-              this.showToast("Erro de conexão", "error");
-            } finally {
-              this.loading = false;
-            }
-          },
-
-          async rejectMachine(machineId) {
-            if (!confirm("Tem certeza que deseja recusar este robô?")) return;
-            try {
-              await fetch(`${this.apiBase}/pending/${machineId}`, {
-                method: "DELETE",
-                headers: this.getHeaders(),
-              });
-              this.loadPendingMachines();
-            } catch (e) {
-              this.showToast("Erro ao recusar", "error");
-            }
-          },
-
-          // ── Helpers ──────────────────────────────────────────────────
-          showToast(msg, type = "success") {
-            this.toast = { show: true, msg, type };
-            setTimeout(() => {
-              this.toast.show = false;
-            }, 3500);
-          },
-
-          copyKey(key) {
-            navigator.clipboard.writeText(key).then(() => {
-              this.showToast("Chave copiada!", "success");
-            });
-          },
-
-          fmtDate(d) {
-            if (!d) return "";
-            const dt = new Date(d);
-            return dt.toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            });
-          },
-
-          fmtRelative(d) {
-            if (!d) return null;
-            const now = new Date();
-            const dt = new Date(d);
-            const diff = (now - dt) / 1000;
-            if (diff < 60) return "Agora";
-            if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
-            if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
-            return this.fmtDate(d);
-          },
-
-          heartbeatBadge(d) {
-            if (!d) return "badge-gray";
-            const diff = (new Date() - new Date(d)) / 1000;
-            if (diff < 3600) return "badge-green";
-            if (diff < 86400) return "badge-yellow";
-            return "badge-red";
-          },
-
-          init() {
-            const t = localStorage.getItem("admin_token");
-            if (t) {
-              this.loggedIn = true;
-              this.loadLicenses();
-              this.loadVersions();
-              this.loadPendingMachines();
-              setInterval(() => {
-                if (this.loggedIn) {
-                  this.loadLicenses();
-                  this.loadPendingMachines();
+                fmtDate(d) { return d ? new Date(d).toLocaleDateString("pt-BR") : "—"; },
+                fmtRelative(d) {
+                    if (!d) return "Nunca";
+                    const diff = Math.floor((new Date() - new Date(d)) / 1000);
+                    if (diff < 60) return "Agora";
+                    if (diff < 3600) return Math.floor(diff/60) + "m atrás";
+                    return Math.floor(diff/3600) + "h atrás";
+                },
+                logout() { localStorage.removeItem("admin_token"); this.loggedIn = false; },
+                init() {
+                    if (localStorage.getItem("admin_token")) {
+                        this.loggedIn = true;
+                        this.loadLicenses();
+                        setInterval(() => { if (this.loggedIn) this.loadLicenses(); }, 20000);
+                    }
                 }
-              }, 15000);
-            }
-          },
-
-          fmtTime(d) {
-            return this.fmtRelative(d);
-          },
-        };
-      }
+            };
+        }
     </script>
-  </body>
+</body>
 </html>

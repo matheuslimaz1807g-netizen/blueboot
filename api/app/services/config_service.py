@@ -65,9 +65,8 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     cfg.conv_ml = data.conv_ml
     cfg.filtros = data.filtros
 
-    # Handle encrypted fields (Tokens, Keys, Cookies, etc)
-    # If a value is provided (even empty string), we update it. 
-    # This allows clearing a field by sending "".
+    # Update encrypted fields whenever the payload explicitly includes them.
+    # Empty strings intentionally clear saved credentials.
     if data.shopee_token is not None:
         cfg.shopee_token_enc = encrypt_field(data.shopee_token) if data.shopee_token else None
     if data.ali_key is not None:
@@ -79,9 +78,6 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     if data.ml_token is not None:
         cfg.ml_token_enc = encrypt_field(data.ml_token) if data.ml_token else None
     if data.ml_cookies is not None:
-        # LOG de Debug para ver se o cookie está chegando na API
-        from app.core.security import encrypt_field
-        print(f"[DEBUG] API Recebeu ML_COOKIES (Tam: {len(data.ml_cookies)})", flush=True)
         cfg.ml_cookies_enc = encrypt_field(data.ml_cookies) if data.ml_cookies else None
     if data.api_id is not None:
         cfg.api_id_enc = encrypt_field(data.api_id) if data.api_id else None
