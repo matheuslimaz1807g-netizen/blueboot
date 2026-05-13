@@ -1,0 +1,14 @@
+{
+  "name": "bluebot-whatsapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BlueBot WhatsApp Web.js server",
+  "main": "server.js",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "qrcode": "^1.5.4",
+    "whatsapp-web.js": "^1.34.6"
+  }
+}

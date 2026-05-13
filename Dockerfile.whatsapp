@@ -9,11 +9,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# Copiar dependências do WhatsApp
+COPY Whatsapp/package.json Whatsapp/package-lock.json* ./
 RUN npm install --production
 
-# Copiar tudo, incluindo a pasta Whatsapp
-COPY . .
+# Copiar código do WhatsApp
+COPY Whatsapp/ .
 
 # Environment variables to use the installed Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
@@ -21,4 +22,4 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 EXPOSE 4000
 
-CMD ["node", "Whatsapp/server.js"]
+CMD ["node", "server.js"]
