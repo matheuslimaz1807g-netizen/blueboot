@@ -24,7 +24,7 @@ services:
       - whatsapp_auth_${CLIENTE_SLUG}:/.wwebjs_auth
       - whatsapp_cache_${CLIENTE_SLUG}:/.wwebjs_cache
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/status"]
       interval: 30s
       timeout: 10s
       retries: 5
