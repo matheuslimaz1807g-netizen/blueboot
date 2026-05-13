@@ -1177,7 +1177,7 @@
                         'bg-red-500/20 text-red-400': cl._health === 'offline',
                         'bg-slate-700/50 text-slate-500': cl._health === 'never'
                       }" x-text="(cl.note || cl.key).substring(0,2).toUpperCase()"></div>
-                      <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card" :class="{
+                      <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900" :class="{
                         'bg-green-500': cl._health === 'online',
                         'bg-yellow-500': cl._health === 'warning',
                         'bg-red-500': cl._health === 'offline',
@@ -2143,6 +2143,7 @@
 
           // ── Clients Health ─────────────────────────────────────────────
           loadClients() {
+            console.log('[HealthView] licenses count:', this.licenses.length, 'active:', this.licenses.filter(l => l.active).length);
             const now = new Date();
             const fiveMin = 5 * 60 * 1000;
             const oneHour = 60 * 60 * 1000;
