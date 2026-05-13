@@ -63,7 +63,9 @@ def save_session_to_env(session_string: str) -> bool:
     if not env_path:
         # Se nenhum .env existir, cria um .env
         env_path = Path(".env")
-        add_log("warning", f"⚠️ Arquivo .env não encontrado. Criando {env_path}...")
+        if os.getenv("DOCKER_CONTAINER"):
+            add_log("warning", "⚠️ Arquivo .env não encontrado. Se você estiver usando Docker, certifique-se de mapear o volume: - ./.env:/app/.env")
+        add_log("warning", f"⚠️ Criando {env_path} interno para persistência temporária...")
     
     try:
         content = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
@@ -352,7 +354,8 @@ def main():
             remote_config = config_loader.fetch_remote_config(license_key, mid)
             # Mescla remota sobre a local
             config = config_loader.merge_configs(config, remote_config)
-            add_log("success", "✅ Configurações remotas aplicadas e mescladas com local!")
+            sync_env_vars(config)
+            add_log("success", "✅ Configurações remotas aplicadas e injetadas no ambiente!")
         except Exception as e:
             add_log("warning", f"⚠️ Config remota indisponível ou vazia ({e})")
             add_log("info", "📁 Mantendo configurações locais (.env).")
@@ -435,21 +438,8 @@ def main():
                         time.sleep(2)
                     
                     config.update(merged)
+                    sync_env_vars(merged)
                     last_snapshot = new_snapshot
-                    
-                    # Inject credential fields into os.environ for modules that read directly
-                    ENV_SYNC_FIELDS = {
-                        "ml_cookies": "ML_COOKIES",
-                        "ml_token": "ML_TOKEN",
-                        "shopee_token": "SHOPEE_TOKEN",
-                        "ali_key": "ALIEXPRESS_APP_KEY",
-                        "ali_secret": "ALIEXPRESS_APP_SECRET",
-                        "ali_tracking": "ALIEXPRESS_TRACKING_ID",
-                    }
-                    for cfg_key, env_key in ENV_SYNC_FIELDS.items():
-                        val = merged.get(cfg_key)
-                        if val:
-                            os.environ[env_key] = str(val)
                     
                     if needs_restart:
                         try:

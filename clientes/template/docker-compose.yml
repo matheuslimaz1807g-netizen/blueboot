@@ -23,6 +23,7 @@ services:
     volumes:
       - whatsapp_auth_${CLIENTE_SLUG}:/.wwebjs_auth
       - whatsapp_cache_${CLIENTE_SLUG}:/.wwebjs_cache
+      - ./.env:/app/.env
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/status"]
       interval: 30s
@@ -53,6 +54,7 @@ services:
     volumes:
       - bot_sessions_${CLIENTE_SLUG}:/app/sessions
       - bot_data_${CLIENTE_SLUG}:/app/data
+      - ./.env:/app/.env
     depends_on:
       whatsapp_${CLIENTE_SLUG}:
         condition: service_healthy
