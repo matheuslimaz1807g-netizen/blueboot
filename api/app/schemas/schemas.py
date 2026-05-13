@@ -118,6 +118,7 @@ class ConfigIn(BaseModel):
     ali_secret: str | None = None
     ali_tracking: str | None = None
     ml_token: str | None = None
+    ml_cookies: str | None = None
     api_id: str | None = None
     api_hash: str | None = None
     session_string: str | None = None
@@ -142,6 +143,7 @@ class ConfigOut(BaseModel):
     ali_secret: str | None
     ali_tracking: str | None
     ml_token: str | None
+    ml_cookies: str | None
     api_id: str | None
     api_hash: str | None
     session_string: str | None

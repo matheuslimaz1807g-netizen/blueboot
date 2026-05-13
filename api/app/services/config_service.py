@@ -34,6 +34,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         ali_secret=decrypt_field(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
         ali_tracking=decrypt_field(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
+        ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
@@ -75,6 +76,8 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         cfg.ali_tracking_enc = encrypt_field(data.ali_tracking)
     if data.ml_token:
         cfg.ml_token_enc = encrypt_field(data.ml_token)
+    if data.ml_cookies:
+        cfg.ml_cookies_enc = encrypt_field(data.ml_cookies)
     if data.api_id:
         cfg.api_id_enc = encrypt_field(data.api_id)
     if data.api_hash:
@@ -105,6 +108,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         ali_secret=decrypt_field(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
         ali_tracking=decrypt_field(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
+        ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,

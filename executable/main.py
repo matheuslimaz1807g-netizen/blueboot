@@ -105,7 +105,7 @@ def create_app(mode: str, initial_config: dict):
     
     # Credenciais do Painel
     DASH_USER = os.getenv("DASHBOARD_USER", "admin")
-    DASH_PWD = os.getenv("DASHBOARD_PASSWORD")
+    DASH_PWD = os.getenv("DASHBOARD_PASSWORD") or os.getenv("CLIENT_PASSWORD")
     if not DASH_PWD:
         raise RuntimeError("DASHBOARD_PASSWORD e obrigatorio para iniciar o painel local")
 
@@ -378,7 +378,7 @@ def main():
             "send_whatsapp", "wpp_destinations", "whatsapp_endpoint",
             "conv_shopee", "conv_ali", "conv_ml",
             "shopee_token", "ali_key", "ali_secret", "ali_tracking",
-            "ml_token", "web_api_url", "send_to_web_api"
+            "ml_token", "ml_cookies", "web_api_url", "send_to_web_api"
         }
         # Campos que exigem reinicialização do bot
         RESTART_FIELDS = {"phone", "api_id", "api_hash", "sources"}
@@ -429,6 +429,20 @@ def main():
                     
                     config.update(merged)
                     last_snapshot = new_snapshot
+                    
+                    # Inject credential fields into os.environ for modules that read directly
+                    ENV_SYNC_FIELDS = {
+                        "ml_cookies": "ML_COOKIES",
+                        "ml_token": "ML_TOKEN",
+                        "shopee_token": "SHOPEE_TOKEN",
+                        "ali_key": "ALIEXPRESS_APP_KEY",
+                        "ali_secret": "ALIEXPRESS_APP_SECRET",
+                        "ali_tracking": "ALIEXPRESS_TRACKING_ID",
+                    }
+                    for cfg_key, env_key in ENV_SYNC_FIELDS.items():
+                        val = merged.get(cfg_key)
+                        if val:
+                            os.environ[env_key] = str(val)
                     
                     if needs_restart:
                         try:

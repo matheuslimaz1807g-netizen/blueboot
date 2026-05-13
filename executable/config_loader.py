@@ -63,6 +63,7 @@ def load_config_from_env() -> dict:
         "ali_secret": os.getenv("ALIEXPRESS_APP_SECRET", ""),
         "ali_tracking": os.getenv("ALIEXPRESS_TRACKING_ID", ""),
         "ml_token": os.getenv("ML_TOKEN", ""),
+        "ml_cookies": os.getenv("ML_COOKIES", ""),
         "web_api_url": os.getenv("WEB_API_URL", "http://localhost:3000/api/promotions"),
         "send_to_web_api": os.getenv("SEND_TO_WEB_API", "true").lower() == "true",
     }

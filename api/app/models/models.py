@@ -105,6 +105,7 @@ class ClientConfig(Base):
     ali_secret_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     ali_tracking_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     ml_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ml_cookies_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Telegram API Credentials (Encrypted)
     api_id_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
