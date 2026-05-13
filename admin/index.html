@@ -2162,7 +2162,7 @@
             const fiveMin = 5 * 60 * 1000;
             const oneHour = 60 * 60 * 1000;
             const mapped = this.licenses
-              .filter(l => l.active && l.machine_id)
+              .filter(l => l.active)
               .map(l => {
                 let health = 'never';
                 let healthLabel = 'Nunca Conectou';
