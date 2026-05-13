@@ -65,25 +65,30 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     cfg.conv_ml = data.conv_ml
     cfg.filtros = data.filtros
 
-    # Only overwrite encrypted fields when a new value is provided
-    if data.shopee_token:
-        cfg.shopee_token_enc = encrypt_field(data.shopee_token)
-    if data.ali_key:
-        cfg.ali_key_enc = encrypt_field(data.ali_key)
-    if data.ali_secret:
-        cfg.ali_secret_enc = encrypt_field(data.ali_secret)
-    if data.ali_tracking:
-        cfg.ali_tracking_enc = encrypt_field(data.ali_tracking)
-    if data.ml_token:
-        cfg.ml_token_enc = encrypt_field(data.ml_token)
-    if data.ml_cookies:
-        cfg.ml_cookies_enc = encrypt_field(data.ml_cookies)
-    if data.api_id:
-        cfg.api_id_enc = encrypt_field(data.api_id)
-    if data.api_hash:
-        cfg.api_hash_enc = encrypt_field(data.api_hash)
-    if data.session_string:
-        cfg.session_string_enc = encrypt_field(data.session_string)
+    # Handle encrypted fields (Tokens, Keys, Cookies, etc)
+    # If a value is provided (even empty string), we update it. 
+    # This allows clearing a field by sending "".
+    if data.shopee_token is not None:
+        cfg.shopee_token_enc = encrypt_field(data.shopee_token) if data.shopee_token else None
+    if data.ali_key is not None:
+        cfg.ali_key_enc = encrypt_field(data.ali_key) if data.ali_key else None
+    if data.ali_secret is not None:
+        cfg.ali_secret_enc = encrypt_field(data.ali_secret) if data.ali_secret else None
+    if data.ali_tracking is not None:
+        cfg.ali_tracking_enc = encrypt_field(data.ali_tracking) if data.ali_tracking else None
+    if data.ml_token is not None:
+        cfg.ml_token_enc = encrypt_field(data.ml_token) if data.ml_token else None
+    if data.ml_cookies is not None:
+        # LOG de Debug para ver se o cookie está chegando na API
+        from app.core.security import encrypt_field
+        print(f"[DEBUG] API Recebeu ML_COOKIES (Tam: {len(data.ml_cookies)})", flush=True)
+        cfg.ml_cookies_enc = encrypt_field(data.ml_cookies) if data.ml_cookies else None
+    if data.api_id is not None:
+        cfg.api_id_enc = encrypt_field(data.api_id) if data.api_id else None
+    if data.api_hash is not None:
+        cfg.api_hash_enc = encrypt_field(data.api_hash) if data.api_hash else None
+    if data.session_string is not None:
+        cfg.session_string_enc = encrypt_field(data.session_string) if data.session_string else None
     # bot_dashboard_url is plain text (just a local network URL)
     cfg.bot_dashboard_url = data.bot_dashboard_url
 
