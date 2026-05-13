@@ -345,6 +345,23 @@ def main():
 
         start_heartbeat(license_key, mid, on_grace_expired=on_expired, status_callback=get_wpp_status_callback)
         
+        def sync_env_vars(cfg):
+            """Injeta campos de credenciais no os.environ para módulos que lêem diretamente."""
+            ENV_SYNC_FIELDS = {
+                "ml_cookies": "ML_COOKIES",
+                "ml_token": "ML_TOKEN",
+                "shopee_token": "SHOPEE_TOKEN",
+                "ali_key": "ALIEXPRESS_APP_KEY",
+                "ali_secret": "ALIEXPRESS_APP_SECRET",
+                "ali_tracking": "ALIEXPRESS_TRACKING_ID",
+            }
+            for cfg_key, env_key in ENV_SYNC_FIELDS.items():
+                val = cfg.get(cfg_key)
+                if val:
+                    os.environ[env_key] = str(val)
+                    if cfg_key == "ml_cookies":
+                        add_log("info", f"🍪 ML_COOKIES sincronizado: {len(str(val))} caracteres.")
+
         # 3. Carregar Configuração (Remota primeiro, fallback para local)
         # Carrega a local como base
         config = config_loader.load_config_from_env()
@@ -355,7 +372,9 @@ def main():
             # Mescla remota sobre a local
             config = config_loader.merge_configs(config, remote_config)
             sync_env_vars(config)
-            add_log("success", "✅ Configurações remotas aplicadas e injetadas no ambiente!")
+            
+            ml_count = len(str(config.get("ml_cookies") or ""))
+            add_log("success", f"✅ Configurações remotas aplicadas! ML_COOKIES: {ml_count} chars.")
         except Exception as e:
             add_log("warning", f"⚠️ Config remota indisponível ou vazia ({e})")
             add_log("info", "📁 Mantendo configurações locais (.env).")
