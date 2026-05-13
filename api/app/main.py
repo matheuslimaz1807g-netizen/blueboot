@@ -50,10 +50,15 @@ async def lifespan(app: FastAPI):
         logger.error(f"Erro ao sincronizar banco: {e}")
     yield
 
+is_dev = settings.ENVIRONMENT.lower() == "development"
+
 app = FastAPI(
     title="BlueBot License & Config API",
     version=settings.APP_VERSION,
     lifespan=lifespan,
+    docs_url="/docs" if is_dev else None,
+    redoc_url="/redoc" if is_dev else None,
+    openapi_url="/openapi.json" if is_dev else None,
 )
 
 # Integrar slowapi com FastAPI

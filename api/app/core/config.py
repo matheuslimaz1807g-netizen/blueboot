@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_STORAGE_URL: str = "memory://"
     APP_VERSION: str = "1.0.0"
 
+    # "production" desabilita /docs e /redoc. Use "development" para ativar.
+    ENVIRONMENT: str = "production"
+
     @model_validator(mode="after")
     def reject_insecure_defaults(self):
         insecure_fields = []

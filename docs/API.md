@@ -6,6 +6,8 @@ A API do BlueBotApp é construída com **FastAPI** (Python) e roda em `https://a
 
 Documentação interativa (Swagger): `https://api.bluebotapp.com.br/docs`
 
+> ⚠️ **Segurança**: Em produção, o Swagger está **desabilitado**. Para usar durante desenvolvimento, adicione `ENVIRONMENT=development` no `.env` da VPS e reinicie a API. **Nunca deixe habilitado em produção!**
+
 ## Autenticação
 
 A API usa **JWT (JSON Web Tokens)**. Existem dois tipos de usuário:
