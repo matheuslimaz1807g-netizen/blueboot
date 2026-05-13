@@ -1916,8 +1916,8 @@
           loginError: "",
           loginForm: { username: "", password: "" },
           activeTab: "licenses",
-          apiBase: "/admin",
-          authBase: "/auth",
+          apiBase: "https://api.bluebotapp.com.br/admin",
+          authBase: "https://api.bluebotapp.com.br/auth",
           require2FA: false,
           twoFactorCode: "",
           toast: { show: false, msg: "", type: "success" },
@@ -1969,6 +1969,7 @@
 
           selectedLic: null,
           selectedMachine: null,
+          targetLicenseId: "",
           generatedKey: "",
           configLicKey: "",
           configData: null,
@@ -1977,7 +1978,7 @@
           authCodeLic: null,
           authCodeLoading: false,
           authCodeResult: null,
-          authCodeForm: { code: "", password: "" },
+          authCodeForm: { code: "", password: "", requires_password: false },
 
           newLicForm: { plan: "basic", expires_days: 30, note: "", password: "" },
           editLicForm: {
@@ -1987,7 +1988,7 @@
             active: true,
             expires_days: null,
             schedule_enabled: false,
-            schedule_dias: [0, 1, 2, 3, 4, 5, 6],
+            schedule_dias: [1, 2, 3, 4, 5],
             schedule_hora_inicio: "08:00",
             schedule_hora_fim: "18:00",
             schedule_timezone: "America/Sao_Paulo",
@@ -1996,55 +1997,133 @@
             machine_id: "",
           },
           linkForm: { machine_id: "", license_id: "" },
+
+          // ── Logs ──────────────────────────────────────────────────────
+          selectedLic: null,
+          licLogs: [],
+
+          // ── Version ───────────────────────────────────────────────────
+          showVersionModal: false,
           versionForm: { version: "", changelog: "", download_url: "" },
 
           // ── Init ──────────────────────────────────────────────────────
-          init() {
-            const token = localStorage.getItem("admin_token");
-            if (token) {
-              this.loggedIn = true;
-              this.loadLicenses().then(() => this.loadClients());
-              this.loadVersions();
-              this.loadPendingMachines();
-
-              setInterval(() => {
-                if (this.loggedIn) {
-                  this.loadLicenses();
-                  this.loadPendingMachines();
-                }
-              }, 15000);
-            }
-          },
+          // (primary init is at bottom of adminApp)
 
           // ── Auth methods ──────────────────────────────────────────────
           async doLogin() {
             this.loading = true;
             this.loginError = "";
             try {
-              const r = await fetch(`${this.authBase}/login`, {
+              const r = await fetch(`${this.authBase}/login/admin`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(this.loginForm),
+              });
+
+              const d = await r.json();
+              if (!r.ok) {
+                this.loginError = d.detail || "Erro no servidor";
+                this.loading = false;
+                return;
+              }
+
+              if (d.require_2fa) {
+                this.require2FA = true;
+                this.loading = false;
+                return;
+              }
+
+              if (d.access_token) {
+                localStorage.setItem("admin_token", d.access_token);
+                this.loggedIn = true;
+                this.loadLicenses();
+                this.loadVersions();
+                this.loadPendingMachines();
+              }
+            } catch (e) {
+              this.loginError = "Erro de conexão com o servidor";
+            }
+            this.loading = false;
+          },
+
+          async verify2FA() {
+            this.loading = true;
+            this.loginError = "";
+            try {
+              const r = await fetch(`${this.authBase}/login/admin/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: this.twoFactorCode }),
               });
               const d = await r.json();
               if (r.ok && d.access_token) {
                 localStorage.setItem("admin_token", d.access_token);
                 this.loggedIn = true;
-                this.loadLicenses().then(() => this.loadClients());
+                this.require2FA = false;
+                this.twoFactorCode = "";
+                this.loadLicenses();
                 this.loadVersions();
                 this.loadPendingMachines();
               } else {
-                this.loginError = d.detail || "Erro no login";
+                this.loginError = d.detail || "Código inválido";
               }
             } catch (e) {
-              this.loginError = "Erro de conexão";
+              this.loginError = "Erro na verificação do 2FA";
             }
             this.loading = false;
           },
 
+          async loadPendingMachines() {
+            try {
+              const r = await fetch(`${this.apiBase}/pending`, {
+                headers: this.getHeaders(),
+              });
+              if (r.ok) this.pendingMachines = await r.json();
+            } catch (e) {}
+          },
+
+          openLinkModal(machine) {
+            this.selectedMachine = machine;
+            this.targetLicenseId = "";
+            this.showLinkModal = true;
+          },
+
+          async linkMachine() {
+            try {
+              const r = await fetch(`${this.apiBase}/link`, {
+                method: "POST",
+                headers: this.getHeaders(),
+                body: JSON.stringify({
+                  machine_id: this.selectedMachine.machine_id,
+                  license_id: this.targetLicenseId,
+                }),
+              });
+              if (r.ok) {
+                this.showToast("Máquina vinculada com sucesso!", "success");
+                this.showLinkModal = false;
+                this.loadLicenses();
+                this.loadPendingMachines();
+              }
+            } catch (e) {
+              this.showToast("Erro ao vincular máquina", "error");
+            }
+          },
+
+          async rejectMachine(machine_id) {
+            if (!confirm("Remover este robô da lista de espera?")) return;
+            try {
+              await fetch(`${this.apiBase}/pending/${machine_id}`, {
+                method: "DELETE",
+                headers: this.getHeaders(),
+              });
+              this.loadPendingMachines();
+            } catch (e) {}
+          },
           logout() {
             localStorage.removeItem("admin_token");
             this.loggedIn = false;
+            this.licenses = [];
+            this.versions = [];
           },
 
           getHeaders() {
@@ -2057,7 +2136,6 @@
 
           // ── Tab loading ──────────────────────────────────────────────
           loadTab(tabId) {
-            this.activeTab = tabId;
             if (tabId === "licenses") this.loadLicenses();
             if (tabId === "versions") this.loadVersions();
             if (tabId === "clients") this.loadClients();
@@ -2108,6 +2186,7 @@
                 headers: this.getHeaders(),
               });
               const d = await r.json();
+              // API returns an array directly, not {licenses: [], stats: {}}
               if (Array.isArray(d)) {
                 this.licenses = d;
                 const now = new Date();
@@ -2122,11 +2201,19 @@
                       new Date(l.last_heartbeat) > oneHourAgo,
                   ).length,
                 };
-                // Auto-update health view
-                this.loadClients();
+              } else {
+                this.licenses = d.licenses || [];
+                this.stats = d.stats || {
+                  total: 0,
+                  active: 0,
+                  inactive: 0,
+                  online: 0,
+                };
               }
+              // Auto-update health view
+              this.loadClients();
             } catch (e) {
-              console.error("Erro ao carregar licenças:", e);
+              this.showToast("Erro ao carregar licenças", "error");
             }
           },
 
@@ -2165,12 +2252,14 @@
               active: lic.active,
               expires_days: null,
               schedule_enabled: sr.enabled === true,
-              schedule_dias: Array.isArray(sr.dias_semana) ? sr.dias_semana : [0,1,2,3,4,5,6],
+              schedule_dias: Array.isArray(sr.dias_semana)
+                ? sr.dias_semana
+                : [1, 2, 3, 4, 5],
               schedule_hora_inicio: sr.hora_inicio || "08:00",
               schedule_hora_fim: sr.hora_fim || "18:00",
               schedule_timezone: sr.timezone || "America/Sao_Paulo",
               note: lic.note || "",
-              password: "",
+              password: "", // Não carregar o hash no campo de senha
               machine_id: lic.machine_id || "Não vinculado",
             };
             this.showEditLicModal = true;
@@ -2180,23 +2269,31 @@
             const body = {
               plan: (this.editLicForm.plan || "basic").toLowerCase(),
               active: this.editLicForm.active,
-              note: this.editLicForm.note,
-              schedule_rules: {
-                enabled: this.editLicForm.schedule_enabled,
-                dias_semana: this.editLicForm.schedule_dias,
-                hora_inicio: this.editLicForm.schedule_hora_inicio,
-                hora_fim: this.editLicForm.schedule_hora_fim,
-                timezone: this.editLicForm.schedule_timezone,
-              },
             };
             if (this.editLicForm.expires_days) {
               body.expires_days = parseInt(this.editLicForm.expires_days);
             }
-            if (this.editLicForm.password) {
+            body.note = this.editLicForm.note;
+            if (this.editLicForm.password && this.editLicForm.password.trim() !== "") {
               body.password = this.editLicForm.password;
             }
-            if (!this.editLicForm.machine_id || this.editLicForm.machine_id === "Não vinculado") {
+            body.schedule_rules = {
+              enabled: this.editLicForm.schedule_enabled,
+              dias_semana: this.editLicForm.schedule_dias,
+              hora_inicio: this.editLicForm.schedule_hora_inicio,
+              hora_fim: this.editLicForm.schedule_hora_fim,
+              timezone: this.editLicForm.schedule_timezone,
+            };
+
+            // Se o machine_id foi limpo (desvincular), enviar null para liberar
+            if (
+              !this.editLicForm.machine_id ||
+              this.editLicForm.machine_id === "Não vinculado" ||
+              this.editLicForm.machine_id.trim() === ""
+            ) {
               body.machine_id = null;
+            } else {
+              body.machine_id = this.editLicForm.machine_id;
             }
 
             try {
@@ -2205,17 +2302,100 @@
                 headers: this.getHeaders(),
                 body: JSON.stringify(body),
               });
-              if (r.ok) {
+              
+              let d;
+              const contentType = r.headers.get("content-type");
+              if (contentType && contentType.includes("application/json")) {
+                d = await r.json();
+              } else {
+                const errorText = await r.text();
+                d = { detail: errorText || `Erro HTTP ${r.status}` };
+              }
+
+              if (r.ok && d && d.id) {
                 this.showToast("Licença atualizada!", "success");
                 this.showEditLicModal = false;
                 this.loadLicenses();
               } else {
-                const d = await r.json();
-                this.showToast("Erro: " + (d.detail || "Erro desconhecido"), "error");
+                let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
+                if (typeof msg === 'object') msg = JSON.stringify(msg);
+                this.showToast("Erro ao salvar: " + msg, "error");
               }
             } catch (e) {
-              this.showToast("Erro de conexão", "error");
+              this.showToast("Erro de conexão: " + e.message, "error");
             }
+          },
+
+          // ── Auth Code (Telegram Verification) ────────────────────────
+          async openAuthCodeModal(lic) {
+            this.authCodeLic = lic;
+            this.authCodeForm = {
+              code: "",
+              password: "",
+              requires_password: false,
+            };
+            this.authCodeResult = null;
+            this.showAuthCodeModal = true;
+            // Carregar config para pegar o phone
+            try {
+              const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
+                headers: this.getHeaders(),
+              });
+              const d = await r.json();
+              if (d && !d.detail) {
+                this.authCodeLic = { ...lic, phone: d.phone || "—" };
+              }
+            } catch (e) {}
+          },
+
+          async sendAuthCode() {
+            if (!this.authCodeLic || !this.authCodeForm.code) return;
+            this.authCodeLoading = true;
+            this.authCodeResult = null;
+            try {
+              const body = { code: this.authCodeForm.code };
+              if (this.authCodeForm.password) {
+                body.password = this.authCodeForm.password;
+              }
+              const r = await fetch(
+                `${this.apiBase}/licenses/${this.authCodeLic.id}/auth-code`,
+                {
+                  method: "POST",
+                  headers: this.getHeaders(),
+                  body: JSON.stringify(body),
+                },
+              );
+              const d = await r.json();
+              if (d.ok) {
+                this.authCodeResult = {
+                  type: "success",
+                  msg: d.message || "Autenticado com sucesso!",
+                };
+                setTimeout(() => {
+                  this.showAuthCodeModal = false;
+                }, 2000);
+              } else if (d.detail && d.detail.includes("senha")) {
+                this.authCodeForm.requires_password = true;
+                this.authCodeResult = { type: "info", msg: d.detail };
+              } else {
+                this.authCodeResult = {
+                  type: "info",
+                  msg: d.detail || "Erro ao enviar código",
+                };
+              }
+            } catch (e) {
+              this.authCodeResult = {
+                type: "info",
+                msg: "Erro de conexão com o servidor",
+              };
+            } finally {
+              this.authCodeLoading = false;
+            }
+          },
+
+          openWppModal(lic) {
+            this.selectedLic = lic;
+            this.showWppModal = true;
           },
 
           // ── Config ───────────────────────────────────────────────────
@@ -2231,46 +2411,78 @@
               if (d && !d.detail) {
                 this.configData = {
                   ...d,
-                  sources_str: Array.isArray(d.sources) ? d.sources.join(",") : "",
+                  sources_str: Array.isArray(d.sources)
+                    ? d.sources.join(",")
+                    : "",
                 };
               } else {
                 this.configData = {
-                  api_id: '', api_hash: '', phone: '', sources_str: '',
-                  destination_telegram: '', delay_segundos: 3, shopee_token: '',
-                  ali_key: '', ali_secret: '', ali_tracking: '', ml_token: '',
-                  ml_cookies: '', send_telegram: true, send_whatsapp: false,
-                  conv_shopee: true, conv_ali: true, conv_ml: true, whatsapp_endpoint: '',
+                  api_id: '',
+                  api_hash: '',
+                  phone: '',
+                  sources_str: '',
+                  destination_telegram: '',
+                  delay_segundos: 3,
+                  shopee_token: '',
+                  ali_key: '',
+                  ali_secret: '',
+                  ali_tracking: '',
+                  ml_token: '',
+                  ml_cookies: '',
+                  send_telegram: true,
+                  send_whatsapp: false,
+                  conv_shopee: true,
+                  conv_ali: true,
+                  conv_ml: true,
+                  whatsapp_endpoint: '',
                 };
               }
             } catch (e) {
               this.showToast("Erro ao carregar configurações", "error");
+              this.showConfigModal = false;
             }
           },
 
           async saveConfig() {
             if (!this.configData || !this.configLicKey) return;
             const cfg = { ...this.configData };
-            cfg.sources = cfg.sources_str ? cfg.sources_str.split(",").map(s => s.trim()).filter(Boolean) : [];
+            cfg.sources = cfg.sources_str
+              ? cfg.sources_str
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
             delete cfg.sources_str;
-
-            const lic = this.licenses.find(l => l.key === this.configLicKey);
-            if (!lic) return;
-
+            // Find the license ID from the key
+            const lic = this.licenses.find((l) => l.key === this.configLicKey);
+            if (!lic) {
+              this.showToast("Licença não encontrada", "error");
+              return;
+            }
             try {
               const r = await fetch(`${this.apiBase}/licenses/${lic.id}/config`, {
                 method: "PUT",
                 headers: this.getHeaders(),
                 body: JSON.stringify(cfg),
               });
-              if (r.ok) {
+              
+              let d;
+              const contentType = r.headers.get("content-type");
+              if (contentType && contentType.includes("application/json")) {
+                d = await r.json();
+              } else {
+                d = { detail: await r.text() || `Erro HTTP ${r.status}` };
+              }
+
+              if (r.ok && d && !d.detail) {
                 this.showToast("Configurações salvas!", "success");
                 this.showConfigModal = false;
               } else {
-                const d = await r.json();
-                this.showToast("Erro: " + (d.detail || "Erro ao salvar"), "error");
+                let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
+                this.showToast("Erro ao salvar: " + msg, "error");
               }
             } catch (e) {
-              this.showToast("Erro de conexão", "error");
+              this.showToast("Erro de conexão: " + e.message, "error");
             }
           },
 
@@ -2438,12 +2650,14 @@
             const t = localStorage.getItem("admin_token");
             if (t) {
               this.loggedIn = true;
-              this.loadLicenses().then(() => this.loadClients());
+              this.loadLicenses();
               this.loadVersions();
               this.loadPendingMachines();
               setInterval(() => {
-                this.loadLicenses();
-                this.loadPendingMachines();
+                if (this.loggedIn) {
+                  this.loadLicenses();
+                  this.loadPendingMachines();
+                }
               }, 15000);
             }
           },

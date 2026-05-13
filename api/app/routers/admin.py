@@ -317,6 +317,29 @@ async def get_public_license_status(
     return lic
 
 
+@router.get("/license/public/{key}/logs", response_model=list[LogEntryOut])
+async def get_public_license_logs(
+    key: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Rota pública para clientes visualizarem os últimos logs do seu robô.
+    Limitado a 20 entradas para segurança.
+    """
+    result = await db.execute(select(License).where(License.key == key))
+    lic = result.scalar_one_or_none()
+    if not lic:
+        raise HTTPException(status_code=404, detail="Licença não encontrada")
+    
+    logs = await db.execute(
+        select(LogEntry)
+        .where(LogEntry.license_id == lic.id)
+        .order_by(desc(LogEntry.created_at))
+        .limit(20)
+    )
+    return logs.scalars().all()
+
+
 @router.post("/client/login", response_model=OkResponse)
 async def client_login(
     body: ClientLoginRequest,
