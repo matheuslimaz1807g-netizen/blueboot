@@ -3,21 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status do Robô - BlueBot</title>
+    <title>Status do Rob├┤ - BlueBot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
     </style>
 </head>
 <body class="text-slate-200 min-h-screen p-4 md:p-8" x-data="clientView()">
     
-    <div class="max-w-5xl mx-auto space-y-8">
+    <div class="max-w-4xl mx-auto space-y-8">
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -28,7 +25,7 @@
                 <template x-if="license">
                     <div class="px-4 py-2 glass rounded-2xl flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full" :class="license.active ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'"></span>
-                        <span class="text-sm font-semibold" x-text="license.active ? 'Licença Ativa' : 'Inativa'"></span>
+                        <span class="text-sm font-semibold" x-text="license.active ? 'Licen├ºa Ativa' : 'Inativa'"></span>
                     </div>
                 </template>
             </div>
@@ -37,7 +34,7 @@
         <template x-if="!license && !error">
             <div class="flex flex-col items-center justify-center py-20">
                 <div class="w-12 h-12 border-4 border-slate-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                <p class="text-slate-400">Carregando dados do robô...</p>
+                <p class="text-slate-400">Carregando dados do rob├┤...</p>
             </div>
         </template>
 
@@ -48,124 +45,77 @@
         </template>
 
         <template x-if="license">
-            <div class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- WhatsApp Status Card -->
-                    <div class="md:col-span-2 glass rounded-3xl p-8 space-y-6">
-                        <div class="flex items-center justify-between">
-                            <h2 class="text-xl font-bold text-white">Conexão WhatsApp</h2>
-                            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
-                                  :class="{
-                                    'bg-emerald-500/20 text-emerald-400': license.whatsapp_status === 'connected',
-                                    'bg-blue-500/20 text-blue-400': license.whatsapp_status === 'qr',
-                                    'bg-slate-500/20 text-slate-400': !license.whatsapp_status || license.whatsapp_status === 'disconnected'
-                                  }"
-                                  x-text="license.whatsapp_status || 'Offline'"></span>
-                        </div>
-
-                        <div class="flex flex-col items-center justify-center py-6">
-                            <!-- QR Code Section -->
-                            <template x-if="license.whatsapp_status === 'qr' && license.whatsapp_qr">
-                                <div class="text-center space-y-4">
-                                    <div class="bg-white p-4 rounded-2xl inline-block shadow-2xl ring-8 ring-slate-800">
-                                        <img :src="license.whatsapp_qr" class="w-64 h-64 mx-auto">
-                                    </div>
-                                    <p class="text-sm text-slate-400">Escaneie o código acima com seu WhatsApp</p>
-                                </div>
-                            </template>
-
-                            <!-- Connected Section -->
-                            <template x-if="license.whatsapp_status === 'connected'">
-                                <div class="text-center space-y-4">
-                                    <div class="w-24 h-24 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(16,185,129,0.2)]">
-                                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                                    </div>
-                                    <h3 class="text-xl font-bold text-white">WhatsApp Online!</h3>
-                                    <p class="text-slate-400">Seu robô está pronto para disparar ofertas.</p>
-                                </div>
-                            </template>
-
-                            <!-- Disconnected Section -->
-                            <template x-if="!license.whatsapp_status || license.whatsapp_status === 'disconnected'">
-                                <div class="text-center space-y-4">
-                                    <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto">
-                                        <svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                                    </div>
-                                    <p class="text-slate-400">Aguardando o robô iniciar o WhatsApp...</p>
-                                </div>
-                            </template>
-                        </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- WhatsApp Status Card -->
+                <div class="md:col-span-2 glass rounded-3xl p-8 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-white">Conex├úo WhatsApp</h2>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                              :class="{
+                                'bg-emerald-500/20 text-emerald-400': license.whatsapp_status === 'connected',
+                                'bg-blue-500/20 text-blue-400': license.whatsapp_status === 'qr',
+                                'bg-slate-500/20 text-slate-400': !license.whatsapp_status || license.whatsapp_status === 'disconnected'
+                              }"
+                              x-text="license.whatsapp_status || 'Offline'"></span>
                     </div>
 
-                    <!-- Info Sidebar -->
-                    <div class="space-y-6">
-                        <div class="glass rounded-3xl p-6 space-y-4">
-                            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest">Informações</h3>
-                            <div>
-                                <p class="text-xs text-slate-500">Plano</p>
-                                <p class="text-white font-semibold uppercase" x-text="license.plan"></p>
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <!-- QR Code Section -->
+                        <template x-if="license.whatsapp_status === 'qr' && license.whatsapp_qr">
+                            <div class="text-center space-y-4">
+                                <div class="bg-white p-4 rounded-2xl inline-block shadow-2xl ring-8 ring-slate-800">
+                                    <img :src="license.whatsapp_qr" class="w-64 h-64 mx-auto">
+                                </div>
+                                <p class="text-sm text-slate-400">Escaneie o c├│digo acima com seu WhatsApp</p>
                             </div>
-                            <div>
-                                <p class="text-xs text-slate-500">Último Sinal (Heartbeat)</p>
-                                <p class="text-white font-medium" x-text="formatDate(license.last_heartbeat)"></p>
+                        </template>
+
+                        <!-- Connected Section -->
+                        <template x-if="license.whatsapp_status === 'connected'">
+                            <div class="text-center space-y-4">
+                                <div class="w-24 h-24 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(16,185,129,0.2)]">
+                                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                                <h3 class="text-xl font-bold text-white">WhatsApp Online!</h3>
+                                <p class="text-slate-400">Seu rob├┤ est├í pronto para disparar ofertas.</p>
                             </div>
-                            <div>
-                                <p class="text-xs text-slate-500">Validade da Licença</p>
-                                <p class="text-white font-medium" x-text="formatDate(license.expires_at)"></p>
+                        </template>
+
+                        <!-- Disconnected Section -->
+                        <template x-if="!license.whatsapp_status || license.whatsapp_status === 'disconnected'">
+                            <div class="text-center space-y-4">
+                                <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto">
+                                    <svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                </div>
+                                <p class="text-slate-400">Aguardando o rob├┤ iniciar o WhatsApp...</p>
                             </div>
-                            <div>
-                                <p class="text-xs text-slate-500">ID da Máquina</p>
-                                <p class="text-xs text-slate-400 truncate" x-text="license.machine_id || '—'"></p>
-                            </div>
-                        </div>
+                        </template>
                     </div>
                 </div>
 
-                <!-- Activity Logs -->
-                <div class="glass rounded-3xl p-6 space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                            Atividade Recente
-                        </h2>
-                        <button @click="fetchLogs(licenseKey)" class="text-xs text-slate-500 hover:text-white transition flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Atualizar
-                        </button>
+                <!-- Info Sidebar -->
+                <div class="space-y-6">
+                    <div class="glass rounded-3xl p-6 space-y-4">
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest">Informa├º├Áes</h3>
+                        <div>
+                            <p class="text-xs text-slate-500">├Ültimo Sinal (Heartbeat)</p>
+                            <p class="text-white font-medium" x-text="formatDate(license.last_heartbeat)"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500">Validade da Licen├ºa</p>
+                            <p class="text-white font-medium" x-text="formatDate(license.expires_at)"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500">ID da M├íquina</p>
+                            <p class="text-xs text-slate-400 truncate" x-text="license.machine_id"></p>
+                        </div>
                     </div>
 
-                    <template x-if="logs.length === 0">
-                        <div class="text-center py-8 text-slate-500 text-sm">
-                            <p>Nenhum log de atividade registrado ainda.</p>
-                        </div>
-                    </template>
-
-                    <template x-if="logs.length > 0">
-                        <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
-                            <template x-for="log in logs" :key="log.id">
-                                <div class="flex items-start gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5 transition">
-                                    <div class="mt-0.5 w-2 h-2 rounded-full shrink-0" :class="{
-                                        'bg-blue-400': log.nivel === 'info',
-                                        'bg-emerald-400': log.nivel === 'success',
-                                        'bg-red-400': log.nivel === 'error',
-                                        'bg-yellow-400': log.nivel === 'warning',
-                                        'bg-slate-500': !log.nivel
-                                    }"></div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm text-slate-300 break-words" x-text="log.mensagem"></p>
-                                        <p class="text-[10px] text-slate-600 mt-0.5" x-text="formatDate(log.created_at)"></p>
-                                    </div>
-                                    <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" :class="{
-                                        'bg-blue-500/20 text-blue-400': log.nivel === 'info',
-                                        'bg-emerald-500/20 text-emerald-400': log.nivel === 'success',
-                                        'bg-red-500/20 text-red-400': log.nivel === 'error',
-                                        'bg-yellow-500/20 text-yellow-400': log.nivel === 'warning',
-                                        'bg-slate-500/20 text-slate-500': !log.nivel
-                                    }" x-text="log.nivel || 'log'"></span>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
+                    <div class="glass rounded-3xl p-6">
+                        <p class="text-xs text-slate-400 leading-relaxed italic">
+                            "Este painel permite que voc├¬ monitore seu rob├┤ remotamente de qualquer lugar."
+                        </p>
+                    </div>
                 </div>
             </div>
         </template>
@@ -175,42 +125,28 @@
         function clientView() {
             return {
                 license: null,
-                logs: [],
                 error: null,
-                licenseKey: null,
                 async init() {
+                    // Pega a chave da URL (ex: /view.html?key=ABC)
                     const urlParams = new URLSearchParams(window.location.search);
-                    this.licenseKey = urlParams.get('key');
+                    const key = urlParams.get('key');
                     
-                    if (!this.licenseKey) {
-                        this.error = "Chave de licença não fornecida na URL.";
+                    if (!key) {
+                        this.error = "Chave de licen├ºa n├úo fornecida na URL.";
                         return;
                     }
 
-                    await this.fetchStatus(this.licenseKey);
-                    await this.fetchLogs(this.licenseKey);
-                    
-                    setInterval(() => this.fetchStatus(this.licenseKey), 5000);
-                    setInterval(() => this.fetchLogs(this.licenseKey), 30000);
+                    this.fetchStatus(key);
+                    setInterval(() => this.fetchStatus(key), 5000);
                 },
                 async fetchStatus(key) {
                     try {
                         const res = await fetch(`/admin/license/public/${key}`);
-                        if (!res.ok) throw new Error("Chave inválida ou robô offline.");
+                        if (!res.ok) throw new Error("Chave inv├ílida ou rob├┤ offline.");
                         this.license = await res.json();
                         this.error = null;
                     } catch (e) {
                         this.error = e.message;
-                    }
-                },
-                async fetchLogs(key) {
-                    try {
-                        const res = await fetch(`/admin/license/public/${key}/logs`);
-                        if (res.ok) {
-                            this.logs = await res.json();
-                        }
-                    } catch (e) {
-                        // silent - logs are non-critical
                     }
                 },
                 formatDate(dateStr) {

@@ -97,17 +97,20 @@ def save_values_to_env(values: dict[str, str]) -> bool:
 def sync_env_vars(config: dict, persist: bool = False) -> None:
     updates: dict[str, str] = {}
     for cfg_key, env_key in ENV_SYNC_FIELDS.items():
-        val = config.get(cfg_key)
-        if val is not None:
-            updates[env_key] = str(val)
-            os.environ[env_key] = str(val)
-    
+        if cfg_key not in config:
+            continue
+        value = config.get(cfg_key)
+        if value is None:
+            continue
+        if value == "":
+            os.environ.pop(env_key, None)
+            updates[env_key] = ""
+            continue
+        os.environ[env_key] = str(value)
+        updates[env_key] = str(value)
+
     if persist and updates:
-        if save_values_to_env(updates):
-            add_log("success", f"✅ {len(updates)} variáveis salvas em .env com sucesso!")
-    
-    if "ML_COOKIES" in updates and updates["ML_COOKIES"]:
-        add_log("info", f"🍪 ML_COOKIES recebido! (Tam: {len(updates['ML_COOKIES'])} chars)")
+        save_values_to_env(updates)
 
     if "ML_COOKIES" in updates:
         add_log("info", f"ML_COOKIES sincronizado: {len(updates['ML_COOKIES'])} caracteres.")
