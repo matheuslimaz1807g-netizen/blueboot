@@ -1,71 +1,95 @@
-# BlueBot — Deploy e Manutenção
+# 🚢 Deploy — Atualizar o Sistema
 
-## Deploy Inicial
+## Deploy de Atualizações (Sem Downtime)
 
-### 1. Configurar VPS
+### Passo a passo:
+
 ```bash
-# Instalar Docker
-curl -fsSL https://get.docker.com | sh
-# Criar diretório
-mkdir -p /opt/bluebot
+# 1. Conectar na VPS
+ssh root@SEU_IP
 cd /opt/bluebot
-# Clonar repositório
-git clone <repo-url> .
-```
 
-### 2. Configurar ambiente
-```bash
-cp .env.example .env
-nano .env  # Preencher TODAS as variáveis
-```
+# 2. SEMPRE fazer backup antes
+bash scripts/backup-postgres.sh
 
-### 3. Criar rede e estrutura
-```bash
-docker network create bluebot_network
-mkdir -p data/{ssl,backups/postgres} certbot/www
-```
+# 3. Baixar código novo do GitHub
+git pull
 
-### 4. Gerar certificados SSL
-```bash
-bash scripts/renew-ssl.sh --new
-```
+# 4. Reconstruir a API (se mudou código Python)
+docker compose build api
 
-### 5. Subir infraestrutura
-```bash
+# 5. Aplicar mudanças
 docker compose up -d
+
+# 6. Verificar se tudo subiu
 bash scripts/health-check.sh
 ```
 
-## Migração de /usr/blueboot → /opt/bluebot
+> 💡 O `docker compose up -d` só reinicia containers que mudaram. Os outros continuam rodando (zero downtime).
+
+---
+
+## Se algo deu errado (Rollback)
+
+### Opção 1: Voltar o código
 
 ```bash
-cd /usr/blueboot
-git pull  # Pegar mudanças da reestruturação
-sudo bash scripts/migrate.sh
+# Ver os últimos commits
+git log --oneline -5
+
+# Voltar para um commit específico
+git checkout HASH_DO_COMMIT -- .
+
+# Rebuild e aplicar
+docker compose build api
+docker compose up -d
 ```
 
-## Atualizar Código
+### Opção 2: Restaurar banco de dados
 
 ```bash
-cd /opt/bluebot
-git pull
-docker compose build api  # Rebuild da API
-docker compose up -d      # Aplicar
+# Listar backups
+ls -lh data/backups/postgres/
+
+# Restaurar
+gunzip < data/backups/postgres/bluebot_20260512_030000.sql.gz | \
+  docker compose exec -T postgres psql -U bluebot bluebot
 ```
 
-## Crontab Recomendado
+### Opção 3: Voltar tudo (último recurso)
 
 ```bash
-crontab -e
-# Adicionar:
-0 3 * * * /opt/bluebot/scripts/backup-postgres.sh
-0 4 * * 1 /opt/bluebot/scripts/renew-ssl.sh
-*/5 * * * * /opt/bluebot/scripts/health-check.sh --quiet
+# Se tiver o backup completo do tar:
+# 1. Parar tudo
+docker compose down
+# 2. Restaurar arquivos
+tar -xzf /tmp/bluebot-backup-XXXXXX.tar.gz -C /opt/
+# 3. Subir novamente
+docker compose up -d
 ```
 
-## Restaurar Backup do Postgres
+---
+
+## Atualizar Apenas o Nginx (após mudar configs)
 
 ```bash
-gunzip < data/backups/postgres/bluebot_YYYYMMDD_HHMMSS.sql.gz | \
-  docker exec -i bluebot_postgres psql -U bluebot bluebot
+# Testar config antes de aplicar
+docker compose exec nginx nginx -t
+
+# Se OK, reiniciar apenas o nginx
+docker compose restart nginx
+
+# Se NOK, ver o erro e corrigir o arquivo indicado
 ```
+
+---
+
+## Checklist Pré-Deploy
+
+- [ ] Backup do banco: `bash scripts/backup-postgres.sh`
+- [ ] `git pull` sem conflitos
+- [ ] `docker compose build` sem erros
+- [ ] `docker compose up -d` sem erros
+- [ ] `bash scripts/health-check.sh` passando
+- [ ] Testar login no painel admin
+- [ ] Testar login no painel do cliente
