@@ -22,5 +22,8 @@ COPY executable/ .
 # Diretório para salvar a sessão do Telegram
 RUN mkdir -p /app/sessions
 
+# Instalar wget/curl para o healthcheck (camada separada para usar cache)
+RUN apt-get update && apt-get install -y curl wget --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
 # Rodar com xvfb-run
 CMD xvfb-run -a --server-args="-screen 0 1920x1080x24" python -u main.py

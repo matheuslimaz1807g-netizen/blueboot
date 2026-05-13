@@ -20,6 +20,9 @@ COPY Whatsapp/ .
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
+# Instalar wget/curl para o healthcheck (camada separada para usar cache do Chromium)
+RUN apt-get update && apt-get install -y wget curl --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 4000
 
 CMD ["node", "server.js"]
