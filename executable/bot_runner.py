@@ -300,7 +300,11 @@ class BotRunner:
             # Garantir que a config interna também seja corrigida se estiver nula
             if self._config.get("whatsapp_endpoint") is None:
                 self._config["whatsapp_endpoint"] = wpp_endpoint
-            self._log("info", f"⚙️ WhatsApp Config: ENABLED={wpp_enabled} | Destinos={wpp_destinations} | Endpoint={wpp_endpoint}")
+            
+            now = time.time()
+            if now - getattr(self, "_last_config_log_time", 0) > 600:
+                self._log("info", f"⚙️ WhatsApp Config: ENABLED={wpp_enabled} | Destinos={wpp_destinations} | Endpoint={wpp_endpoint}")
+                self._last_config_log_time = now
             
             last_heartbeat = time.time()
             
@@ -308,7 +312,10 @@ class BotRunner:
                 try:
                     # Heartbeat
                     if time.time() - last_heartbeat > 60:
-                        self._log("info", f"💓 Heartbeat: Bot monitorando {len(resolved_chats)} fontes... (WhatsApp: {'✅' if wpp_enabled else '❌'})")
+                        now_hb = time.time()
+                        if now_hb - getattr(self, "_last_hb_log_time", 0) > 600:
+                            self._log("info", f"💓 Heartbeat: Bot monitorando {len(resolved_chats)} fontes... (WhatsApp: {'✅' if wpp_enabled else '❌'})")
+                            self._last_hb_log_time = now_hb
                         last_heartbeat = time.time()
 
                     for entity in resolved_chats:

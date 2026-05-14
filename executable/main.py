@@ -389,8 +389,11 @@ def main():
             """Busca o status do WhatsApp local para enviar ao painel master."""
             try:
                 import requests
-                # Pega a URL do WhatsApp da config e muda /send para /status
-                wpp_url = os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send").replace("/send", "/status")
+                raw_url = os.getenv("WHATSAPP_ENDPOINT", "http://whatsapp:4000/send")
+                if raw_url.endswith("/send"):
+                    wpp_url = raw_url.replace("/send", "/status")
+                else:
+                    wpp_url = f"{raw_url.rstrip('/')}/status"
                 r = requests.get(wpp_url, timeout=5)
                 if r.status_code == 200:
                     d = r.json()
@@ -403,9 +406,16 @@ def main():
                         "whatsapp_qr": qr
                     }
                 else:
-                    add_log("warning", f"💓 Falha ao buscar status WPP: Status {r.status_code}")
+                    global _last_wpp_error_time
+                    now = time.time()
+                    if now - globals().get('_last_wpp_error_time', 0) > 600:
+                        add_log("warning", f"💓 Falha ao buscar status WPP: Status {r.status_code}")
+                        globals()['_last_wpp_error_time'] = now
             except Exception as e:
-                add_log("warning", f"💓 Erro na conexão com WhatsApp: {e}")
+                now = time.time()
+                if now - globals().get('_last_wpp_error_time', 0) > 600:
+                    add_log("warning", f"💓 Erro na conexão com WhatsApp: {e}")
+                    globals()['_last_wpp_error_time'] = now
             return {}
 
         def get_pending_logs_callback():
