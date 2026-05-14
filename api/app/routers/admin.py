@@ -128,7 +128,16 @@ async def patch_license(
         raise HTTPException(status_code=500, detail=f"Erro interno ao atualizar licença: {str(e)}")
 
 
-
+@router.delete("/licenses/{license_id}", response_model=OkResponse)
+async def delete_license(license_id: str, db: AsyncSession = Depends(get_db), _admin=Depends(get_admin_user)):
+    try:
+        from sqlalchemy import delete
+        await db.execute(delete(License).where(License.id == license_id))
+        await db.commit()
+        return OkResponse(ok=True)
+    except Exception as e:
+        logger.error(f"Erro ao deletar licença {license_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno ao deletar licença: {str(e)}")
 # ── Per-license config ────────────────────────────────────────────────────────
 
 @router.get("/licenses/{license_id}/config", response_model=ConfigOut | None)
@@ -174,6 +183,32 @@ async def get_license_logs(
         .limit(limit)
     )
     return result.scalars().all()
+
+@router.get("/logs/errors")
+async def get_recent_errors(
+    limit: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_admin_user)
+):
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(LogEntry)
+        .options(selectinload(LogEntry.license))
+        .where(LogEntry.nivel == "error")
+        .order_by(desc(LogEntry.created_at))
+        .limit(limit)
+    )
+    entries = result.scalars().all()
+    return [
+        {
+            "id": str(e.id),
+            "client_name": e.license.note if e.license and e.license.note else (e.license.key if e.license else "Desconhecido"),
+            "nivel": e.nivel,
+            "mensagem": e.mensagem,
+            "created_at": e.created_at.isoformat()
+        }
+        for e in entries
+    ]
 
 
 # ── Versions ──────────────────────────────────────────────────────────────────

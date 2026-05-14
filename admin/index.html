@@ -1499,11 +1499,16 @@
             </template>
           </div>
         </div>
-        <div class="flex justify-end gap-3 pt-4">
-          <button class="btn btn-secondary" @click="showEditLicModal = false">
-            Cancelar
+        <div class="flex justify-between pt-4 mt-4 border-t border-border">
+          <button class="btn btn-danger" @click="deleteLicense(editLicForm.id)">
+            Excluir
           </button>
-          <button class="btn btn-primary" @click="saveLicense()">Salvar</button>
+          <div class="flex gap-3">
+            <button class="btn btn-secondary" @click="showEditLicModal = false">
+              Cancelar
+            </button>
+            <button class="btn btn-primary" @click="saveLicense()">Salvar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2336,6 +2341,29 @@
               }
             } catch (e) {
               this.showToast("Erro de conexão: " + e.message, "error");
+            }
+          },
+
+          async deleteLicense(id) {
+            if (!confirm("Tem certeza que deseja EXCLUIR esta licença? Esta ação não pode ser desfeita e todas as configurações, logs e permissões vinculadas serão apagadas permanentemente.")) return;
+            
+            try {
+              const r = await fetch(`${this.apiBase}/licenses/${id}`, {
+                method: "DELETE",
+                headers: this.getHeaders(),
+              });
+              
+              if (r.ok) {
+                this.showToast("Licença excluída com sucesso!", "success");
+                this.showEditLicModal = false;
+                this.loadLicenses();
+              } else {
+                let d;
+                try { d = await r.json(); } catch(e) { d = {detail: "Erro desconhecido"}; }
+                this.showToast("Erro ao excluir: " + (d.detail || "Erro desconhecido"), "error");
+              }
+            } catch (e) {
+              this.showToast("Erro de conexão ao tentar excluir", "error");
             }
           },
 
