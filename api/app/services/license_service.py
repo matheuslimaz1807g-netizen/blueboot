@@ -9,11 +9,11 @@ import string
 import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import delete, desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
-from app.models.models import License
+from app.models.models import License, LogEntry
 from app.schemas.schemas import LicenseValidateResponse
 
 
@@ -156,14 +156,19 @@ async def validate_license(
     return LicenseValidateResponse(valid=True, plan=lic.plan, expires_at=lic.expires_at)
 
 
+# Valid nivel values in the DB enum
+_VALID_NIVEIS = {"info", "success", "error"}
+
+
 async def record_heartbeat(
     db: AsyncSession, 
     key: str, 
     machine_id: str, 
     whatsapp_status: str | None = None,
-    whatsapp_qr: str | None = None
+    whatsapp_qr: str | None = None,
+    logs: list | None = None,
 ) -> bool:
-    """Update last_heartbeat and WhatsApp status."""
+    """Update last_heartbeat, WhatsApp status, and persist bot logs."""
     lic = await get_license_by_key(db, key)
     if not lic or not lic.active:
         return False
@@ -180,6 +185,46 @@ async def record_heartbeat(
     await db.execute(
         update(License).where(License.id == lic.id).values(**values)
     )
+
+    # Persist bot logs (max 50 per heartbeat, already enforced by schema)
+    if logs:
+        for log_item in logs:
+            nivel = log_item.nivel if hasattr(log_item, "nivel") else log_item.get("nivel", "info")
+            mensagem = log_item.mensagem if hasattr(log_item, "mensagem") else log_item.get("mensagem", "")
+            # Map 'warning' to 'info' since DB enum only has info/success/error
+            if nivel not in _VALID_NIVEIS:
+                nivel = "info"
+            db.add(LogEntry(
+                license_id=lic.id,
+                nivel=nivel,
+                mensagem=mensagem,
+            ))
+
+        # Prune old logs: keep max 500 per license to avoid unbounded growth
+        MAX_LOGS_PER_LICENSE = 500
+        count_result = await db.execute(
+            select(func.count()).where(LogEntry.license_id == lic.id)
+        )
+        total = count_result.scalar() or 0
+        if total > MAX_LOGS_PER_LICENSE:
+            # Find the cutoff: delete the oldest entries beyond the limit
+            cutoff_query = (
+                select(LogEntry.created_at)
+                .where(LogEntry.license_id == lic.id)
+                .order_by(desc(LogEntry.created_at))
+                .offset(MAX_LOGS_PER_LICENSE)
+                .limit(1)
+            )
+            cutoff_result = await db.execute(cutoff_query)
+            cutoff_ts = cutoff_result.scalar_one_or_none()
+            if cutoff_ts:
+                await db.execute(
+                    delete(LogEntry).where(
+                        LogEntry.license_id == lic.id,
+                        LogEntry.created_at < cutoff_ts,
+                    )
+                )
+
     await db.commit()
     return True
 

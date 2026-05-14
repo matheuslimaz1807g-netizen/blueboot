@@ -33,6 +33,7 @@ LOCAL_PORT = 8080
 _logs: deque[dict] = deque(maxlen=MAX_LOGS)
 _lock = threading.Lock()
 _runner: BotRunner = None
+_last_sent_log_index: int = 0  # Tracks last log index sent to server (deduplication)
 ENV_SYNC_FIELDS = {
     "ml_cookies": "ML_COOKIES",
     "ml_token": "ML_TOKEN",
@@ -407,7 +408,30 @@ def main():
                 add_log("warning", f"💓 Erro na conexão com WhatsApp: {e}")
             return {}
 
-        start_heartbeat(license_key, mid, on_grace_expired=on_expired, status_callback=get_wpp_status_callback)
+        def get_pending_logs_callback():
+            """Retorna logs pendentes desde o último envio (para o heartbeat)."""
+            global _last_sent_log_index
+            with _lock:
+                all_logs = list(_logs)
+            
+            current_len = len(all_logs)
+            if current_len <= _last_sent_log_index:
+                # Deque foi resetada ou nada novo
+                if current_len < _last_sent_log_index:
+                    _last_sent_log_index = 0
+                return []
+            
+            # Pega apenas os novos
+            new_logs = all_logs[_last_sent_log_index:]
+            _last_sent_log_index = current_len
+            
+            # Converte para formato do schema HeartbeatLogItem
+            return [
+                {"nivel": log.get("nivel", "info"), "mensagem": log.get("mensagem", ""), "horario": log.get("horario", "")}
+                for log in new_logs[:50]  # Max 50 per cycle
+            ]
+
+        start_heartbeat(license_key, mid, on_grace_expired=on_expired, status_callback=get_wpp_status_callback, logs_callback=get_pending_logs_callback)
         
         # 3. Carregar Configuração (Remota primeiro, fallback para local)
         # Carrega a local como base

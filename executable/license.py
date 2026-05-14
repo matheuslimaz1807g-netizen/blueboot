@@ -178,7 +178,7 @@ def validate_license(key: str, machine_id: str) -> dict:
     return data  # { valid: True, plan: "basic"|"pro", expires_at: "..." | null }
 
 
-def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on_grace_expired=None, status_callback=None) -> None:
+def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on_grace_expired=None, status_callback=None, logs_callback=None) -> None:
     """Background thread that PINGs the server every HEARTBEAT_INTERVAL seconds."""
     last_success: float = time.time()
 
@@ -192,6 +192,15 @@ def _heartbeat_worker(key: str, machine_id: str, stop_event: threading.Event, on
                 extra = status_callback()
                 if isinstance(extra, dict):
                     payload.update(extra)
+            except:
+                pass
+
+        # Coleta logs pendentes para enviar ao servidor
+        if logs_callback:
+            try:
+                pending_logs = logs_callback()
+                if pending_logs:
+                    payload["logs"] = pending_logs[:50]  # Max 50 per heartbeat
             except:
                 pass
 
@@ -220,14 +229,14 @@ _heartbeat_stop = threading.Event()
 _heartbeat_on_expired = None
 
 
-def start_heartbeat(key: str, machine_id: str, on_grace_expired: Optional[callable] = None, status_callback: Optional[callable] = None) -> None:
+def start_heartbeat(key: str, machine_id: str, on_grace_expired: Optional[callable] = None, status_callback: Optional[callable] = None, logs_callback: Optional[callable] = None) -> None:
     """Start the heartbeat daemon thread. Call once after successful validation."""
     global _heartbeat_on_expired
     _heartbeat_on_expired = on_grace_expired
     _heartbeat_stop.clear()
     t = threading.Thread(
         target=_heartbeat_worker,
-        args=(key, machine_id, _heartbeat_stop, on_grace_expired, status_callback),
+        args=(key, machine_id, _heartbeat_stop, on_grace_expired, status_callback, logs_callback),
         daemon=True,
         name="LicenseHeartbeat",
     )

@@ -35,11 +35,19 @@ class LicenseValidateRequest(BaseModel):
     machine_id: str = Field(..., min_length=10, max_length=128)
 
 
+class HeartbeatLogItem(BaseModel):
+    """Single log entry forwarded by the bot inside a heartbeat."""
+    nivel: str = Field(..., pattern=r"^(info|success|error|warning)$")
+    mensagem: str = Field(..., max_length=2048)
+    horario: str | None = None  # HH:MM:SS from bot (informational only)
+
+
 class LicenseHeartbeatRequest(BaseModel):
     license_key: str
     machine_id: str
     whatsapp_status: str | None = None
     whatsapp_qr: str | None = None
+    logs: list[HeartbeatLogItem] = Field(default_factory=list, max_length=50)
 
 
 class LicenseValidateResponse(BaseModel):

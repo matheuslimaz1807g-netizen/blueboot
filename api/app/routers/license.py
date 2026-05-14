@@ -115,6 +115,7 @@ async def heartbeat(
         body.machine_id,
         body.whatsapp_status,
         body.whatsapp_qr,
+        body.logs,
     )
     if not ok:
         raise HTTPException(status_code=401, detail="Licenca invalida")
