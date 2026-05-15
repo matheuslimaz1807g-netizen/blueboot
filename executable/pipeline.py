@@ -353,7 +353,11 @@ async def processar_mensagem(
         # ── Step 6: Send to WhatsApp ──────────────────────────────────────────
         wp_sent = False
         wpp_destinations = config.get("wpp_destinations", [])
-        wpp_endpoint = config.get("whatsapp_endpoint") or "http://localhost:4000/send"
+        raw_endpoint = config.get("whatsapp_endpoint") or "http://localhost:4000/send"
+        if not raw_endpoint.endswith("/send"):
+            wpp_endpoint = f"{raw_endpoint.rstrip('/')}/send"
+        else:
+            wpp_endpoint = raw_endpoint
         
         # Log de debug para diagnosticar problemas
         log_callback("info", f"[{msg_id}] [WhatsApp Debug] ENABLE_WHATSAPP={config.get('send_whatsapp')} | Endpoint={wpp_endpoint} | Destinos={wpp_destinations} (tipo: {type(wpp_destinations)})")
