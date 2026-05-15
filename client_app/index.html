@@ -176,142 +176,158 @@
         </div>
     </template>
 
-    <script>
-        function clientApp() {
-            return {
-                loggedIn: false,
-                loading: false,
-                license: null,
-                config: {},
-                logs: [],
-                loginForm: { license_key: '', password: '' },
-                toast: { show: false, msg: '', type: 'success' },
-                apiBase: 'https://api.bluebotapp.com.br',
+<script>
+    function clientApp() {
+        return {
+            loggedIn: false,
+            loading: false,
+            license: null,
+            config: {},
+            logs: [],
+            loginForm: { license_key: '', password: '' },
+            toast: { show: false, msg: '', type: 'success' },
+            apiBase: 'https://api.bluebotapp.com.br',
 
-                async init() {
-                    const token = localStorage.getItem('client_token');
-                    if (token) {
-                        this.loggedIn = true;
-                        await this.loadAll();
-                        setInterval(() => this.loadAll(), 30000);
-                    }
-                },
-
-                async doLogin() {
-                    this.loading = true;
-                    try {
-                        const r = await fetch(`${this.apiBase}/auth/login/client`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.loginForm)
-                        });
-                        
-                        let d;
-                        const contentType = r.headers.get("content-type");
-                        if (contentType && contentType.includes("application/json")) {
-                            d = await r.json();
-                        } else {
-                            d = { detail: await r.text() || `Erro HTTP ${r.status}` };
-                        }
-
-                        if (r.ok) {
-                            localStorage.setItem('client_token', d.access_token);
-                            this.loggedIn = true;
-                            this.showToast('Bem-vindo!', 'success');
-                            await this.loadAll();
-                        } else {
-                            this.showToast(d.detail || 'Falha no login', 'error');
-                        }
-                    } catch (e) {
-                        this.showToast('Erro de conexão: ' + e.message, 'error');
-                    } finally { this.loading = false; }
-                },
-
-                async loadAll() {
-                    await Promise.all([this.loadMe(), this.loadConfig(), this.loadLogs()]);
-                },
-
-                async loadMe() {
-                    this.license = await this.fetchApi('/client/me');
-                },
-
-                async loadConfig() {
-                    const cfg = await this.fetchApi('/client/config');
-                    if (cfg) {
-                        this.config = { ...cfg, sources_str: (cfg.sources || []).join(', ') };
-                    }
-                },
-
-                async loadLogs() {
-                    this.logs = await this.fetchApi('/client/logs') || [];
-                },
-
-                async saveConfig() {
-                    this.loading = true;
-                    const body = { ...this.config };
-                    body.sources = this.config.sources_str.split(',').map(s => s.trim()).filter(Boolean);
-                    delete body.sources_str;
-
-                    const res = await this.fetchApi('/client/config', 'PUT', body);
-                    if (res) this.showToast('Configurações salvas!', 'success');
-                    this.loading = false;
-                },
-
-                async fetchApi(endpoint, method = 'GET', body = null) {
-                    try {
-                        const headers = { 
-                            'Authorization': `Bearer ${localStorage.getItem('client_token')}`,
-                            'Content-Type': 'application/json'
-                        };
-                        const options = { method, headers };
-                        if (body) options.body = JSON.stringify(body);
-
-                        const r = await fetch(`${this.apiBase}${endpoint}`, options);
-                        if (r.status === 401) { this.logout(); return null; }
-                        
-                        let d;
-                        const contentType = r.headers.get("content-type");
-                        if (contentType && contentType.includes("application/json")) {
-                            d = await r.json();
-                        } else {
-                            const text = await r.text();
-                            d = { detail: text || `Erro HTTP ${r.status}` };
-                        }
-
-                        if (!r.ok) {
-                            let msg = d.detail || (typeof d === 'string' ? d : JSON.stringify(d));
-                            this.showToast('Erro: ' + msg, 'error');
-                            return null;
-                        }
-                        return d;
-                    } catch (e) { 
-                        this.showToast('Erro de conexão: ' + e.message, 'error');
-                        return null; 
-                    }
-                },
-
-                logout() {
-                    localStorage.removeItem('client_token');
-                    this.loggedIn = false;
-                    this.license = null;
-                },
-
-                showToast(msg, type = 'success') {
-                    this.toast = { show: true, msg, type };
-                    setTimeout(() => this.toast.show = false, 3000);
-                },
-
-                fmtDate(d) { return d ? new Date(d).toLocaleDateString('pt-BR') : '—'; },
-                fmtTime(d) { return d ? new Date(d).toLocaleTimeString('pt-BR') : ''; },
-                fmtRelative(d) {
-                    if (!d) return null;
-                    const diff = (new Date() - new Date(d)) / 1000;
-                    if (diff < 60) return 'Agora';
-                    if (diff < 3600) return `${Math.floor(diff/60)}m atrás`;
-                    return this.fmtDate(d);
+            async init() {
+                const token = localStorage.getItem('client_token');
+                if (token) {
+                    this.loggedIn = true;
+                    await this.loadAll();
+                    setInterval(() => this.loadAll(), 30000);
                 }
+            },
+
+            async doLogin() {
+                this.loading = true;
+                try {
+                    const r = await fetch(`${this.apiBase}/auth/login/client`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.loginForm)
+                    });
+                    
+                    let d;
+                    const contentType = r.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        d = await r.json();
+                    } else {
+                        d = { detail: await r.text() || `Erro HTTP ${r.status}` };
+                    }
+
+                    if (r.ok) {
+                        localStorage.setItem('client_token', d.access_token);
+                        this.loggedIn = true;
+                        this.showToast('Bem-vindo!', 'success');
+                        await this.loadAll();
+                    } else {
+                        this.showToast(d.detail || 'Falha no login', 'error');
+                    }
+                } catch (e) {
+                    this.showToast('Erro de conexão: ' + e.message, 'error');
+                } finally { this.loading = false; }
+            },
+
+            async loadAll() {
+                await Promise.all([this.loadMe(), this.loadConfig(), this.loadLogs()]);
+            },
+
+            async loadMe() {
+                this.license = await this.fetchApi('/client/me');
+            },
+
+            async loadConfig() {
+                const cfg = await this.fetchApi('/client/config');
+                if (cfg) {
+                    this.config = { ...cfg, sources_str: (cfg.sources || []).join(', ') };
+                }
+            },
+
+            // ⚡ NOVO loadLogs() otimizado
+            async loadLogs() {
+                let logs = await this.fetchApi('/client/logs') || [];
+
+                // 1. Filtrar apenas SUCCESS e ERROR
+                logs = logs.filter(l =>
+                    l.nivel === 'success' || l.nivel === 'error'
+                );
+
+                // 2. Remover duplicados (mensagem + nível)
+                const map = new Map();
+                for (const log of logs) {
+                    const key = `${log.nivel}-${log.mensagem}`;
+
+                    if (!map.has(key)) {
+                        map.set(key, log);
+                    } else {
+                        const existing = map.get(key);
+                        // Mantém o mais recente
+                        if (new Date(log.created_at) > new Date(existing.created_at)) {
+                            map.set(key, log);
+                        }
+                    }
+                }
+
+                // 3. Ordenar do mais novo para o mais antigo
+                this.logs = Array.from(map.values()).sort(
+                    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                );
+            },
+
+            async saveConfig() {
+                this.loading = true;
+                const body = { ...this.config };
+                body.sources = this.config.sources_str.split(',').map(s => s.trim()).filter(Boolean);
+                delete body.sources_str;
+
+                const res = await this.fetchApi('/client/config', 'PUT', body);
+                if (res) this.showToast('Configurações salvas!', 'success');
+                this.loading = false;
+            },
+
+            async fetchApi(endpoint, method = 'GET', body = null) {
+                try {
+                    const headers = { 
+                        'Authorization': `Bearer ${localStorage.getItem('client_token')}`,
+                        'Content-Type': 'application/json'
+                    };
+                    const options = { method, headers };
+                    if (body) options.body = JSON.stringify(body);
+
+                    const r = await fetch(`${this.apiBase}${endpoint}`, options);
+                    if (r.status === 401) { this.logout(); return null; }
+                    
+                    let d;
+                    const contentType = r.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        d = await r.json();
+                    } else {
+                        d = await r.text();
+                    }
+
+                    return d;
+                } catch (e) {
+                    this.showToast('Erro: ' + e.message, 'error');
+                    return null;
+                }
+            },
+
+            logout() {
+                localStorage.removeItem('client_token');
+                this.loggedIn = false;
+                this.license = null;
+                this.logs = [];
+            },
+
+            showToast(msg, type = 'success') {
+                this.toast = { show: true, msg, type };
+                setTimeout(() => this.toast.show = false, 3000);
+            },
+
+            fmtTime(ts) {
+                return new Date(ts).toLocaleString();
             }
         }
-    </script>
+    }
+</script>
 </body>
 </html>
