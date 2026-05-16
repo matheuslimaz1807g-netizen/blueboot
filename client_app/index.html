@@ -159,11 +159,16 @@
                             Logs de Atividade
                         </h3>
                         <div class="flex-1 overflow-y-auto space-y-3 pr-2 font-mono text-xs">
+                            <template x-if="logs.length === 0">
+                                <div class="p-4 rounded-lg border border-slate-800/50 bg-slate-900/30 text-center text-slate-500">
+                                    Nenhuma atividade registrada
+                                </div>
+                            </template>
                             <template x-for="log in logs" :key="log.id">
                                 <div class="p-3 rounded-lg border border-slate-800/50 bg-slate-900/30">
                                     <div class="flex justify-between mb-1">
-                                        <span :class="log.nivel === 'success' ? 'text-emerald-400' : 'text-indigo-400'" 
-                                              x-text="log.nivel.toUpperCase()"></span>
+                                        <span :class="logLevelClass(log.nivel)" 
+                                              x-text="formatLevel(log.nivel)"></span>
                                         <span class="text-slate-500" x-text="fmtTime(log.created_at)"></span>
                                     </div>
                                     <p class="text-slate-300" x-text="log.mensagem"></p>
@@ -245,11 +250,14 @@
             // ⚡ NOVO loadLogs() otimizado
             async loadLogs() {
                 let logs = await this.fetchApi('/client/logs') || [];
+                if (!Array.isArray(logs)) {
+                    this.logs = [];
+                    return;
+                }
 
-                // 1. Filtrar apenas SUCCESS e ERROR
-                logs = logs.filter(l =>
-                    l.nivel === 'success' || l.nivel === 'error'
-                );
+                // 1. Manter todos os niveis suportados pelo bot/API
+                const allowedLevels = ['success', 'error', 'info', 'warning'];
+                logs = logs.filter(l => allowedLevels.includes(l.nivel));
 
                 // 2. Remover duplicados (mensagem + nível)
                 const map = new Map();
@@ -323,8 +331,50 @@
                 setTimeout(() => this.toast.show = false, 3000);
             },
 
+            formatLevel(level) {
+                const labels = {
+                    success: 'SUCCESS',
+                    error: 'ERROR',
+                    warning: 'WARNING',
+                    info: 'INFO'
+                };
+                return labels[level] || String(level || 'INFO').toUpperCase();
+            },
+
+            logLevelClass(level) {
+                const classes = {
+                    success: 'text-emerald-400',
+                    error: 'text-rose-400',
+                    warning: 'text-amber-400',
+                    info: 'text-indigo-400'
+                };
+                return classes[level] || classes.info;
+            },
+
+            fmtDate(d) {
+                if (!d) return '';
+                const date = new Date(d);
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleDateString();
+            },
+
+            fmtRelative(d) {
+                if (!d) return '';
+                const date = new Date(d);
+                if (Number.isNaN(date.getTime())) return '';
+                const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+                if (diffSeconds < 60) return 'Agora';
+                const diffMinutes = Math.floor(diffSeconds / 60);
+                if (diffMinutes < 60) return `${diffMinutes} min atras`;
+                const diffHours = Math.floor(diffMinutes / 60);
+                if (diffHours < 24) return `${diffHours}h atras`;
+                return this.fmtDate(d);
+            },
+
             fmtTime(ts) {
-                return new Date(ts).toLocaleString();
+                const date = new Date(ts);
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleString();
             }
         }
     }

@@ -31,9 +31,9 @@ MAX_LOGS = 300
 LOCAL_PORT = 8080
 
 _logs: deque[dict] = deque(maxlen=MAX_LOGS)
+_pending_remote_logs: deque[dict] = deque(maxlen=MAX_LOGS)
 _lock = threading.Lock()
 _runner: BotRunner = None
-_last_sent_log_index: int = 0  # Tracks last log index sent to server (deduplication)
 ENV_SYNC_FIELDS = {
     "ml_cookies": "ML_COOKIES",
     "ml_token": "ML_TOKEN",
@@ -49,6 +49,7 @@ def add_log(nivel: str, mensagem: str) -> None:
     entry = {"nivel": nivel, "mensagem": mensagem, "horario": ts}
     with _lock:
         _logs.append(entry)
+        _pending_remote_logs.append(entry)
     # Print unbuffered para o Docker logs
     print(f"[{ts}] [{nivel.upper()}] {mensagem}", flush=True)
 
@@ -420,25 +421,15 @@ def main():
 
         def get_pending_logs_callback():
             """Retorna logs pendentes desde o último envio (para o heartbeat)."""
-            global _last_sent_log_index
             with _lock:
-                all_logs = list(_logs)
-            
-            current_len = len(all_logs)
-            if current_len <= _last_sent_log_index:
-                # Deque foi resetada ou nada novo
-                if current_len < _last_sent_log_index:
-                    _last_sent_log_index = 0
-                return []
-            
-            # Pega apenas os novos
-            new_logs = all_logs[_last_sent_log_index:]
-            _last_sent_log_index = current_len
+                new_logs = []
+                while _pending_remote_logs and len(new_logs) < 50:
+                    new_logs.append(_pending_remote_logs.popleft())
             
             # Converte para formato do schema HeartbeatLogItem
             return [
                 {"nivel": log.get("nivel", "info"), "mensagem": log.get("mensagem", ""), "horario": log.get("horario", "")}
-                for log in new_logs[:50]  # Max 50 per cycle
+                for log in new_logs
             ]
 
         start_heartbeat(license_key, mid, on_grace_expired=on_expired, status_callback=get_wpp_status_callback, logs_callback=get_pending_logs_callback)
