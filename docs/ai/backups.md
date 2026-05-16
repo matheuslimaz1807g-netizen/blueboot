@@ -8,3 +8,4 @@
 | 2026-05-11 19:00 | Antes de limpeza de seguranca e publicacao no Git | git stash push -u -m "BACKUP-2026-05-11-19-00: antes-limpeza-seguranca-git" seguido de git stash pop | refs/stash temporario 48444c4 (reaplicado e removido pelo pop) |
 | 2026-05-13 15:56 | Antes de corrigir ML_COOKIES e aba Clientes | git stash push -u -m "BACKUP-2026-05-13-15-56: fix ml cookies e aba clientes"; reaplicado com git stash apply 'stash@{0}' | stash@{0} |
 | 2026-05-15 21:37 | Antes de corrigir log de atividades do painel do cliente | git stash push -m "BACKUP-2026-05-15-21-37: diagnostico-log-atividades-cliente" | N/A (Git retornou: No local changes to save) |
+| 2026-05-15 21:51 | Antes de corrigir validacao da Telegram StringSession | git stash push -m "BACKUP-2026-05-15-21-51: fix-telethon-session-string" | N/A (Git retornou: No local changes to save) |
