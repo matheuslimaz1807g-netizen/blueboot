@@ -39,5 +39,5 @@ def test_client_activity_log_keeps_all_supported_levels():
     assert "fmtDate(d)" in html
     assert "fmtRelative(d)" in html
     assert "Array.isArray(logs)" in html
-    assert "allowedLevels = ['success', 'error', 'info', 'warning']" in html
+    assert "allowedLevels = ['success', 'error']" in html
     assert "Nenhuma atividade registrada" in html

@@ -49,9 +49,16 @@ def add_log(nivel: str, mensagem: str) -> None:
     entry = {"nivel": nivel, "mensagem": mensagem, "horario": ts}
     with _lock:
         _logs.append(entry)
-        _pending_remote_logs.append(entry)
     # Print unbuffered para o Docker logs
     print(f"[{ts}] [{nivel.upper()}] {mensagem}", flush=True)
+
+
+def add_client_activity_log(nivel: str, mensagem: str) -> None:
+    """Registra somente atividades de negocio para o painel do cliente."""
+    ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    activity_entry = {"nivel": nivel, "mensagem": mensagem, "horario": ts}
+    with _lock:
+        _pending_remote_logs.append(activity_entry)
 
 
 def find_env_file() -> Path | None:
@@ -458,7 +465,7 @@ def main():
         sys.exit(1)
 
     # 2. Iniciar Bot
-    _runner = BotRunner(log_callback=add_log)
+    _runner = BotRunner(log_callback=add_log, activity_callback=add_client_activity_log)
     if config.get("api_id") and config.get("api_hash"):
         try:
             _runner.start(config)

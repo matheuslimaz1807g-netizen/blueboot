@@ -37,8 +37,13 @@ class BotRunner:
       which are protected by self._lock.
     """
 
-    def __init__(self, log_callback: Callable[[str, str], None]) -> None:
+    def __init__(
+        self,
+        log_callback: Callable[[str, str], None],
+        activity_callback: Optional[Callable[[str, str], None]] = None,
+    ) -> None:
         self._log = log_callback
+        self._activity = activity_callback
         self._lock = threading.Lock()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
@@ -277,6 +282,18 @@ class BotRunner:
                                 self._stats["today_telegram"] += 1
                             if wp_ok:
                                 self._stats["today_whatsapp"] += 1
+                            if self._activity and (tg_ok or wp_ok):
+                                destinations = []
+                                if tg_ok:
+                                    destinations.append("Telegram")
+                                if wp_ok:
+                                    destinations.append("WhatsApp")
+                                destination_text = " e ".join(destinations)
+                                total = self._stats["today_processed"]
+                                self._activity(
+                                    "success",
+                                    f"1 produto enviado para {destination_text}. Total hoje: {total}.",
+                                )
                         else:
                             self._stats["errors_24h"] += 1
                 except Exception as exc:

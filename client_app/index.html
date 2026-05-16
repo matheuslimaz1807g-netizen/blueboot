@@ -255,8 +255,8 @@
                     return;
                 }
 
-                // 1. Manter todos os niveis suportados pelo bot/API
-                const allowedLevels = ['success', 'error', 'info', 'warning'];
+                // 1. Manter apenas eventos relevantes para o cliente final
+                const allowedLevels = ['success', 'error'];
                 logs = logs.filter(l => allowedLevels.includes(l.nivel));
 
                 // 2. Remover duplicados (mensagem + nível)

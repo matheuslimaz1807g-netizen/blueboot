@@ -9,3 +9,4 @@
 | 2026-05-13 15:56 | Antes de corrigir ML_COOKIES e aba Clientes | git stash push -u -m "BACKUP-2026-05-13-15-56: fix ml cookies e aba clientes"; reaplicado com git stash apply 'stash@{0}' | stash@{0} |
 | 2026-05-15 21:37 | Antes de corrigir log de atividades do painel do cliente | git stash push -m "BACKUP-2026-05-15-21-37: diagnostico-log-atividades-cliente" | N/A (Git retornou: No local changes to save) |
 | 2026-05-15 21:51 | Antes de corrigir validacao da Telegram StringSession | git stash push -m "BACKUP-2026-05-15-21-51: fix-telethon-session-string" | N/A (Git retornou: No local changes to save) |
+| 2026-05-15 22:15 | Antes de tornar log de atividades visivel ao cliente | git stash push -m "BACKUP-2026-05-15-22-15: client-facing-activity-log" | N/A (Git retornou: No local changes to save) |
