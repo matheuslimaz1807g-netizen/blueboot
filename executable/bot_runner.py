@@ -25,6 +25,7 @@ from pipeline import processar_mensagem
 _RECONNECT_INTERVAL = 15
 _RECONNECT_MAX_ATTEMPTS = 10
 _POLL_INTERVAL = 10  # segundos entre cada checagem
+_DELIVERY_INTERVAL_SECONDS = 10 * 60  # 10 minutos entre envios reais
 
 
 class BotRunner:
@@ -66,6 +67,9 @@ class BotRunner:
         self._seen_messages: set[tuple[int, int]] = set()
         self._seen_message_order: deque[tuple[int, int]] = deque()
         self._seen_message_limit: int = 5000
+        self._delivery_queue: Optional[asyncio.Queue] = None
+        self._delivery_worker_task: Optional[asyncio.Task] = None
+        self._next_dispatch_at: float = 0.0
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -138,7 +142,11 @@ class BotRunner:
     def get_stats(self) -> dict:
         with self._lock:
             self._reset_day_if_needed()
-            return dict(self._stats)
+            stats = dict(self._stats)
+            queue_size = self._delivery_queue.qsize() if self._delivery_queue else 0
+            stats["delivery_queue_size"] = queue_size
+            stats["next_dispatch_seconds"] = max(0, int(self._next_dispatch_at - time.time()))
+            return stats
 
     def update_config(self, config: dict) -> None:
         with self._lock:
@@ -266,7 +274,7 @@ class BotRunner:
                     self._log("warning", f"[Polling] Falha ao iniciar cursor de {getattr(entity, 'id', '?')}: {exc}")
 
             # ── Processar mensagem e atualizar stats ──────────────────────────
-            async def _process_and_count(message) -> None:
+            async def _process_and_count(message) -> tuple[bool, bool, bool]:
                 try:
                     processed, tg_ok, wp_ok = await processar_mensagem(
                         message,
@@ -296,12 +304,57 @@ class BotRunner:
                                 )
                         else:
                             self._stats["errors_24h"] += 1
+                    return processed, tg_ok, wp_ok
                 except Exception as exc:
                     self._log("error", f"[BotRunner] Erro ao processar mensagem: {exc}")
                     with self._lock:
                         self._stats["errors_24h"] += 1
+                    return False, False, False
 
             self._process_and_count = _process_and_count
+
+            async def _delivery_worker() -> None:
+                self._log(
+                    "info",
+                    "[RateLimit] Fila de envio iniciada: no maximo 1 produto a cada 10 minutos.",
+                )
+                while not self._stop_event.is_set():
+                    try:
+                        message = await asyncio.wait_for(self._delivery_queue.get(), timeout=1)
+                    except asyncio.TimeoutError:
+                        continue
+
+                    try:
+                        msg_id = getattr(message, "id", "?")
+                        queue_size = self._delivery_queue.qsize()
+                        self._log(
+                            "info",
+                            f"[RateLimit] Processando msg {msg_id}. Aguardando na fila: {queue_size}.",
+                        )
+                        _processed, tg_ok, wp_ok = await self._process_and_count(message)
+                        if tg_ok or wp_ok:
+                            with self._lock:
+                                self._next_dispatch_at = time.time() + _DELIVERY_INTERVAL_SECONDS
+                            self._log(
+                                "info",
+                                "[RateLimit] Proximo envio liberado em 10 minutos.",
+                            )
+                            try:
+                                await asyncio.wait_for(
+                                    self._stop_event.wait(),
+                                    timeout=_DELIVERY_INTERVAL_SECONDS,
+                                )
+                            except asyncio.TimeoutError:
+                                pass
+                            finally:
+                                with self._lock:
+                                    if time.time() >= self._next_dispatch_at:
+                                        self._next_dispatch_at = 0.0
+                    finally:
+                        self._delivery_queue.task_done()
+
+            self._delivery_queue = asyncio.Queue()
+            self._delivery_worker_task = asyncio.create_task(_delivery_worker())
 
             # ── Loop de polling (Tarefa Principal) ────────────────────────────
             self._log("info", "🚀 Motor de busca (Polling) iniciado!")
@@ -362,8 +415,12 @@ class BotRunner:
                                 with self._lock:
                                     self._last_seen_by_chat[entity.id] = max(self._last_seen_by_chat.get(entity.id, 0), message.id)
 
-                                # Processa (em background para não travar a próxima busca)
-                                asyncio.create_task(self._process_and_count(message))
+                                # Enfileira para envio sequencial sem travar a proxima busca.
+                                await self._delivery_queue.put(message)
+                                self._log(
+                                    "info",
+                                    f"[RateLimit] Msg {message.id} enfileirada. Fila: {self._delivery_queue.qsize()} item(ns).",
+                                )
 
                     # Se a conexão cair, o client.get_messages vai falhar e cair aqui
                     if not self._client.is_connected():
@@ -383,6 +440,12 @@ class BotRunner:
             with self._lock:
                 self._status_val = "error"
         finally:
+            if self._delivery_worker_task:
+                self._delivery_worker_task.cancel()
+                try:
+                    await self._delivery_worker_task
+                except asyncio.CancelledError:
+                    pass
             try:
                 await self._client.disconnect()
             except Exception:

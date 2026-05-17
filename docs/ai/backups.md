@@ -11,3 +11,4 @@
 | 2026-05-15 21:51 | Antes de corrigir validacao da Telegram StringSession | git stash push -m "BACKUP-2026-05-15-21-51: fix-telethon-session-string" | N/A (Git retornou: No local changes to save) |
 | 2026-05-15 22:15 | Antes de tornar log de atividades visivel ao cliente | git stash push -m "BACKUP-2026-05-15-22-15: client-facing-activity-log" | N/A (Git retornou: No local changes to save) |
 | 2026-05-17 10:54 | Antes da refatoracao clean UI dos paineis console e app | git stash push -u -m "BACKUP-2026-05-17-10-54: refatoracao-clean-ui-paineis" seguido de git stash apply 'stash@{0}' | stash@{0} |
+| 2026-05-17 11:08 | Antes de corrigir rate limit de envio WhatsApp/Telegram | git stash push -u -m "BACKUP-2026-05-17-11-08: rate-limit-envio-whatsapp-telegram" seguido de git stash apply 'stash@{0}' | stash@{0} |
