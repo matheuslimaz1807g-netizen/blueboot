@@ -409,7 +409,9 @@ class BotRunner:
                     "info",
                     "[RateLimit] Fila de envio iniciada: no maximo 1 produto a cada 10 minutos.",
                 )
+                
                 while not self._stop_event.is_set():
+                    # ✅ PASSO 1: PEGAR ITEM DA FILA (com timeout de 1s)
                     try:
                         fingerprint, message = await asyncio.wait_for(
                             self._delivery_queue.get(),
@@ -422,28 +424,38 @@ class BotRunner:
                         msg_id = getattr(message, "id", "?")
                         queue_size = self._delivery_queue.qsize()
                         
-                        # ✅ VERIFICAR SE AINDA ESTÁ EM COOLDOWN ANTES DE PROCESSAR
-                        with self._lock:
-                            time_remaining = self._next_dispatch_at - time.time()
-                        
-                        if time_remaining > 0:
+                        # ✅ PASSO 2: VERIFICAR SE PRECISA ESPERAR COOLDOWN
+                        while True:
+                            with self._lock:
+                                time_remaining = max(0, self._next_dispatch_at - time.time())
+                            
+                            if time_remaining <= 0:
+                                # Cooldown terminado, pode processar
+                                break
+                            
                             self._log(
                                 "info",
-                                f"[RateLimit] Msg {msg_id} aguardando cooldown: {int(time_remaining)}s restantes. Fila: {queue_size}.",
+                                f"[RateLimit] Msg {msg_id} em cooldown: aguardando {int(time_remaining)}s. Fila: {queue_size}.",
                             )
+                            
+                            # Espera o tempo restante (ou até o bot parar)
                             try:
                                 await asyncio.wait_for(
                                     self._stop_event.wait(),
                                     timeout=time_remaining,
                                 )
+                                # Se chegou aqui, o bot foi parado
+                                break
                             except asyncio.TimeoutError:
+                                # Timeout normal, cooldown terminou
                                 pass
-                            finally:
-                                with self._lock:
-                                    if time.time() >= self._next_dispatch_at:
-                                        self._next_dispatch_at = 0.0
                         
-                        # ✅ AGORA PROCESSA A MENSAGEM
+                        # Se o bot foi parado durante a espera, sair
+                        if self._stop_event.is_set():
+                            self._delivery_queue.task_done()
+                            break
+                        
+                        # ✅ PASSO 3: PROCESSAR A MENSAGEM
                         self._log(
                             "info",
                             f"[RateLimit] Processando msg {msg_id}. Fila: {queue_size}.",
@@ -451,26 +463,34 @@ class BotRunner:
                         
                         _processed, tg_ok, wp_ok = await self._process_and_count(message)
                         
-                        # ✅ SE ENVIOU COM SUCESSO, AGENDA PRÓXIMO DISPATCH
+                        # ✅ PASSO 4: SE ENVIOU, ATIVAR COOLDOWN DE 10 MINUTOS
                         if tg_ok or wp_ok:
                             with self._lock:
                                 self._next_dispatch_at = time.time() + _DELIVERY_INTERVAL_SECONDS
+                            
+                            destinations = []
+                            if tg_ok:
+                                destinations.append("Telegram")
+                            if wp_ok:
+                                destinations.append("WhatsApp")
+                            dest_text = " e ".join(destinations)
+                            
                             self._log(
                                 "info",
-                                f"[RateLimit] Msg {msg_id} enviada! Próximo envio liberado em 10 minutos.",
+                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em 10 minutos.",
                             )
                         else:
                             self._log(
                                 "info",
-                                f"[RateLimit] Msg {msg_id} ignorada (filtro/erro). Próximo item será processado imediatamente.",
+                                f"[RateLimit] ⏭️  Msg {msg_id} ignorada (filtro/link inválido/erro). Processando próximo item imediatamente.",
                             )
                         
                     except Exception as exc:
                         self._log("error", f"[RateLimit] Erro ao processar msg {msg_id}: {exc}")
                     finally:
-            # ✅ FINALIZA O PRODUTO APENAS UMA VEZ
+                        # ✅ FINALIZAR PRODUTO E MARCAR TASK COMO CONCLUÍDA
                         self._finish_product(fingerprint, remember_recent=False)
-                self._delivery_queue.task_done()
+                        self._delivery_queue.task_done()
 
             self._delivery_queue = asyncio.Queue()
             self._delivery_worker_task = asyncio.create_task(_delivery_worker())
