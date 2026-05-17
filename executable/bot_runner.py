@@ -11,8 +11,11 @@ pois o Telegram nem sempre entrega eventos para canais onde a conta
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import re
 import threading
 import time
+import unicodedata
 from collections import deque
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -26,6 +29,10 @@ _RECONNECT_INTERVAL = 15
 _RECONNECT_MAX_ATTEMPTS = 10
 _POLL_INTERVAL = 10  # segundos entre cada checagem
 _DELIVERY_INTERVAL_SECONDS = 10 * 60  # 10 minutos entre envios reais
+_PRODUCT_DEDUP_TTL_SECONDS = 24 * 60 * 60
+_PRODUCT_DEDUP_LIMIT = 2000
+_URL_PATTERN = re.compile(r"https?://[^\s]+", re.I)
+_PRICE_PATTERN = re.compile(r"r\$\s*([\d.,]+)", re.I)
 
 
 class BotRunner:
@@ -70,6 +77,9 @@ class BotRunner:
         self._delivery_queue: Optional[asyncio.Queue] = None
         self._delivery_worker_task: Optional[asyncio.Task] = None
         self._next_dispatch_at: float = 0.0
+        self._pending_product_fingerprints: set[str] = set()
+        self._recent_product_fingerprints: dict[str, float] = {}
+        self._recent_product_order: deque[tuple[str, float]] = deque()
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -165,6 +175,87 @@ class BotRunner:
             self._seen_message_order.append(key)
             self._seen_messages.add(key)
         return True
+
+    def _product_fingerprint(self, message) -> str:
+        raw_text = getattr(message, "raw_text", "") or ""
+        normalized = unicodedata.normalize("NFKD", raw_text)
+        normalized = normalized.encode("ascii", "ignore").decode("ascii").lower()
+
+        urls = []
+        for match in _URL_PATTERN.findall(normalized):
+            url = match.strip().strip("`'\"()[]{}<>.,;!").split("#", 1)[0].split("?", 1)[0]
+            url = re.sub(r"^https?://", "", url).rstrip("/")
+            if url:
+                urls.append(url)
+
+        text_without_urls = _URL_PATTERN.sub(" ", normalized)
+        lines = [
+            line.strip()
+            for line in text_without_urls.splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        if len(lines) > 1:
+            lines = lines[1:]
+
+        title = ""
+        for line in lines:
+            cleaned = re.sub(r"[^a-z0-9]+", " ", line)
+            cleaned = re.sub(r"\s+", " ", cleaned).strip()
+            if len(cleaned) >= 8:
+                title = cleaned[:140]
+                break
+
+        prices = [
+            re.sub(r"\D", "", price)
+            for price in _PRICE_PATTERN.findall(normalized)
+            if re.sub(r"\D", "", price)
+        ]
+
+        parts = []
+        if title:
+            parts.append(f"title:{title}")
+        if prices:
+            parts.append(f"price:{prices[-1]}")
+        if urls:
+            parts.append(f"url:{urls[0]}")
+
+        if not parts:
+            chat_id = getattr(getattr(message, "chat", None), "id", "")
+            msg_id = getattr(message, "id", "")
+            parts.append(f"message:{chat_id}:{msg_id}")
+
+        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+    def _prune_product_fingerprints_locked(self, now: float) -> None:
+        while self._recent_product_order:
+            fingerprint, created_at = self._recent_product_order[0]
+            is_expired = now - created_at > _PRODUCT_DEDUP_TTL_SECONDS
+            is_over_limit = len(self._recent_product_order) > _PRODUCT_DEDUP_LIMIT
+            if not is_expired and not is_over_limit:
+                break
+            self._recent_product_order.popleft()
+            if self._recent_product_fingerprints.get(fingerprint) == created_at:
+                self._recent_product_fingerprints.pop(fingerprint, None)
+
+    def _remember_product(self, fingerprint: str) -> bool:
+        now = time.time()
+        with self._lock:
+            self._prune_product_fingerprints_locked(now)
+            if fingerprint in self._pending_product_fingerprints:
+                return False
+            if fingerprint in self._recent_product_fingerprints:
+                return False
+            self._pending_product_fingerprints.add(fingerprint)
+        return True
+
+    def _finish_product(self, fingerprint: str, remember_recent: bool) -> None:
+        now = time.time()
+        with self._lock:
+            self._pending_product_fingerprints.discard(fingerprint)
+            if remember_recent:
+                self._recent_product_fingerprints[fingerprint] = now
+                self._recent_product_order.append((fingerprint, now))
+            self._prune_product_fingerprints_locked(now)
 
     # ── Internal asyncio loop ─────────────────────────────────────────────────
 
@@ -320,29 +411,30 @@ class BotRunner:
                 )
                 while not self._stop_event.is_set():
                     try:
-                        message = await asyncio.wait_for(self._delivery_queue.get(), timeout=1)
+                        fingerprint, message = await asyncio.wait_for(
+                            self._delivery_queue.get(),
+                            timeout=1,
+                        )
                     except asyncio.TimeoutError:
                         continue
 
                     try:
                         msg_id = getattr(message, "id", "?")
                         queue_size = self._delivery_queue.qsize()
-                        self._log(
-                            "info",
-                            f"[RateLimit] Processando msg {msg_id}. Aguardando na fila: {queue_size}.",
-                        )
-                        _processed, tg_ok, wp_ok = await self._process_and_count(message)
-                        if tg_ok or wp_ok:
-                            with self._lock:
-                                self._next_dispatch_at = time.time() + _DELIVERY_INTERVAL_SECONDS
+                        
+                        # ✅ VERIFICAR SE AINDA ESTÁ EM COOLDOWN ANTES DE PROCESSAR
+                        with self._lock:
+                            time_remaining = self._next_dispatch_at - time.time()
+                        
+                        if time_remaining > 0:
                             self._log(
                                 "info",
-                                "[RateLimit] Proximo envio liberado em 10 minutos.",
+                                f"[RateLimit] Msg {msg_id} aguardando cooldown: {int(time_remaining)}s restantes. Fila: {queue_size}.",
                             )
                             try:
                                 await asyncio.wait_for(
                                     self._stop_event.wait(),
-                                    timeout=_DELIVERY_INTERVAL_SECONDS,
+                                    timeout=time_remaining,
                                 )
                             except asyncio.TimeoutError:
                                 pass
@@ -350,8 +442,35 @@ class BotRunner:
                                 with self._lock:
                                     if time.time() >= self._next_dispatch_at:
                                         self._next_dispatch_at = 0.0
+                        
+                        # ✅ AGORA PROCESSA A MENSAGEM
+                        self._log(
+                            "info",
+                            f"[RateLimit] Processando msg {msg_id}. Fila: {queue_size}.",
+                        )
+                        
+                        _processed, tg_ok, wp_ok = await self._process_and_count(message)
+                        
+                        # ✅ SE ENVIOU COM SUCESSO, AGENDA PRÓXIMO DISPATCH
+                        if tg_ok or wp_ok:
+                            with self._lock:
+                                self._next_dispatch_at = time.time() + _DELIVERY_INTERVAL_SECONDS
+                            self._log(
+                                "info",
+                                f"[RateLimit] Msg {msg_id} enviada! Próximo envio liberado em 10 minutos.",
+                            )
+                        else:
+                            self._log(
+                                "info",
+                                f"[RateLimit] Msg {msg_id} ignorada (filtro/erro). Próximo item será processado imediatamente.",
+                            )
+                        
+                    except Exception as exc:
+                        self._log("error", f"[RateLimit] Erro ao processar msg {msg_id}: {exc}")
                     finally:
-                        self._delivery_queue.task_done()
+            # ✅ FINALIZA O PRODUTO APENAS UMA VEZ
+                        self._finish_product(fingerprint, remember_recent=False)
+                self._delivery_queue.task_done()
 
             self._delivery_queue = asyncio.Queue()
             self._delivery_worker_task = asyncio.create_task(_delivery_worker())
@@ -415,8 +534,16 @@ class BotRunner:
                                 with self._lock:
                                     self._last_seen_by_chat[entity.id] = max(self._last_seen_by_chat.get(entity.id, 0), message.id)
 
+                                fingerprint = self._product_fingerprint(message)
+                                if not self._remember_product(fingerprint):
+                                    self._log(
+                                        "info",
+                                        f"[Dedup] Produto duplicado ignorado antes da fila (msg {message.id}).",
+                                    )
+                                    continue
+
                                 # Enfileira para envio sequencial sem travar a proxima busca.
-                                await self._delivery_queue.put(message)
+                                await self._delivery_queue.put((fingerprint, message))
                                 self._log(
                                     "info",
                                     f"[RateLimit] Msg {message.id} enfileirada. Fila: {self._delivery_queue.qsize()} item(ns).",
