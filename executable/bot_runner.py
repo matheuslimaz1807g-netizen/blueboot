@@ -463,21 +463,22 @@ class BotRunner:
                         
                         _processed, tg_ok, wp_ok = await self._process_and_count(message)
                         
-                        # ✅ PASSO 4: SE ENVIOU, ATIVAR COOLDOWN DE 10 MINUTOS
-                        if tg_ok or wp_ok:
+                        # ✅ PASSO 4: SE PROCESSOU, ATIVAR COOLDOWN CONFIGURADO
+                        if _processed:
                             with self._lock:
-                                self._next_dispatch_at = time.time() + _DELIVERY_INTERVAL_SECONDS
+                                delay_to_use = self._delay if self._delay > 0 else 3
+                                self._next_dispatch_at = time.time() + delay_to_use
                             
                             destinations = []
                             if tg_ok:
                                 destinations.append("Telegram")
                             if wp_ok:
                                 destinations.append("WhatsApp")
-                            dest_text = " e ".join(destinations)
+                            dest_text = " e ".join(destinations) if destinations else "Web API/Outros"
                             
                             self._log(
                                 "info",
-                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em 10 minutos.",
+                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em {delay_to_use} segundos.",
                             )
                         else:
                             self._log(

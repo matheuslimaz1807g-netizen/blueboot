@@ -375,7 +375,7 @@ async def processar_mensagem(
                 
                 log_callback("info", f"[{msg_id}] [WhatsApp] POST para {wpp_endpoint} | Grupos: {', '.join(wpp_destinations)}")
                 try:
-                    async with httpx.AsyncClient(timeout=20) as client:
+                    async with httpx.AsyncClient(timeout=300) as client:
                         resp = await client.post(wpp_endpoint, json=payload)
                         resp.raise_for_status()
                     log_callback("success", f"[{msg_id}] ✅ Enviado para WhatsApp com sucesso.")
