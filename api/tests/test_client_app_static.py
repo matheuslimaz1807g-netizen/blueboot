@@ -41,3 +41,16 @@ def test_client_activity_log_keeps_all_supported_levels():
     assert "Array.isArray(logs)" in html
     assert "allowedLevels = ['success', 'error']" in html
     assert "Nenhuma atividade registrada" in html
+
+
+def test_client_app_uses_clean_operational_ui_contract():
+    html = _client_app_html()
+
+    assert "clean-ui-contract" in html
+    assert ".panel-surface" in html
+    assert ".brand-mark { background: #6366f1; }" in html
+    assert "bg-[radial-gradient" not in html
+    assert "glass" not in html
+    assert "accent-gradient" not in html
+    assert "rounded-3xl" not in html
+    assert "shadow-2xl" not in html

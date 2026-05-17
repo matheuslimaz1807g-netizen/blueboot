@@ -38,3 +38,16 @@ def test_clients_tab_loads_license_data_when_opened_empty():
     assert "if (tabId === \"clients\") this.loadClients(true);" in html
     assert "async loadClients(fetchIfEmpty = false)" in html
     assert "await this.loadLicenses(false);" in html
+
+
+def test_admin_panel_uses_clean_operational_ui_contract():
+    html = Path(__file__).resolve().parents[2].joinpath("admin", "index.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert "clean-ui-contract" in html
+    assert "border-radius: 0.5rem;" in html
+    assert "shadow-2xl" not in html
+    assert "rounded-2xl" not in html
+    assert "rounded-3xl" not in html
+    assert "accent-gradient" not in html
