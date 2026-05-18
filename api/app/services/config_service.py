@@ -27,6 +27,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         destination_telegram=cfg.destination_telegram,
         delay_segundos=cfg.delay_segundos,
         whatsapp_endpoint=cfg.whatsapp_endpoint,
+        wpp_destinations=cfg.wpp_destinations or [],
         send_telegram=cfg.send_telegram,
         send_whatsapp=cfg.send_whatsapp,
         conv_shopee=cfg.conv_shopee,
@@ -62,6 +63,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     cfg.destination_telegram = data.destination_telegram
     cfg.delay_segundos = data.delay_segundos
     cfg.whatsapp_endpoint = data.whatsapp_endpoint
+    cfg.wpp_destinations = data.wpp_destinations
     cfg.send_telegram = data.send_telegram
     cfg.send_whatsapp = data.send_whatsapp
     cfg.conv_shopee = data.conv_shopee
@@ -102,6 +104,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         destination_telegram=cfg.destination_telegram,
         delay_segundos=cfg.delay_segundos,
         whatsapp_endpoint=cfg.whatsapp_endpoint,
+        wpp_destinations=cfg.wpp_destinations or [],
         send_telegram=cfg.send_telegram,
         send_whatsapp=cfg.send_whatsapp,
         conv_shopee=cfg.conv_shopee,
