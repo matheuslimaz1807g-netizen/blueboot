@@ -2510,6 +2510,15 @@
                   .filter(Boolean)
               : [];
             delete cfg.sources_str;
+
+            cfg.wpp_destinations = cfg.wpp_destinations_str
+              ? cfg.wpp_destinations_str
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
+            delete cfg.wpp_destinations_str;
+
             // Find the license ID from the key
             const lic = this.licenses.find((l) => l.key === this.configLicKey);
             if (!lic) {
