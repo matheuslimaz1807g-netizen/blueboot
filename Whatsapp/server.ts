@@ -50,13 +50,13 @@ client.on('ready', async () => {
   console.log('✅ WhatsApp conectado e pronto!');
   statusVal = "connected";
 
-  // Busca todos os chats e guarda apenas grupos
+  // Busca todos os chats e guarda grupos, canais e listas de transmissão
   const chats = await client.getChats();
   allGroups = chats
-    .filter((c) => c.isGroup)
+    .filter((c) => c.isGroup || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast'))))
     .map((c) => ({ name: c.name, id: c.id._serialized }));
 
-  console.log(`📋 Total de grupos monitorados: ${allGroups.length}`);
+  console.log(`📋 Total de grupos/canais monitorados: ${allGroups.length}`);
 });
 
 /**
@@ -67,16 +67,16 @@ async function sendToGroups(text: string, base64Image?: string, mimeType?: strin
     throw new Error('Nenhum grupo alvo especificado no payload da rota send.');
   }
 
-  // Refresha a lista de grupos para garantir
+  // Refresha a lista de grupos/canais para garantir
   if (allGroups.length === 0) {
       const chats = await client.getChats();
-      allGroups = chats.filter((c) => c.isGroup).map((c) => ({ name: c.name, id: c.id._serialized }));
+      allGroups = chats.filter((c) => c.isGroup || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast')))).map((c) => ({ name: c.name, id: c.id._serialized }));
   }
 
   // Filtra os que demos match
   const matchedGroups = allGroups.filter(g => targets.includes(g.name));
   if (matchedGroups.length === 0) {
-      throw new Error(`Nenhum dos grupos (${targets.join(', ')}) foi encontrado no seu Whatsapp!`);
+      throw new Error(`Nenhum dos grupos/canais (${targets.join(', ')}) foi encontrado no seu Whatsapp! Certifique-se de que o bot faz parte deles.`);
   }
 
   for (const group of matchedGroups) {

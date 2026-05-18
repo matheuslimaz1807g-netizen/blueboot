@@ -1640,6 +1640,14 @@
                 placeholder="http://IP:4000/send"
               />
             </div>
+            <div class="field">
+              <label>Destinos WhatsApp</label>
+              <input
+                class="inp"
+                x-model="configData.wpp_destinations_str"
+                placeholder="Ex: Canal 1, Grupo 1 (separados por vírgula)"
+              />
+            </div>
 
             <div class="grid grid-cols-3 gap-3">
               <label class="flex items-center gap-2 cursor-pointer">
@@ -2459,6 +2467,9 @@
                   sources_str: Array.isArray(d.sources)
                     ? d.sources.join(",")
                     : "",
+                  wpp_destinations_str: Array.isArray(d.wpp_destinations)
+                    ? d.wpp_destinations.join(",")
+                    : "",
                 };
               } else {
                 this.configData = {
@@ -2480,6 +2491,7 @@
                   conv_ali: true,
                   conv_ml: true,
                   whatsapp_endpoint: '',
+                  wpp_destinations_str: '',
                 };
               }
             } catch (e) {
