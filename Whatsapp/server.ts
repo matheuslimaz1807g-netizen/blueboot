@@ -52,9 +52,21 @@ client.on('ready', async () => {
 
   // Busca todos os chats e guarda grupos, canais e listas de transmissão
   const chats = await client.getChats();
-  allGroups = chats
-    .filter((c) => c.isGroup || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast'))))
+  let channels: any[] = [];
+  try {
+    channels = (await (client as any).getChannels()) || [];
+  } catch (e) {
+    console.log("Sem método getChannels ou erro:", e);
+  }
+
+  const all = [...chats, ...channels];
+
+  allGroups = all
+    .filter((c) => c.isGroup || c.isChannel || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast'))))
     .map((c) => ({ name: c.name, id: c.id._serialized }));
+
+  // Remove duplicados
+  allGroups = allGroups.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
 
   console.log(`📋 Total de grupos/canais monitorados: ${allGroups.length}`);
 });
@@ -70,7 +82,13 @@ async function sendToGroups(text: string, base64Image?: string, mimeType?: strin
   // Refresha a lista de grupos/canais para garantir
   if (allGroups.length === 0) {
       const chats = await client.getChats();
-      allGroups = chats.filter((c) => c.isGroup || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast')))).map((c) => ({ name: c.name, id: c.id._serialized }));
+      let channels: any[] = [];
+      try { channels = (await (client as any).getChannels()) || []; } catch(e){}
+      const all = [...chats, ...channels];
+      allGroups = all
+        .filter((c) => c.isGroup || c.isChannel || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast'))))
+        .map((c) => ({ name: c.name, id: c.id._serialized }));
+      allGroups = allGroups.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
   }
 
   // Filtra os que demos match
