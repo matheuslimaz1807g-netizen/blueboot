@@ -167,8 +167,9 @@ async def record_heartbeat(
     whatsapp_status: str | None = None,
     whatsapp_qr: str | None = None,
     logs: list | None = None,
+    queue: list | None = None,
 ) -> bool:
-    """Update last_heartbeat, WhatsApp status, and persist bot logs."""
+    """Update last_heartbeat, WhatsApp status, queue items, and persist bot logs."""
     lic = await get_license_by_key(db, key)
     if not lic or not lic.active:
         return False
@@ -181,6 +182,8 @@ async def record_heartbeat(
         values["whatsapp_status"] = whatsapp_status
     if whatsapp_qr is not None:
         values["whatsapp_qr"] = whatsapp_qr
+    if queue is not None:
+        values["queue_items"] = queue
         
     await db.execute(
         update(License).where(License.id == lic.id).values(**values)

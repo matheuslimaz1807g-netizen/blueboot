@@ -230,6 +230,12 @@ def create_app(mode: str, initial_config: dict):
             "stats": _runner.get_stats() if _runner else {}
         })
 
+    @app.route("/api/queue")
+    @requires_auth
+    def queue():
+        items = _runner.get_queue_items() if _runner else []
+        return jsonify({"queue": items})
+
     @app.route("/api/auth-code", methods=["POST"])
     @requires_auth
     def submit_auth_code():
@@ -409,9 +415,12 @@ def main():
                     qr = d.get("qr")
                     if qr:
                         add_log("info", f"💓 QR Code detectado e pronto para envio (Tam: {len(qr)})")
+                    
+                    queue_items = _runner.get_queue_items() if _runner else []
                     return {
                         "whatsapp_status": status,
-                        "whatsapp_qr": qr
+                        "whatsapp_qr": qr,
+                        "queue": queue_items
                     }
                 else:
                     global _last_wpp_error_time
@@ -419,12 +428,21 @@ def main():
                     if now - globals().get('_last_wpp_error_time', 0) > 600:
                         add_log("warning", f"💓 Falha ao buscar status WPP: Status {r.status_code}")
                         globals()['_last_wpp_error_time'] = now
+                    
+                    queue_items = _runner.get_queue_items() if _runner else []
+                    return {
+                        "queue": queue_items
+                    }
             except Exception as e:
                 now = time.time()
                 if now - globals().get('_last_wpp_error_time', 0) > 600:
                     add_log("warning", f"💓 Erro na conexão com WhatsApp: {e}")
                     globals()['_last_wpp_error_time'] = now
-            return {}
+            
+            queue_items = _runner.get_queue_items() if _runner else []
+            return {
+                "queue": queue_items
+            }
 
         def get_pending_logs_callback():
             """Retorna logs pendentes desde o último envio (para o heartbeat)."""

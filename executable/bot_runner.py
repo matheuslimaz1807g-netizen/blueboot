@@ -158,10 +158,58 @@ class BotRunner:
             stats["next_dispatch_seconds"] = max(0, int(self._next_dispatch_at - time.time()))
             return stats
 
+    def get_queue_items(self) -> list[dict]:
+        """Retorna uma lista dos itens na fila e seus horarios estimados de envio."""
+        items = []
+        if not self._delivery_queue:
+            return items
+            
+        with self._lock:
+            delay = self._delay if self._delay > 0 else 300
+            current_next = self._next_dispatch_at
+            now = time.time()
+            if current_next < now:
+                current_next = now
+                
+        # Acessa a fila interna do asyncio.Queue (somente leitura para UI)
+        try:
+            q = self._delivery_queue._queue
+            burst_allowed = len(q) > 2 # Se tem > 2, o próximo entra no burst
+            burst_used = False
+            
+            for idx, (fingerprint, msg) in enumerate(q):
+                # Tenta pegar um preview do texto
+                text = getattr(msg, "raw_text", "") or ""
+                preview = text.split("\n")[0][:60] + "..." if text else "Mensagem sem texto"
+                
+                # Calcular o horario estimado
+                if idx == 0:
+                    eta = current_next
+                else:
+                    if burst_allowed and not burst_used:
+                        eta = current_next  # Mesmo horario do anterior
+                        burst_used = True
+                    else:
+                        current_next += delay
+                        eta = current_next
+                        burst_used = False
+                
+                tz_br = timezone(timedelta(hours=-3))
+                eta_str = datetime.fromtimestamp(eta, tz=tz_br).strftime("%H:%M:%S")
+                
+                items.append({
+                    "preview": preview,
+                    "eta": eta_str
+                })
+        except Exception:
+            pass
+            
+        return items
+
     def update_config(self, config: dict) -> None:
         with self._lock:
             self._config = config
-            self._delay = int(config.get("delay_segundos", 3))
+            self._delay = int(config.get("delay_segundos", 300))
 
     def _remember_message(self, chat_id: int, msg_id: int) -> bool:
         """Retorna False se a mensagem já foi vista."""
@@ -463,6 +511,8 @@ class BotRunner:
                     f"[RateLimit] Fila de envio iniciada. Delay configurado: {_configured_delay}s ({_configured_delay//60}min {_configured_delay%60}s).",
                 )
                 
+                burst_count = 0  # Controla envios imediatos
+                
                 while not self._stop_event.is_set():
                     # ✅ PASSO 1: PEGAR ITEM DA FILA (com timeout de 1s)
                     try:
@@ -488,7 +538,7 @@ class BotRunner:
                             
                             self._log(
                                 "info",
-                                f"[RateLimit] Msg {msg_id} em cooldown: aguardando {int(time_remaining)}s. Fila: {queue_size}.",
+                                f"[RateLimit] Msg {msg_id} em cooldown: aguardando {int(time_remaining)}s. Fila restante: {queue_size}.",
                             )
                             
                             # Espera o tempo restante (ou até o bot parar)
@@ -511,7 +561,7 @@ class BotRunner:
                         # ✅ PASSO 3: PROCESSAR A MENSAGEM
                         self._log(
                             "info",
-                            f"[RateLimit] Processando msg {msg_id}. Fila: {queue_size}.",
+                            f"[RateLimit] Processando msg {msg_id}. Fila restante: {queue_size}.",
                         )
                         
                         _processed, tg_ok, wp_ok, _promo = await self._process_and_count(message)
@@ -521,7 +571,16 @@ class BotRunner:
                         if actually_sent:
                             with self._lock:
                                 delay_to_use = self._delay if self._delay > 0 else 300
-                                self._next_dispatch_at = time.time() + delay_to_use
+                                
+                                # Burst logic: se fila restante for >= 3 (ou seja, total era 4), e ainda não usamos o burst
+                                if queue_size >= 3 and burst_count < 1:
+                                    self._next_dispatch_at = time.time()  # Sem delay!
+                                    burst_count += 1
+                                    burst_msg = " ⚡ BURST ATIVADO: próximo item imediato!"
+                                else:
+                                    self._next_dispatch_at = time.time() + delay_to_use
+                                    burst_count = 0
+                                    burst_msg = ""
                             
                             destinations = []
                             if tg_ok:
@@ -532,7 +591,7 @@ class BotRunner:
                             
                             self._log(
                                 "info",
-                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em {delay_to_use}s ({delay_to_use//60}min {delay_to_use%60}s).",
+                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em {max(0, int(self._next_dispatch_at - time.time()))}s.{burst_msg}",
                             )
                         elif _processed:
                             self._log(

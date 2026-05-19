@@ -47,6 +47,7 @@ class License(Base):
         JSONB, nullable=True, default=dict
     )
     note: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    queue_items: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     
     # Status do WhatsApp por Licença (enviado via heartbeat)
     whatsapp_status: Mapped[str | None] = mapped_column(String(32), nullable=True)

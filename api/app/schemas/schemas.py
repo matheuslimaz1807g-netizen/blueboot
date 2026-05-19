@@ -48,6 +48,7 @@ class LicenseHeartbeatRequest(BaseModel):
     whatsapp_status: str | None = None
     whatsapp_qr: str | None = None
     logs: list[HeartbeatLogItem] = Field(default_factory=list, max_length=50)
+    queue: list | None = None
 
 
 class LicenseValidateResponse(BaseModel):
@@ -90,6 +91,7 @@ class LicenseOut(BaseModel):
     created_at: datetime
     last_heartbeat: datetime | None
     schedule_rules: dict | None = None
+    queue_items: list | None = None
     note: str | None = None
     whatsapp_status: str | None = None
     whatsapp_qr: str | None = None

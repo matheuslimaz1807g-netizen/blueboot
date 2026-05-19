@@ -152,30 +152,58 @@
                         </div>
                     </section>
 
-                    <!-- Logs Section -->
-                    <section class="panel-surface p-6 rounded-lg flex flex-col h-full">
-                        <h3 class="text-base font-semibold mb-5 flex items-center gap-2 text-white">
-                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            Logs de Atividade
-                        </h3>
-                        <div class="flex-1 overflow-y-auto space-y-3 pr-2 font-mono text-xs">
-                            <template x-if="logs.length === 0">
-                                <div class="p-4 rounded-lg panel-muted text-center text-slate-500">
-                                    Nenhuma atividade registrada
-                                </div>
-                            </template>
-                            <template x-for="log in logs" :key="log.id">
-                                <div class="p-3 rounded-lg panel-muted">
-                                    <div class="flex justify-between mb-1">
-                                        <span :class="logLevelClass(log.nivel)" 
-                                              x-text="formatLevel(log.nivel)"></span>
-                                        <span class="text-slate-500" x-text="fmtTime(log.created_at)"></span>
+                    <!-- Right Column (Queue & Logs) -->
+                    <div class="space-y-6 flex flex-col h-full">
+                        <!-- Queue Section -->
+                        <section class="panel-surface p-6 rounded-lg flex flex-col">
+                            <h3 class="text-base font-semibold mb-4 flex items-center gap-2 text-white">
+                                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                Fila de Envio
+                            </h3>
+                            <div class="overflow-y-auto space-y-2 pr-2 font-mono text-xs max-h-[180px]">
+                                <template x-if="!license?.queue_items || license.queue_items.length === 0">
+                                    <div class="p-4 rounded-lg panel-muted text-center text-slate-500">
+                                        Nenhum item aguardando na fila
                                     </div>
-                                    <p class="text-slate-300" x-text="log.mensagem"></p>
-                                </div>
-                            </template>
-                        </div>
-                    </section>
+                                </template>
+                                <template x-for="(item, idx) in (license?.queue_items || [])" :key="idx">
+                                    <div class="p-3 rounded-lg panel-muted flex justify-between items-center gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-slate-300 truncate" x-text="item.preview"></p>
+                                        </div>
+                                        <div class="text-right shrink-0">
+                                            <span class="text-indigo-400 font-semibold" x-text="item.eta"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </section>
+
+                        <!-- Logs Section -->
+                        <section class="panel-surface p-6 rounded-lg flex flex-col flex-1">
+                            <h3 class="text-base font-semibold mb-5 flex items-center gap-2 text-white">
+                                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Logs de Atividade
+                            </h3>
+                            <div class="flex-1 overflow-y-auto space-y-3 pr-2 font-mono text-xs max-h-[300px]">
+                                <template x-if="logs.length === 0">
+                                    <div class="p-4 rounded-lg panel-muted text-center text-slate-500">
+                                        Nenhuma atividade registrada
+                                    </div>
+                                </template>
+                                <template x-for="log in logs" :key="log.id">
+                                    <div class="p-3 rounded-lg panel-muted">
+                                        <div class="flex justify-between mb-1">
+                                            <span :class="logLevelClass(log.nivel)" 
+                                                  x-text="formatLevel(log.nivel)"></span>
+                                            <span class="text-slate-500" x-text="fmtTime(log.created_at)"></span>
+                                        </div>
+                                        <p class="text-slate-300" x-text="log.mensagem"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </section>
+                    </div>
                 </div>
             </main>
         </div>
