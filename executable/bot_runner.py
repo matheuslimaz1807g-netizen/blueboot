@@ -17,7 +17,7 @@ import threading
 import time
 import unicodedata
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Callable, Optional
 
 from telethon import TelegramClient
@@ -432,7 +432,8 @@ class BotRunner:
                                 # Calcular horário aproximado do próximo disparo
                                 delay_to_use = self._delay if self._delay > 0 else 3
                                 next_dispatch = time.time() + delay_to_use
-                                next_time_str = datetime.fromtimestamp(next_dispatch).strftime("%H:%M:%S")
+                                tz_br = timezone(timedelta(hours=-3))
+                                next_time_str = datetime.fromtimestamp(next_dispatch, tz=tz_br).strftime("%H:%M:%S")
                                 
                                 activity_msg = (
                                     f"📦 {title_text}{store_text} | Valor: {price_text}\n"

@@ -112,7 +112,7 @@ class ConfigIn(BaseModel):
     phone: str | None = None
     sources: list[str] = Field(default_factory=list)
     destination_telegram: str | None = None
-    delay_segundos: int = Field(default=3, ge=1, le=60)
+    delay_segundos: int = Field(default=3, ge=1, le=86400)
     whatsapp_endpoint: str | None = None
     wpp_destinations: list[str] = Field(default_factory=list)
     send_telegram: bool = True

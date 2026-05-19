@@ -71,11 +71,9 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label">Delay entre mensagens: <span id="delay-val"
-            class="text-accent font-semibold">3s</span></label>
-        <input id="cfg-delay" type="range" min="1" max="60" value="3" class="w-full accent-indigo-500 cursor-pointer"
-          oninput="document.getElementById('delay-val').textContent = this.value + 's'" />
-        <div class="flex justify-between text-xs text-muted mt-1"><span>1s</span><span>60s</span></div>
+        <label class="field-label">Delay entre mensagens (segundos)</label>
+        <input id="cfg-delay" type="number" min="1" max="86400" value="3" class="field-input" />
+        <p class="text-xs text-muted mt-1">Tempo mínimo de espera entre envios. Ex: 600 para 10 minutos.</p>
       </div>
 
       <div class="toggle-group">
@@ -306,7 +304,10 @@
       document.getElementById('cfg-sources').value = (cfg.sources || []).join('\n');
       document.getElementById('cfg-dest-tg').value = cfg.destination_telegram || '';
       document.getElementById('cfg-delay').value = cfg.delay_segundos || 3;
-      document.getElementById('delay-val').textContent = (cfg.delay_segundos || 3) + 's';
+      const delayValEl = document.getElementById('delay-val');
+      if (delayValEl) {
+        delayValEl.textContent = (cfg.delay_segundos || 3) + 's';
+      }
       document.getElementById('cfg-wpp-dest').value = (cfg.wpp_destinations || []).join('\n');
       document.getElementById('cfg-shopee').value = cfg.shopee_token || '';
       document.getElementById('cfg-ali-key').value = cfg.ali_key || '';
