@@ -71,9 +71,9 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label">Delay entre mensagens (segundos)</label>
-        <input id="cfg-delay" type="number" min="1" max="86400" value="3" class="field-input" />
-        <p class="text-xs text-muted mt-1">Tempo mínimo de espera entre envios. Ex: 600 para 10 minutos.</p>
+        <label class="field-label">Minutos na fila</label>
+        <input id="cfg-delay" type="number" min="0.1" step="any" max="1440" value="5" class="field-input" />
+        <p class="text-xs text-muted mt-1">Tempo de espera em minutos. Ex: 10 para 10 minutos.</p>
       </div>
 
       <div class="toggle-group">
@@ -303,10 +303,10 @@
       document.getElementById('cfg-phone').value = cfg.phone || '';
       document.getElementById('cfg-sources').value = (cfg.sources || []).join('\n');
       document.getElementById('cfg-dest-tg').value = cfg.destination_telegram || '';
-      document.getElementById('cfg-delay').value = cfg.delay_segundos || 3;
+      document.getElementById('cfg-delay').value = (cfg.delay_segundos || 300) / 60;
       const delayValEl = document.getElementById('delay-val');
       if (delayValEl) {
-        delayValEl.textContent = (cfg.delay_segundos || 3) + 's';
+        delayValEl.textContent = ((cfg.delay_segundos || 300) / 60) + 'm';
       }
       document.getElementById('cfg-wpp-dest').value = (cfg.wpp_destinations || []).join('\n');
       document.getElementById('cfg-shopee').value = cfg.shopee_token || '';
@@ -333,7 +333,7 @@
       phone: document.getElementById('cfg-phone').value.trim(),
       sources: document.getElementById('cfg-sources').value.trim().split('\n').filter(Boolean),
       destination_telegram: document.getElementById('cfg-dest-tg').value.trim(),
-      delay_segundos: parseInt(document.getElementById('cfg-delay').value),
+      delay_segundos: Math.round(parseFloat(document.getElementById('cfg-delay').value || 0) * 60),
       wpp_destinations: document.getElementById('cfg-wpp-dest').value.split('\n').map(s => s.trim()).filter(Boolean),
       shopee_token: document.getElementById('cfg-shopee').value,
       ali_key: document.getElementById('cfg-ali-key').value,

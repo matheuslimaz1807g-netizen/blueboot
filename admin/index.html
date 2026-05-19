@@ -1570,12 +1570,14 @@
               />
             </div>
             <div class="field">
-              <label>Delay (segundos)</label>
+              <label>Minutos na fila</label>
               <input
                 class="inp"
                 type="number"
-                min="1"
-                x-model="configData.delay_segundos"
+                min="0.1"
+                step="any"
+                :value="configData.delay_segundos / 60"
+                @input="configData.delay_segundos = Math.round(parseFloat($event.target.value || 0) * 60)"
               />
             </div>
             <div class="grid grid-cols-2 gap-4">
