@@ -322,29 +322,32 @@ async def processar_mensagem(
 
         # ── Step 5: Send to Telegram ──────────────────────────────────────────
         tg_sent = False
-        destination = config.get("destination_telegram")
+        raw_destination = config.get("destination_telegram")
         if config.get("send_telegram"):
-            if destination:
-                try:
-                    dest_entity = await telegram_client.get_entity(destination)
-                    if image_path and os.path.exists(image_path):
-                        # Envia como arquivo local garantindo que não use os atributos da mídia original
-                        await telegram_client.send_file(
-                            dest_entity, 
-                            file=image_path, 
-                            caption=text,
-                            force_document=False
-                        )
-                    else:
-                        await telegram_client.send_message(
-                            dest_entity, 
-                            text, 
-                            link_preview=False
-                        )
-                    log_callback("success", f"[{msg_id}] Enviado para Telegram.")
-                    tg_sent = True
-                except Exception as exc:
-                    log_callback("error", f"[{msg_id}] Erro Telegram: {exc}")
+            if raw_destination:
+                # Permite múltiplos destinos separados por vírgula
+                destinations = [d.strip() for d in raw_destination.split(",") if d.strip()]
+                for dest in destinations:
+                    try:
+                        dest_entity = await telegram_client.get_entity(dest)
+                        if image_path and os.path.exists(image_path):
+                            # Envia como arquivo local garantindo que não use os atributos da mídia original
+                            await telegram_client.send_file(
+                                dest_entity, 
+                                file=image_path, 
+                                caption=text,
+                                force_document=False
+                            )
+                        else:
+                            await telegram_client.send_message(
+                                dest_entity, 
+                                text, 
+                                link_preview=False
+                            )
+                        log_callback("success", f"[{msg_id}] Enviado para Telegram: {dest}.")
+                        tg_sent = True
+                    except Exception as exc:
+                        log_callback("error", f"[{msg_id}] Erro Telegram ao enviar para {dest}: {exc}")
             else:
                 log_callback("warning", f"[{msg_id}] Envio Telegram ativo, mas destino vazio.")
         else:
