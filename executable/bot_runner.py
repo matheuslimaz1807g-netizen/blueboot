@@ -177,9 +177,24 @@ class BotRunner:
             burst_allowed = len(q) > 2 # Se tem > 2, o próximo entra no burst
             burst_used = False
             
-            for idx, (fingerprint, msg) in enumerate(q):
-                # Tenta pegar um preview do texto
-                text = getattr(msg, "raw_text", "") or ""
+            # Print de depuração nos logs do container
+            print(f"[get_queue_items] Total de itens na fila interna: {len(q)}", flush=True)
+            
+            for idx, item in enumerate(q):
+                # Desempacota com segurança
+                if isinstance(item, tuple) and len(item) == 2:
+                    fingerprint, msg = item
+                else:
+                    print(f"[get_queue_items] Item inválido na fila no índice {idx}: {item}", flush=True)
+                    continue
+                
+                # Tenta pegar o texto (Telethon Message pode ter raw_text ou message)
+                text = ""
+                if hasattr(msg, "raw_text") and msg.raw_text:
+                    text = msg.raw_text
+                elif hasattr(msg, "message") and msg.message:
+                    text = msg.message
+                
                 preview = text.split("\n")[0][:60] + "..." if text else "Mensagem sem texto"
                 
                 # Calcular o horario estimado
@@ -201,8 +216,11 @@ class BotRunner:
                     "preview": preview,
                     "eta": eta_str
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            import traceback
+            err_msg = f"[get_queue_items] Erro ao extrair fila: {exc}\n{traceback.format_exc()}"
+            print(err_msg, flush=True)
+            self._log("error", err_msg)
             
         return items
 
