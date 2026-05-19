@@ -124,6 +124,7 @@ client.on('ready', () => __awaiter(void 0, void 0, void 0, function* () {
 // --- FILA DE MENSAGENS (ANTI-BAN) ---
 let messageQueue = [];
 let isProcessing = false;
+let lastDispatchTime = 0; // Armazena o timestamp do último envio bem-sucedido
 const SEND_DELAY = (parseInt(process.env.WHATSAPP_DELAY_MINUTES || "15")) * 60 * 1000;
 function processQueue() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -131,18 +132,23 @@ function processQueue() {
             return;
         isProcessing = true;
         while (messageQueue.length > 0) {
+            // Enforça cooldown global mínimo entre disparos sucessivos
+            const now = Date.now();
+            const timeSinceLast = now - lastDispatchTime;
+            if (timeSinceLast < SEND_DELAY) {
+                const waitTime = SEND_DELAY - timeSinceLast;
+                console.log(`[Queue] Respeitando cooldown mínimo: aguardando ${Math.ceil(waitTime / 1000)}s antes do envio do próximo item...`);
+                yield new Promise((res) => setTimeout(res, waitTime));
+            }
             const item = messageQueue.shift();
             console.log(`[Queue] Processando envio para grupos: ${item.targets.join(", ")}`);
             try {
                 yield sendToGroupsInternal(item.text, item.base64Image, item.mimeType, item.targets);
+                lastDispatchTime = Date.now(); // Atualiza após envio com sucesso
                 console.log("[Queue] Envio concluído.");
             }
             catch (err) {
                 console.error("[Queue] Erro ao processar item da fila:", err.message);
-            }
-            if (messageQueue.length > 0) {
-                console.log(`[Queue] Aguardando ${SEND_DELAY / 60000} minutos para o próximo disparo...`);
-                yield new Promise((res) => setTimeout(res, SEND_DELAY));
             }
         }
         isProcessing = false;

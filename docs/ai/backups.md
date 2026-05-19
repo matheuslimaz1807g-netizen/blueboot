@@ -14,4 +14,5 @@
 | 2026-05-17 11:08 | Antes de corrigir rate limit de envio WhatsApp/Telegram | git stash push -u -m "BACKUP-2026-05-17-11-08: rate-limit-envio-whatsapp-telegram" seguido de git stash apply 'stash@{0}' | stash@{0} |
 | 2026-05-17 11:16 | Antes de deduplicar produtos entre fontes monitoradas | git stash push -u -m "BACKUP-2026-05-17-11-16: deduplicacao-produtos-fila" seguido de git stash apply 'stash@{0}' | stash@{0} |
 | 2026-05-19 09:45 | Antes de corrigir stale cache do Telethon ao resolver fontes | git stash push -m "BACKUP-2026-05-19-09-45: Fix Telethon stale cache" | stash@{0} |
+| 2026-05-19 10:30 | Antes de corrigir cooldown global da fila do WhatsApp | git stash push -m "BACKUP-2026-05-19-10-30: Fix WhatsApp Queue Cooldown" | N/A (Sem mudanças no momento do backup) |
 
