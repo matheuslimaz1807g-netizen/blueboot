@@ -456,9 +456,11 @@ class BotRunner:
             self._process_and_count = _process_and_count
 
             async def _delivery_worker() -> None:
+                with self._lock:
+                    _configured_delay = self._delay
                 self._log(
                     "info",
-                    "[RateLimit] Fila de envio iniciada: no maximo 1 produto a cada 10 minutos.",
+                    f"[RateLimit] Fila de envio iniciada. Delay configurado: {_configured_delay}s ({_configured_delay//60}min {_configured_delay%60}s).",
                 )
                 
                 while not self._stop_event.is_set():
@@ -514,10 +516,11 @@ class BotRunner:
                         
                         _processed, tg_ok, wp_ok, _promo = await self._process_and_count(message)
                         
-                        # ✅ PASSO 4: SE PROCESSOU, ATIVAR COOLDOWN CONFIGURADO
-                        if _processed:
+                        # ✅ PASSO 4: SÓ ATIVAR COOLDOWN SE REALMENTE ENVIOU PARA ALGUM CANAL
+                        actually_sent = tg_ok or wp_ok
+                        if actually_sent:
                             with self._lock:
-                                delay_to_use = self._delay if self._delay > 0 else 3
+                                delay_to_use = self._delay if self._delay > 0 else 300
                                 self._next_dispatch_at = time.time() + delay_to_use
                             
                             destinations = []
@@ -525,16 +528,21 @@ class BotRunner:
                                 destinations.append("Telegram")
                             if wp_ok:
                                 destinations.append("WhatsApp")
-                            dest_text = " e ".join(destinations) if destinations else "Web API/Outros"
+                            dest_text = " e ".join(destinations)
                             
                             self._log(
                                 "info",
-                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em {delay_to_use} segundos.",
+                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em {delay_to_use}s ({delay_to_use//60}min {delay_to_use%60}s).",
+                            )
+                        elif _processed:
+                            self._log(
+                                "info",
+                                f"[RateLimit] ⏭️  Msg {msg_id} processada mas filtrada/sem destino. Próximo item imediato.",
                             )
                         else:
                             self._log(
                                 "info",
-                                f"[RateLimit] ⏭️  Msg {msg_id} ignorada (filtro/link inválido/erro). Processando próximo item imediatamente.",
+                                f"[RateLimit] ⏭️  Msg {msg_id} ignorada (não é promoção/link inválido). Próximo item imediato.",
                             )
                         
                     except Exception as exc:

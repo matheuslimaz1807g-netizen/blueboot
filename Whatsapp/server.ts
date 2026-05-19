@@ -118,32 +118,22 @@ client.on('ready', async () => {
 });
 
 
-// --- FILA DE MENSAGENS (ANTI-BAN) ---
+// --- FILA DE MENSAGENS (serialização de envios concorrentes) ---
 let messageQueue: any[] = [];
 let isProcessing = false;
-let lastDispatchTime = 0; // Armazena o timestamp do último envio bem-sucedido
-const SEND_DELAY = (parseInt(process.env.WHATSAPP_DELAY_MINUTES || "15")) * 60 * 1000;
+// ⚠️ O delay entre envios é controlado pelo bot Python (delay_segundos).
+// Este servidor apenas serializa chamadas concorrentes — sem delay interno.
 
 async function processQueue() {
   if (isProcessing || messageQueue.length === 0) return;
   isProcessing = true;
 
   while (messageQueue.length > 0) {
-    // Enforça cooldown global mínimo entre disparos sucessivos
-    const now = Date.now();
-    const timeSinceLast = now - lastDispatchTime;
-    if (timeSinceLast < SEND_DELAY) {
-      const waitTime = SEND_DELAY - timeSinceLast;
-      console.log(`[Queue] Respeitando cooldown mínimo: aguardando ${Math.ceil(waitTime / 1000)}s antes do envio do próximo item...`);
-      await new Promise((res) => setTimeout(res, waitTime));
-    }
-
     const item = messageQueue.shift();
     console.log(`[Queue] Processando envio para grupos: ${item.targets.join(", ")}`);
     
     try {
       await sendToGroupsInternal(item.text, item.base64Image, item.mimeType, item.targets);
-      lastDispatchTime = Date.now(); // Atualiza após envio com sucesso
       console.log("[Queue] Envio concluído.");
     } catch (err: any) {
       console.error("[Queue] Erro ao processar item da fila:", err.message);
@@ -197,8 +187,7 @@ app.get('/status', (req: Request, res: Response): void => {
     res.json({
         status: statusVal,
         qr: qrCodeBase64,
-        queue_size: messageQueue.length,
-        next_delay_min: isProcessing && messageQueue.length > 0 ? SEND_DELAY / 60000 : 0
+        queue_size: messageQueue.length
     });
 });
 
