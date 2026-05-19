@@ -382,9 +382,9 @@ class BotRunner:
                     self._log("warning", f"[Polling] Falha ao iniciar cursor de {getattr(entity, 'id', '?')}: {exc}")
 
             # ── Processar mensagem e atualizar stats ──────────────────────────
-            async def _process_and_count(message) -> tuple[bool, bool, bool]:
+            async def _process_and_count(message) -> tuple[bool, bool, bool, Optional[dict]]:
                 try:
-                    processed, tg_ok, wp_ok = await processar_mensagem(
+                    processed, tg_ok, wp_ok, promo = await processar_mensagem(
                         message,
                         self._config,
                         self._client,
@@ -406,18 +406,51 @@ class BotRunner:
                                     destinations.append("WhatsApp")
                                 destination_text = " e ".join(destinations)
                                 total = self._stats["today_processed"]
+                                
+                                # Extrair informações do produto
+                                title_text = "Produto"
+                                price_text = "N/A"
+                                store_text = ""
+                                if promo:
+                                    if promo.get("seoTitle"):
+                                        title_text = promo.get("seoTitle").strip()
+                                    elif promo.get("originalTitle"):
+                                        title_text = promo.get("originalTitle").strip()
+                                    
+                                    # Limitar tamanho do título para caber no log
+                                    if len(title_text) > 60:
+                                        title_text = title_text[:57] + "..."
+                                        
+                                    if promo.get("newPrice"):
+                                        price_text = f"R$ {promo.get('newPrice')}"
+                                    elif promo.get("oldPrice"):
+                                        price_text = f"R$ {promo.get('oldPrice')}"
+                                        
+                                    if promo.get("store"):
+                                        store_text = f" [{promo.get('store')}]"
+                                
+                                # Calcular horário aproximado do próximo disparo
+                                delay_to_use = self._delay if self._delay > 0 else 3
+                                next_dispatch = time.time() + delay_to_use
+                                next_time_str = datetime.fromtimestamp(next_dispatch).strftime("%H:%M:%S")
+                                
+                                activity_msg = (
+                                    f"📦 {title_text}{store_text} | Valor: {price_text}\n"
+                                    f"✅ Enviado para {destination_text}! Total hoje: {total}.\n"
+                                    f"⏱️ Próximo envio liberado a partir das {next_time_str}."
+                                )
                                 self._activity(
                                     "success",
-                                    f"1 produto enviado para {destination_text}. Total hoje: {total}.",
+                                    activity_msg,
                                 )
                         else:
                             self._stats["errors_24h"] += 1
-                    return processed, tg_ok, wp_ok
+                    return processed, tg_ok, wp_ok, promo
                 except Exception as exc:
                     self._log("error", f"[BotRunner] Erro ao processar mensagem: {exc}")
                     with self._lock:
                         self._stats["errors_24h"] += 1
-                    return False, False, False
+                    return False, False, False, None
 
             self._process_and_count = _process_and_count
 
@@ -478,7 +511,7 @@ class BotRunner:
                             f"[RateLimit] Processando msg {msg_id}. Fila: {queue_size}.",
                         )
                         
-                        _processed, tg_ok, wp_ok = await self._process_and_count(message)
+                        _processed, tg_ok, wp_ok, _promo = await self._process_and_count(message)
                         
                         # ✅ PASSO 4: SE PROCESSOU, ATIVAR COOLDOWN CONFIGURADO
                         if _processed:

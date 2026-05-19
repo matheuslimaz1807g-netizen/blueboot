@@ -186,7 +186,7 @@ async def processar_mensagem(
         raw_text: str = unicodedata.normalize("NFKD", msg.raw_text or "")
         if not raw_text.strip():
             log_callback("info", f"[{msg_id}] Mensagem sem texto — ignorada.")
-            return False, False, False
+            return False, False, False, None
 
         preview = " ".join(raw_text.splitlines()[:3]).strip()
         if len(preview) > 180:
@@ -283,13 +283,13 @@ async def processar_mensagem(
         # STRICT MODE: Abort if no links were converted
         if not any_link_converted:
             log_callback("warning", f"[{msg_id}] Nenhum link conhecido convertido (ex: Amazon/Magalu ou sem link). Mensagem ignorada.")
-            return False, False, False
+            return False, False, False, None
 
         # Apply keyword filters (ignore message if any keyword matches)
         keywords: list[str] = config.get("filtros", {}).get("keywords", [])
         if any(kw.lower() in text.lower() for kw in keywords if kw):
             log_callback("info", f"[{msg_id}] Filtrada por palavra-chave.")
-            return True, False, False
+            return True, False, False, None
 
         # ── Step 3: Clean text ────────────────────────────────────────────────
         text = clean_text(text)
@@ -398,11 +398,11 @@ async def processar_mensagem(
         else:
             log_callback("info", f"[{msg_id}] ℹ️ Envio para WhatsApp DESATIVADO no config.")
 
-        return True, tg_sent, wp_sent
+        return True, tg_sent, wp_sent, promotion_data
 
     except Exception as exc:
         log_callback("error", f"[{msg_id}] Erro inesperado no pipeline: {exc}")
-        return False, False, False
+        return False, False, False, None
 
     finally:
         # ── Step 7: Cleanup temp file ─────────────────────────────────────────
