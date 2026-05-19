@@ -340,7 +340,24 @@ class BotRunner:
                     continue
                 try:
                     entity_input = src_clean.split('/')[-1] if '/' in src_clean else src_clean
-                    entity = await self._client.get_entity(entity_input)
+                    
+                    entity = None
+                    # Se não for numérico (com ou sem sinal de menos), tentamos forçar a resolução via API para atualizar o cache
+                    is_numeric = entity_input.isdigit() or (entity_input.startswith('-') and entity_input[1:].isdigit())
+                    if not is_numeric:
+                        try:
+                            from telethon.tl.functions.contacts import ResolveUsernameRequest
+                            res = await self._client(ResolveUsernameRequest(entity_input))
+                            if res.chats:
+                                entity = res.chats[0]
+                            elif res.users:
+                                entity = res.users[0]
+                        except Exception as ex:
+                            self._log("warning", f"ResolveUsernameRequest falhou para '{entity_input}', tentando get_entity padrão: {ex}")
+                    
+                    if not entity:
+                        entity = await self._client.get_entity(entity_input)
+
                     entity_name = getattr(entity, "title", None) or getattr(entity, "username", None) or src_clean
                     resolved_chats.append(entity)
                     self._log("info", f"✅ Monitorando: {entity_name} (ID: {entity.id})")

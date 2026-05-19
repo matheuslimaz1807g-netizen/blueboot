@@ -13,3 +13,5 @@
 | 2026-05-17 10:54 | Antes da refatoracao clean UI dos paineis console e app | git stash push -u -m "BACKUP-2026-05-17-10-54: refatoracao-clean-ui-paineis" seguido de git stash apply 'stash@{0}' | stash@{0} |
 | 2026-05-17 11:08 | Antes de corrigir rate limit de envio WhatsApp/Telegram | git stash push -u -m "BACKUP-2026-05-17-11-08: rate-limit-envio-whatsapp-telegram" seguido de git stash apply 'stash@{0}' | stash@{0} |
 | 2026-05-17 11:16 | Antes de deduplicar produtos entre fontes monitoradas | git stash push -u -m "BACKUP-2026-05-17-11-16: deduplicacao-produtos-fila" seguido de git stash apply 'stash@{0}' | stash@{0} |
+| 2026-05-19 09:45 | Antes de corrigir stale cache do Telethon ao resolver fontes | git stash push -m "BACKUP-2026-05-19-09-45: Fix Telethon stale cache" | stash@{0} |
+
