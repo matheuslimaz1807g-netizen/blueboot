@@ -77,6 +77,7 @@ class BotRunner:
         self._delivery_queue: Optional[asyncio.Queue] = None
         self._delivery_worker_task: Optional[asyncio.Task] = None
         self._next_dispatch_at: float = 0.0
+        self._active_delivery_item: Optional[tuple] = None
         self._pending_product_fingerprints: set[str] = set()
         self._recent_product_fingerprints: dict[str, float] = {}
         self._recent_product_order: deque[tuple[str, float]] = deque()
@@ -173,14 +174,24 @@ class BotRunner:
                 
         # Acessa a fila interna do asyncio.Queue (somente leitura para UI)
         try:
+            with self._lock:
+                active_item = self._active_delivery_item
+            
+            # Une o item ativo atualmente com os itens que estão fisicamente na fila
+            full_list = []
+            if active_item:
+                full_list.append(active_item)
+                
             q = self._delivery_queue._queue
-            burst_allowed = len(q) > 2 # Se tem > 2, o próximo entra no burst
-            burst_used = False
+            full_list.extend(list(q))
             
             # Print de depuração nos logs do container
-            print(f"[get_queue_items] Total de itens na fila interna: {len(q)}", flush=True)
+            print(f"[get_queue_items] Total de itens encontrados: {len(full_list)} (Ativo: {active_item is not None}, Na fila: {len(q)})", flush=True)
             
-            for idx, item in enumerate(q):
+            burst_allowed = len(full_list) > 2 # Se tem > 2, o próximo entra no burst
+            burst_used = False
+            
+            for idx, item in enumerate(full_list):
                 # Desempacota com segurança
                 if isinstance(item, tuple) and len(item) == 2:
                     fingerprint, msg = item
@@ -538,6 +549,8 @@ class BotRunner:
                             self._delivery_queue.get(),
                             timeout=1,
                         )
+                        with self._lock:
+                            self._active_delivery_item = (fingerprint, message)
                     except asyncio.TimeoutError:
                         continue
 
@@ -627,6 +640,8 @@ class BotRunner:
                     finally:
                         # ✅ FINALIZAR PRODUTO E MARCAR TASK COMO CONCLUÍDA
                         self._finish_product(fingerprint, remember_recent=False)
+                        with self._lock:
+                            self._active_delivery_item = None
                         self._delivery_queue.task_done()
 
             self._delivery_queue = asyncio.Queue()
