@@ -78,6 +78,7 @@ class BotRunner:
         self._delivery_worker_task: Optional[asyncio.Task] = None
         self._next_dispatch_at: float = 0.0
         self._active_delivery_item: Optional[tuple] = None
+        self._queue_snapshot: list[dict] = []  # Thread-safe snapshot for heartbeat
         self._pending_product_fingerprints: set[str] = set()
         self._recent_product_fingerprints: dict[str, float] = {}
         self._recent_product_order: deque[tuple[str, float]] = deque()
@@ -160,80 +161,71 @@ class BotRunner:
             return stats
 
     def get_queue_items(self) -> list[dict]:
-        """Retorna uma lista dos itens na fila e seus horarios estimados de envio."""
-        items = []
-        if not self._delivery_queue:
-            return items
-            
+        """Retorna snapshot thread-safe dos itens na fila com ETAs estimados.
+
+        O snapshot é mantido pelo _delivery_worker e atualizado sob _lock
+        sempre que o estado da fila muda. Isso evita acesso cross-thread
+        ao asyncio.Queue._queue (que não é thread-safe).
+        """
         with self._lock:
+            return list(self._queue_snapshot)
+
+    def _refresh_queue_snapshot(self) -> None:
+        """Recalcula o snapshot da fila. DEVE ser chamado de dentro do asyncio loop."""
+        items: list[dict] = []
+        try:
+            active_item = self._active_delivery_item
+
+            full_list: list[tuple] = []
+            if active_item:
+                full_list.append(active_item)
+
+            if self._delivery_queue:
+                full_list.extend(list(self._delivery_queue._queue))
+
             delay = self._delay if self._delay > 0 else 300
             current_next = self._next_dispatch_at
             now = time.time()
             if current_next < now:
                 current_next = now
-                
-        # Acessa a fila interna do asyncio.Queue (somente leitura para UI)
-        try:
-            with self._lock:
-                active_item = self._active_delivery_item
-            
-            # Une o item ativo atualmente com os itens que estão fisicamente na fila
-            full_list = []
-            if active_item:
-                full_list.append(active_item)
-                
-            q = self._delivery_queue._queue
-            full_list.extend(list(q))
-            
-            # Print de depuração nos logs do container
-            print(f"[get_queue_items] Total de itens encontrados: {len(full_list)} (Ativo: {active_item is not None}, Na fila: {len(q)})", flush=True)
-            
-            burst_allowed = len(full_list) > 2 # Se tem > 2, o próximo entra no burst
+
+            burst_allowed = len(full_list) > 2
             burst_used = False
-            
+
             for idx, item in enumerate(full_list):
-                # Desempacota com segurança
-                if isinstance(item, tuple) and len(item) == 2:
-                    fingerprint, msg = item
-                else:
-                    print(f"[get_queue_items] Item inválido na fila no índice {idx}: {item}", flush=True)
+                if not (isinstance(item, tuple) and len(item) == 2):
                     continue
-                
-                # Tenta pegar o texto (Telethon Message pode ter raw_text ou message)
+                _fingerprint, msg = item
+
                 text = ""
                 if hasattr(msg, "raw_text") and msg.raw_text:
                     text = msg.raw_text
                 elif hasattr(msg, "message") and msg.message:
                     text = msg.message
-                
-                preview = text.split("\n")[0][:60] + "..." if text else "Mensagem sem texto"
-                
-                # Calcular o horario estimado
+
+                preview = (text.split("\n")[0][:60] + "...") if text else "Mensagem sem texto"
+
                 if idx == 0:
                     eta = current_next
                 else:
                     if burst_allowed and not burst_used:
-                        eta = current_next  # Mesmo horario do anterior
+                        eta = current_next
                         burst_used = True
                     else:
                         current_next += delay
                         eta = current_next
                         burst_used = False
-                
+
                 tz_br = timezone(timedelta(hours=-3))
                 eta_str = datetime.fromtimestamp(eta, tz=tz_br).strftime("%H:%M:%S")
-                
-                items.append({
-                    "preview": preview,
-                    "eta": eta_str
-                })
+
+                items.append({"preview": preview, "eta": eta_str})
         except Exception as exc:
             import traceback
-            err_msg = f"[get_queue_items] Erro ao extrair fila: {exc}\n{traceback.format_exc()}"
-            print(err_msg, flush=True)
-            self._log("error", err_msg)
-            
-        return items
+            print(f"[_refresh_queue_snapshot] Erro: {exc}\n{traceback.format_exc()}", flush=True)
+
+        with self._lock:
+            self._queue_snapshot = items
 
     def update_config(self, config: dict) -> None:
         with self._lock:
@@ -551,6 +543,7 @@ class BotRunner:
                         )
                         with self._lock:
                             self._active_delivery_item = (fingerprint, message)
+                        self._refresh_queue_snapshot()
                     except asyncio.TimeoutError:
                         continue
 
@@ -572,16 +565,20 @@ class BotRunner:
                                 f"[RateLimit] Msg {msg_id} em cooldown: aguardando {int(time_remaining)}s. Fila restante: {queue_size}.",
                             )
                             
-                            # Espera o tempo restante (ou até o bot parar)
+                            # Atualiza snapshot para o heartbeat ver o ETA correto
+                            self._refresh_queue_snapshot()
+                            
+                            # Espera o tempo restante (ou até o bot parar), max 30s para refresh periódico
+                            wait_chunk = min(time_remaining, 30)
                             try:
                                 await asyncio.wait_for(
                                     self._stop_event.wait(),
-                                    timeout=time_remaining,
+                                    timeout=wait_chunk,
                                 )
                                 # Se chegou aqui, o bot foi parado
                                 break
                             except asyncio.TimeoutError:
-                                # Timeout normal, cooldown terminou
+                                # Timeout normal, continua o loop de cooldown
                                 pass
                         
                         # Se o bot foi parado durante a espera, sair
@@ -643,6 +640,7 @@ class BotRunner:
                         with self._lock:
                             self._active_delivery_item = None
                         self._delivery_queue.task_done()
+                        self._refresh_queue_snapshot()
 
             self._delivery_queue = asyncio.Queue()
             self._delivery_worker_task = asyncio.create_task(_delivery_worker())
@@ -716,6 +714,7 @@ class BotRunner:
 
                                 # Enfileira para envio sequencial sem travar a proxima busca.
                                 await self._delivery_queue.put((fingerprint, message))
+                                self._refresh_queue_snapshot()
                                 self._log(
                                     "info",
                                     f"[RateLimit] Msg {message.id} enfileirada. Fila: {self._delivery_queue.qsize()} item(ns).",
