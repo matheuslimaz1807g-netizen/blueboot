@@ -189,8 +189,9 @@ class BotRunner:
             if current_next < now:
                 current_next = now
 
-            burst_allowed = len(full_list) > 2
-            burst_used = False
+            # Simulação exata da lógica do _delivery_worker para cálculo de ETA
+            current_time_sim = current_next
+            burst_sim = 0  # Simula burst_count no worker
 
             for idx, item in enumerate(full_list):
                 if not (isinstance(item, tuple) and len(item) == 2):
@@ -203,18 +204,43 @@ class BotRunner:
                 elif hasattr(msg, "message") and msg.message:
                     text = msg.message
 
-                preview = (text.split("\n")[0][:60] + "...") if text else "Mensagem sem texto"
-
-                if idx == 0:
-                    eta = current_next
-                else:
-                    if burst_allowed and not burst_used:
-                        eta = current_next
-                        burst_used = True
+                preview_text = ""
+                if text:
+                    # Encontra linhas não-vazias
+                    lines = [line.strip() for line in text.splitlines() if line.strip()]
+                    if len(lines) > 1:
+                        # De acordo com as regras de pipeline (clean_text), a primeira linha não-vazia é o headline (ex: "BOM, BONITO E BARATO"),
+                        # e a segunda é o título do produto.
+                        second_line = lines[1]
+                        if not second_line.startswith("#"):
+                            preview_text = second_line
+                        else:
+                            preview_text = lines[0]
+                    elif lines:
+                        preview_text = lines[0]
                     else:
-                        current_next += delay
-                        eta = current_next
-                        burst_used = False
+                        preview_text = "Mensagem sem texto"
+                else:
+                    preview_text = "Mensagem sem texto"
+
+                # Remove hashtags para ficar um visual premium e limpo
+                preview_text = re.sub(r'#\w+', '', preview_text).strip()
+                preview = (preview_text[:60] + "...") if len(preview_text) > 60 else preview_text
+
+                # O ETA deste item é o tempo simulado atual
+                eta = current_time_sim
+
+                # Determina o tempo para o PRÓXIMO item, simulando o que o worker decidirá ao concluir este item
+                queue_remaining_after_this = len(full_list) - (idx + 1)
+                
+                # Se após enviar este item, ainda restarem >= 3 itens na fila, e não tivermos usado o burst:
+                if queue_remaining_after_this >= 3 and burst_sim < 1:
+                    # Burst ativado para o próximo item (sem delay adicional)
+                    burst_sim += 1
+                else:
+                    # Cooldown normal para o próximo item
+                    current_time_sim += delay
+                    burst_sim = 0
 
                 tz_br = timezone(timedelta(hours=-3))
                 eta_str = datetime.fromtimestamp(eta, tz=tz_br).strftime("%H:%M:%S")
