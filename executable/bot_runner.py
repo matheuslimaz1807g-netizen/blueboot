@@ -205,27 +205,73 @@ class BotRunner:
                     text = msg.message
 
                 preview_text = ""
+                price = ""
+                store = ""
+
                 if text:
-                    # Encontra linhas não-vazias
+                    # 1. Detectar preço (R$ XX,XX)
+                    price_match = re.search(r'R\$\s*([\d.,]+)', text)
+                    if price_match:
+                        price = f"R$ {price_match.group(1).strip()}"
+
+                    # 2. Detectar loja
+                    text_lower = text.lower()
+                    if "mercadolivre" in text_lower or "meli.la" in text_lower:
+                        store = "Mercado Livre"
+                    elif "aliexpress" in text_lower or "a.aliexpress" in text_lower:
+                        store = "AliExpress"
+                    elif "shopee" in text_lower:
+                        store = "Shopee"
+
+                    # 3. Heurística inteligente para extrair o título do produto real
                     lines = [line.strip() for line in text.splitlines() if line.strip()]
-                    if len(lines) > 1:
-                        # De acordo com as regras de pipeline (clean_text), a primeira linha não-vazia é o headline (ex: "BOM, BONITO E BARATO"),
-                        # e a segunda é o título do produto.
-                        second_line = lines[1]
-                        if not second_line.startswith("#"):
-                            preview_text = second_line
+                    avoid_terms = ["compre", "link", "aqui", "grupo", "oferta", "desconto", "cupom", "off", "site", "clique", "👉", "🛒", "ativo", "liberado", "enviado", "valor"]
+                    
+                    best_title = ""
+                    for line in lines:
+                        line_lower = line.lower()
+                        # Pula linhas com links
+                        if "http" in line_lower:
+                            continue
+                        # Pula hashtags
+                        if line.startswith("#"):
+                            continue
+                        # Pula linhas que contenham termos genéricos de cupom/ações comerciais
+                        if any(term in line_lower for term in avoid_terms):
+                            continue
+                        # Pula linhas muito curtas que não representam um título de produto
+                        if len(line) < 5:
+                            continue
+                        
+                        # Se passou em todas as regras, esta linha é o título do produto!
+                        best_title = line
+                        break
+
+                    # Fallbacks caso a heurística seja muito estrita
+                    if not best_title:
+                        if len(lines) > 1:
+                            best_title = lines[1] if not lines[1].startswith("#") else lines[0]
+                        elif lines:
+                            best_title = lines[0]
                         else:
-                            preview_text = lines[0]
-                    elif lines:
-                        preview_text = lines[0]
-                    else:
-                        preview_text = "Mensagem sem texto"
+                            best_title = "Mensagem sem texto"
+
+                    # Remove hashtags do título do produto
+                    best_title = re.sub(r'#\w+', '', best_title).strip()
+                    
+                    # 4. Montar previsualização premium elegante (Título | Preço | Loja)
+                    parts = [best_title]
+                    if price:
+                        parts.append(price)
+                    if store:
+                        parts.append(store)
+                    
+                    preview_text = " | ".join(parts)
                 else:
                     preview_text = "Mensagem sem texto"
 
-                # Remove hashtags para ficar um visual premium e limpo
-                preview_text = re.sub(r'#\w+', '', preview_text).strip()
-                preview = (preview_text[:60] + "...") if len(preview_text) > 60 else preview_text
+                # Limita tamanho para layout elegante
+                preview = (preview_text[:65] + "...") if len(preview_text) > 65 else preview_text
 
                 # O ETA deste item é o tempo simulado atual
                 eta = current_time_sim
