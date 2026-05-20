@@ -19,3 +19,4 @@
 | 2026-05-19 10:58 | Antes de corrigir validação do delay e timezone dos logs | git stash push -m "BACKUP-2026-05-19-10-58: Fix Delay Validation and Timezone" | stash@{0} |
 | 2026-05-20 09:56 | Antes de otimizar previsualização de itens e correção de ETA na fila | git stash push -m "BACKUP-2026-05-20-09-56" | N/A (Git retornou: No local changes to save) |
 | 2026-05-20 10:38 | Antes de implementar previsualização premium na fila (Título, Preço e Loja) | git stash push -m "BACKUP-2026-05-20-10-38" | N/A (Git retornou: No local changes to save) |
+| 2026-05-20 11:06 | Antes de remover cooldown duplicado no servidor de WhatsApp | git stash push -m "BACKUP-2026-05-20-11-06" | N/A (Git retornou: No local changes to save) |

@@ -121,30 +121,21 @@ client.on('ready', () => __awaiter(void 0, void 0, void 0, function* () {
         console.error("Erro ao buscar chats no start:", err.message);
     }
 }));
-// --- FILA DE MENSAGENS (ANTI-BAN) ---
+// --- FILA DE MENSAGENS (serialização de envios concorrentes) ---
 let messageQueue = [];
 let isProcessing = false;
-let lastDispatchTime = 0; // Armazena o timestamp do último envio bem-sucedido
-const SEND_DELAY = (parseInt(process.env.WHATSAPP_DELAY_MINUTES || "15")) * 60 * 1000;
+// ⚠️ O delay entre envios é controlado pelo bot Python (delay_segundos).
+// Este servidor apenas serializa chamadas concorrentes — sem delay interno.
 function processQueue() {
     return __awaiter(this, void 0, void 0, function* () {
         if (isProcessing || messageQueue.length === 0)
             return;
         isProcessing = true;
         while (messageQueue.length > 0) {
-            // Enforça cooldown global mínimo entre disparos sucessivos
-            const now = Date.now();
-            const timeSinceLast = now - lastDispatchTime;
-            if (timeSinceLast < SEND_DELAY) {
-                const waitTime = SEND_DELAY - timeSinceLast;
-                console.log(`[Queue] Respeitando cooldown mínimo: aguardando ${Math.ceil(waitTime / 1000)}s antes do envio do próximo item...`);
-                yield new Promise((res) => setTimeout(res, waitTime));
-            }
             const item = messageQueue.shift();
             console.log(`[Queue] Processando envio para grupos: ${item.targets.join(", ")}`);
             try {
                 yield sendToGroupsInternal(item.text, item.base64Image, item.mimeType, item.targets);
-                lastDispatchTime = Date.now(); // Atualiza após envio com sucesso
                 console.log("[Queue] Envio concluído.");
             }
             catch (err) {
@@ -197,8 +188,7 @@ app.get('/status', (req, res) => {
     res.json({
         status: statusVal,
         qr: qrCodeBase64,
-        queue_size: messageQueue.length,
-        next_delay_min: isProcessing && messageQueue.length > 0 ? SEND_DELAY / 60000 : 0
+        queue_size: messageQueue.length
     });
 });
 app.post('/send', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
