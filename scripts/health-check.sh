@@ -52,7 +52,7 @@ done
 echo ""
 log_info "Verificando API..."
 
-API_STATUS=$(curl -sf --connect-timeout 5 http://localhost:8000/health 2>/dev/null || echo "FAIL")
+API_STATUS=$(docker exec bluebot_api curl -sf --connect-timeout 5 http://localhost:8000/health 2>/dev/null || echo "FAIL")
 if echo "$API_STATUS" | grep -q "ok"; then
     log_ok "API /health: OK"
 else
@@ -67,7 +67,7 @@ DOMAINS=("bluebotapp.com.br" "console.bluebotapp.com.br" "api.bluebotapp.com.br"
 for d in "${DOMAINS[@]}"; do
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://$d/" 2>/dev/null || echo "000")
     case "$HTTP_CODE" in
-        200|301|302) log_ok "https://$d → $HTTP_CODE" ;;
+        200|301|302|307) log_ok "https://$d → $HTTP_CODE" ;;
         000)         log_fail "https://$d → conexão falhou" ;;
         *)           log_warn "https://$d → $HTTP_CODE" ;;
     esac
