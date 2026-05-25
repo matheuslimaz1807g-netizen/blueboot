@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_field as _decrypt, encrypt_field as _encrypt
+from app.core.security import decrypt_field, encrypt_field
 from app.models.models import ClientConfig, License
 from app.schemas.schemas import ConfigIn, ConfigOut
 
@@ -28,21 +28,22 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         delay_segundos=cfg.delay_segundos,
         whatsapp_endpoint=cfg.whatsapp_endpoint,
         wpp_destinations=cfg.wpp_destinations or [],
+        bot_enabled=cfg.bot_enabled,
         send_telegram=cfg.send_telegram,
         send_whatsapp=cfg.send_whatsapp,
         conv_shopee=cfg.conv_shopee,
         conv_ali=cfg.conv_ali,
         conv_ml=cfg.conv_ml,
         filtros=cfg.filtros or {},
-        shopee_token=_decrypt(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
-        ali_key=_decrypt(cfg.ali_key_enc) if cfg.ali_key_enc else None,
-        ali_secret=_decrypt(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
-        ali_tracking=_decrypt(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
-        ml_token=_decrypt(cfg.ml_token_enc) if cfg.ml_token_enc else None,
-        ml_cookies=_decrypt(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
-        api_id=_decrypt(cfg.api_id_enc) if cfg.api_id_enc else None,
-        api_hash=_decrypt(cfg.api_hash_enc) if cfg.api_hash_enc else None,
-        session_string=_decrypt(cfg.session_string_enc) if cfg.session_string_enc else None,
+        shopee_token=decrypt_field(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
+        ali_key=decrypt_field(cfg.ali_key_enc) if cfg.ali_key_enc else None,
+        ali_secret=decrypt_field(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
+        ali_tracking=decrypt_field(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
+        ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
+        ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
+        api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
+        api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
+        session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
         bot_dashboard_url=cfg.bot_dashboard_url,
     )
 
@@ -64,6 +65,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     cfg.delay_segundos = data.delay_segundos
     cfg.whatsapp_endpoint = data.whatsapp_endpoint
     cfg.wpp_destinations = data.wpp_destinations
+    cfg.bot_enabled = data.bot_enabled
     cfg.send_telegram = data.send_telegram
     cfg.send_whatsapp = data.send_whatsapp
     cfg.conv_shopee = data.conv_shopee
@@ -74,23 +76,23 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     # Update encrypted fields whenever the payload explicitly includes them.
     # Empty strings intentionally clear saved credentials.
     if data.shopee_token is not None:
-        cfg.shopee_token_enc = _encrypt(data.shopee_token) if data.shopee_token else None
+        cfg.shopee_token_enc = encrypt_field(data.shopee_token) if data.shopee_token else None
     if data.ali_key is not None:
-        cfg.ali_key_enc = _encrypt(data.ali_key) if data.ali_key else None
+        cfg.ali_key_enc = encrypt_field(data.ali_key) if data.ali_key else None
     if data.ali_secret is not None:
-        cfg.ali_secret_enc = _encrypt(data.ali_secret) if data.ali_secret else None
+        cfg.ali_secret_enc = encrypt_field(data.ali_secret) if data.ali_secret else None
     if data.ali_tracking is not None:
-        cfg.ali_tracking_enc = _encrypt(data.ali_tracking) if data.ali_tracking else None
+        cfg.ali_tracking_enc = encrypt_field(data.ali_tracking) if data.ali_tracking else None
     if data.ml_token is not None:
-        cfg.ml_token_enc = _encrypt(data.ml_token) if data.ml_token else None
+        cfg.ml_token_enc = encrypt_field(data.ml_token) if data.ml_token else None
     if data.ml_cookies is not None:
-        cfg.ml_cookies_enc = _encrypt(data.ml_cookies) if data.ml_cookies else None
+        cfg.ml_cookies_enc = encrypt_field(data.ml_cookies) if data.ml_cookies else None
     if data.api_id is not None:
-        cfg.api_id_enc = _encrypt(data.api_id) if data.api_id else None
+        cfg.api_id_enc = encrypt_field(data.api_id) if data.api_id else None
     if data.api_hash is not None:
-        cfg.api_hash_enc = _encrypt(data.api_hash) if data.api_hash else None
+        cfg.api_hash_enc = encrypt_field(data.api_hash) if data.api_hash else None
     if data.session_string is not None:
-        cfg.session_string_enc = _encrypt(data.session_string) if data.session_string else None
+        cfg.session_string_enc = encrypt_field(data.session_string) if data.session_string else None
     # bot_dashboard_url is plain text (just a local network URL)
     cfg.bot_dashboard_url = data.bot_dashboard_url
 
@@ -105,21 +107,22 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         delay_segundos=cfg.delay_segundos,
         whatsapp_endpoint=cfg.whatsapp_endpoint,
         wpp_destinations=cfg.wpp_destinations or [],
+        bot_enabled=cfg.bot_enabled,
         send_telegram=cfg.send_telegram,
         send_whatsapp=cfg.send_whatsapp,
         conv_shopee=cfg.conv_shopee,
         conv_ali=cfg.conv_ali,
         conv_ml=cfg.conv_ml,
         filtros=cfg.filtros or {},
-        shopee_token=_decrypt(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
-        ali_key=_decrypt(cfg.ali_key_enc) if cfg.ali_key_enc else None,
-        ali_secret=_decrypt(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
-        ali_tracking=_decrypt(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
-        ml_token=_decrypt(cfg.ml_token_enc) if cfg.ml_token_enc else None,
-        ml_cookies=_decrypt(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
-        api_id=_decrypt(cfg.api_id_enc) if cfg.api_id_enc else None,
-        api_hash=_decrypt(cfg.api_hash_enc) if cfg.api_hash_enc else None,
-        session_string=_decrypt(cfg.session_string_enc) if cfg.session_string_enc else None,
+        shopee_token=decrypt_field(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
+        ali_key=decrypt_field(cfg.ali_key_enc) if cfg.ali_key_enc else None,
+        ali_secret=decrypt_field(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
+        ali_tracking=decrypt_field(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
+        ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
+        ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
+        api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
+        api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
+        session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
         bot_dashboard_url=cfg.bot_dashboard_url,
     )
 

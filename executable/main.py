@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import sys
@@ -121,9 +122,6 @@ def sync_env_vars(config: dict, persist: bool = False) -> None:
     if persist and updates:
         save_values_to_env(updates)
 
-    if "ML_COOKIES" in updates:
-        add_log("info", f"ML_COOKIES sincronizado: {len(updates['ML_COOKIES'])} caracteres.")
-
 
 def save_session_to_env(session_string: str) -> bool:
     """
@@ -177,6 +175,8 @@ DASHBOARD_HTML = (Path(__file__).parent / "templates" / "dashboard.html").read_t
 
 def create_app(mode: str, initial_config: dict):
     app = Flask(__name__)
+    logging.getLogger("werkzeug").disabled = True
+    app.logger.disabled = True
     
     # Credenciais do Painel
     DASH_USER = os.getenv("DASHBOARD_USER", "admin")
@@ -220,6 +220,10 @@ def create_app(mode: str, initial_config: dict):
             logs=list(_logs),
             wpp=initial_config.get("send_whatsapp", False)
         )
+
+    @app.route("/health")
+    def health():
+        return jsonify({"ok": True, "status": _runner.status() if _runner else "stopped"})
 
     @app.route("/api/status")
     def status():
@@ -484,11 +488,13 @@ def main():
 
     # 2. Iniciar Bot
     _runner = BotRunner(log_callback=add_log, activity_callback=add_client_activity_log)
-    if config.get("api_id") and config.get("api_hash"):
+    if config.get("bot_enabled", True) and config.get("api_id") and config.get("api_hash"):
         try:
             _runner.start(config)
         except Exception as e:
             add_log("error", f"❌ Falha ao iniciar BotRunner: {e}")
+    elif not config.get("bot_enabled", True):
+        add_log("info", "Bot parado por configuracao remota do painel.")
     else:
         add_log("warning", "⚠️ API_ID/HASH ausentes. Bot de Telegram não iniciado.")
 
@@ -500,6 +506,7 @@ def main():
             "phone", "api_id", "api_hash", "sources",
             "destination_telegram", "delay_segundos", "send_telegram", 
             "send_whatsapp", "wpp_destinations", "whatsapp_endpoint",
+            "bot_enabled",
             "conv_shopee", "conv_ali", "conv_ml",
             "shopee_token", "ali_key", "ali_secret", "ali_tracking",
             "ml_token", "ml_cookies", "web_api_url", "send_to_web_api"
@@ -545,8 +552,10 @@ def main():
                 
                 if changed_fields:
                     add_log("info", f"🔄 Painel alterou: {', '.join(changed_fields)}")
+                    bot_control_changed = "bot_enabled" in changed_fields
+                    bot_should_run = bool(new_snapshot.get("bot_enabled", True))
                     
-                    if needs_restart:
+                    if needs_restart and _runner.status() != "stopped":
                         add_log("info", "🔄 Reiniciando bot...")
                         _runner.stop()
                         time.sleep(2)
@@ -555,6 +564,30 @@ def main():
                     last_snapshot = new_snapshot
                     
                     sync_env_vars(merged, persist=True)
+
+                    if bot_control_changed and not bot_should_run:
+                        add_log("info", "Controle remoto solicitou parada do bot.")
+                        add_client_activity_log("info", "Bot parado pelo painel do cliente.")
+                        if _runner.status() != "stopped":
+                            _runner.stop()
+                        continue
+
+                    if not bot_should_run:
+                        add_log("info", "Configuracao atualizada; bot permanece parado por controle remoto.")
+                        continue
+
+                    if bot_control_changed and bot_should_run:
+                        add_log("info", "Controle remoto solicitou inicio do bot.")
+                        add_client_activity_log("info", "Bot iniciado pelo painel do cliente.")
+                        if merged.get("api_id") and merged.get("api_hash"):
+                            try:
+                                _runner.start(merged)
+                                add_log("success", "Bot iniciado pelo painel.")
+                            except Exception as e:
+                                add_log("error", f"Falha ao iniciar pelo painel: {e}")
+                        else:
+                            add_log("warning", "API_ID/API_HASH ausentes. Nao foi possivel iniciar pelo painel.")
+                        continue
                     
                     if needs_restart:
                         try:

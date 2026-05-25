@@ -19,6 +19,7 @@ if not should_verify_ssl("https://example.com"):
 
 _API_BASE_DEFAULT: str = "https://api.bluebot.com.br"
 REQUEST_TIMEOUT: int = 15
+VERBOSE_CONFIG_LOGS = os.getenv("BLUEBOT_VERBOSE_CONFIG", "").lower() == "true"
 
 
 class ConfigLoadError(Exception):
@@ -68,8 +69,12 @@ def load_config_from_env() -> dict:
         "send_to_web_api": os.getenv("SEND_TO_WEB_API", "true").lower() == "true",
     }
     
-    # Debug log (sanitized)
-    print(f"[ConfigLoader] Config Local: WPP={config['send_whatsapp']} | Destinos={len(config['wpp_destinations'])} | Endpoint={config['whatsapp_endpoint']}", flush=True)
+    if VERBOSE_CONFIG_LOGS:
+        print(
+            f"[ConfigLoader] Local: WPP={config['send_whatsapp']} | "
+            f"Destinos={len(config['wpp_destinations'])}",
+            flush=True,
+        )
     
     return config
 
@@ -96,7 +101,12 @@ def merge_configs(local: dict, remote: dict) -> dict:
 
         merged[k] = v
         
-    print(f"[ConfigLoader] Config Mesclada: WPP={merged.get('send_whatsapp')} | Destinos={len(merged.get('wpp_destinations', []))} | Endpoint={merged.get('whatsapp_endpoint')}", flush=True)
+    if VERBOSE_CONFIG_LOGS:
+        print(
+            f"[ConfigLoader] Remota aplicada: WPP={merged.get('send_whatsapp')} | "
+            f"Destinos={len(merged.get('wpp_destinations', []))}",
+            flush=True,
+        )
     return merged
 
 

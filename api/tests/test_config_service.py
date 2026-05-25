@@ -47,6 +47,8 @@ def make_existing_config() -> SimpleNamespace:
         destination_telegram=None,
         delay_segundos=3,
         whatsapp_endpoint=None,
+        wpp_destinations=[],
+        bot_enabled=True,
         send_telegram=True,
         send_whatsapp=False,
         conv_shopee=True,
@@ -103,3 +105,20 @@ def test_upsert_config_clears_ml_cookies_when_empty_string_is_sent(monkeypatch):
 
     assert cfg.ml_cookies_enc is None
     assert result.ml_cookies is None
+
+
+def test_config_contract_includes_remote_bot_enabled_flag():
+    schemas = Path(__file__).resolve().parents[1].joinpath("app", "schemas", "schemas.py").read_text(
+        encoding="utf-8"
+    )
+    models = Path(__file__).resolve().parents[1].joinpath("app", "models", "models.py").read_text(
+        encoding="utf-8"
+    )
+    executable = Path(__file__).resolve().parents[2].joinpath("executable", "main.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "bot_enabled: bool = True" in schemas
+    assert "bot_enabled: Mapped[bool]" in models
+    assert '"bot_enabled"' in executable
+    assert "Controle remoto solicitou parada do bot" in executable

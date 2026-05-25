@@ -21,4 +21,5 @@
 | 2026-05-20 10:38 | Antes de implementar previsualização premium na fila (Título, Preço e Loja) | git stash push -m "BACKUP-2026-05-20-10-38" | N/A (Git retornou: No local changes to save) |
 | 2026-05-20 11:06 | Antes de remover cooldown duplicado no servidor de WhatsApp | git stash push -m "BACKUP-2026-05-20-11-06" | N/A (Git retornou: No local changes to save) |
 | 2026-05-25 19:33 | Antes de remover a funcionalidade de grupos do WhatsApp | git stash push -m "BACKUP-2026-05-25-19-33: antes-de-remover-funcionalidade-grupos-whatsapp" | stash@{0} |
-
+| 2026-05-25 20:01 | Antes de autonomia do cliente, controle Start/Stop e ajustes de console | git stash push -u -m "BACKUP-2026-05-25-20-01: client autonomy bot control ui" seguido de git stash apply 'stash@{0}' | stash@{0} |
+| 2026-05-25 20:13 | Antes de limpar logs operacionais repetitivos do bot | git stash push -u -m "BACKUP-2026-05-25-20-13: clean bot runtime logs" seguido de git stash apply 'stash@{0}' | stash@{0} |

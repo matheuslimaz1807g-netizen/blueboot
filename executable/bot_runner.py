@@ -1,12 +1,12 @@
-"""
-bot_runner.py — Thread-safe Telethon lifecycle manager.
+﻿"""
+bot_runner.py â€” Thread-safe Telethon lifecycle manager.
 
 Runs the asyncio event loop in a dedicated daemon thread so it doesn't
 block the Flask web server running in the main thread.
 
 Usa polling (get_messages a cada 10s) no lugar de eventos NewMessage,
 pois o Telegram nem sempre entrega eventos para canais onde a conta
-é apenas assinante — polling é mais confiável nesse cenário.
+Ã© apenas assinante â€” polling Ã© mais confiÃ¡vel nesse cenÃ¡rio.
 """
 from __future__ import annotations
 
@@ -68,9 +68,9 @@ class BotRunner:
         }
         self._config: dict = {}
         self._delay: int = 3
-        # Guarda o último msg_id visto por canal para o polling
+        # Guarda o Ãºltimo msg_id visto por canal para o polling
         self._last_seen_by_chat: dict[int, int] = {}
-        # Deduplicação extra por (chat_id, msg_id)
+        # DeduplicaÃ§Ã£o extra por (chat_id, msg_id)
         self._seen_messages: set[tuple[int, int]] = set()
         self._seen_message_order: deque[tuple[int, int]] = deque()
         self._seen_message_limit: int = 5000
@@ -83,7 +83,7 @@ class BotRunner:
         self._recent_product_fingerprints: dict[str, float] = {}
         self._recent_product_order: deque[tuple[str, float]] = deque()
 
-    # ── Public API ─────────────────────────────────────────────────────────────
+    # â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def start(self, config: dict) -> None:
         """
@@ -122,7 +122,7 @@ class BotRunner:
 
     def submit_code(self, code: str, password: str = "") -> dict:
         if not self._loop or not self._client:
-            return {"ok": False, "error": "Bot não está rodando."}
+            return {"ok": False, "error": "Bot nÃ£o estÃ¡ rodando."}
 
         async def _do_auth():
             try:
@@ -163,9 +163,9 @@ class BotRunner:
     def get_queue_items(self) -> list[dict]:
         """Retorna snapshot thread-safe dos itens na fila com ETAs estimados.
 
-        O snapshot é mantido pelo _delivery_worker e atualizado sob _lock
+        O snapshot Ã© mantido pelo _delivery_worker e atualizado sob _lock
         sempre que o estado da fila muda. Isso evita acesso cross-thread
-        ao asyncio.Queue._queue (que não é thread-safe).
+        ao asyncio.Queue._queue (que nÃ£o Ã© thread-safe).
         """
         with self._lock:
             return list(self._queue_snapshot)
@@ -189,7 +189,7 @@ class BotRunner:
             if current_next < now:
                 current_next = now
 
-            # Simulação exata da lógica do _delivery_worker para cálculo de ETA
+            # SimulaÃ§Ã£o exata da lÃ³gica do _delivery_worker para cÃ¡lculo de ETA
             current_time_sim = current_next
             burst_sim = 0  # Simula burst_count no worker
 
@@ -209,7 +209,7 @@ class BotRunner:
                 store = ""
 
                 if text:
-                    # 1. Detectar preço (R$ XX,XX)
+                    # 1. Detectar preÃ§o (R$ XX,XX)
                     price_match = re.search(r'R\$\s*([\d.,]+)', text)
                     if price_match:
                         price = f"R$ {price_match.group(1).strip()}"
@@ -223,9 +223,9 @@ class BotRunner:
                     elif "shopee" in text_lower:
                         store = "Shopee"
 
-                    # 3. Heurística inteligente para extrair o título do produto real
+                    # 3. HeurÃ­stica inteligente para extrair o tÃ­tulo do produto real
                     lines = [line.strip() for line in text.splitlines() if line.strip()]
-                    avoid_terms = ["compre", "link", "aqui", "grupo", "oferta", "desconto", "cupom", "off", "site", "clique", "👉", "🛒", "ativo", "liberado", "enviado", "valor"]
+                    avoid_terms = ["compre", "link", "aqui", "grupo", "oferta", "desconto", "cupom", "off", "site", "clique", "ðŸ‘‰", "ðŸ›’", "ativo", "liberado", "enviado", "valor"]
                     
                     best_title = ""
                     for line in lines:
@@ -236,18 +236,18 @@ class BotRunner:
                         # Pula hashtags
                         if line.startswith("#"):
                             continue
-                        # Pula linhas que contenham termos genéricos de cupom/ações comerciais
+                        # Pula linhas que contenham termos genÃ©ricos de cupom/aÃ§Ãµes comerciais
                         if any(term in line_lower for term in avoid_terms):
                             continue
-                        # Pula linhas muito curtas que não representam um título de produto
+                        # Pula linhas muito curtas que nÃ£o representam um tÃ­tulo de produto
                         if len(line) < 5:
                             continue
                         
-                        # Se passou em todas as regras, esta linha é o título do produto!
+                        # Se passou em todas as regras, esta linha Ã© o tÃ­tulo do produto!
                         best_title = line
                         break
 
-                    # Fallbacks caso a heurística seja muito estrita
+                    # Fallbacks caso a heurÃ­stica seja muito estrita
                     if not best_title:
                         if len(lines) > 1:
                             best_title = lines[1] if not lines[1].startswith("#") else lines[0]
@@ -256,10 +256,10 @@ class BotRunner:
                         else:
                             best_title = "Mensagem sem texto"
 
-                    # Remove hashtags do título do produto
+                    # Remove hashtags do tÃ­tulo do produto
                     best_title = re.sub(r'#\w+', '', best_title).strip()
                     
-                    # 4. Montar previsualização premium elegante (Título | Preço | Loja)
+                    # 4. Montar previsualizaÃ§Ã£o premium elegante (TÃ­tulo | PreÃ§o | Loja)
                     parts = [best_title]
                     if price:
                         parts.append(price)
@@ -273,18 +273,18 @@ class BotRunner:
                 # Limita tamanho para layout elegante
                 preview = (preview_text[:65] + "...") if len(preview_text) > 65 else preview_text
 
-                # O ETA deste item é o tempo simulado atual
+                # O ETA deste item Ã© o tempo simulado atual
                 eta = current_time_sim
 
-                # Determina o tempo para o PRÓXIMO item, simulando o que o worker decidirá ao concluir este item
+                # Determina o tempo para o PRÃ“XIMO item, simulando o que o worker decidirÃ¡ ao concluir este item
                 queue_remaining_after_this = len(full_list) - (idx + 1)
                 
-                # Se após enviar este item, ainda restarem >= 3 itens na fila, e não tivermos usado o burst:
+                # Se apÃ³s enviar este item, ainda restarem >= 3 itens na fila, e nÃ£o tivermos usado o burst:
                 if queue_remaining_after_this >= 3 and burst_sim < 1:
-                    # Burst ativado para o próximo item (sem delay adicional)
+                    # Burst ativado para o prÃ³ximo item (sem delay adicional)
                     burst_sim += 1
                 else:
-                    # Cooldown normal para o próximo item
+                    # Cooldown normal para o prÃ³ximo item
                     current_time_sim += delay
                     burst_sim = 0
 
@@ -305,7 +305,7 @@ class BotRunner:
             self._delay = int(config.get("delay_segundos", 300))
 
     def _remember_message(self, chat_id: int, msg_id: int) -> bool:
-        """Retorna False se a mensagem já foi vista."""
+        """Retorna False se a mensagem jÃ¡ foi vista."""
         key = (chat_id, msg_id)
         with self._lock:
             if key in self._seen_messages:
@@ -398,7 +398,7 @@ class BotRunner:
                 self._recent_product_order.append((fingerprint, now))
             self._prune_product_fingerprints_locked(now)
 
-    # ── Internal asyncio loop ─────────────────────────────────────────────────
+    # â”€â”€ Internal asyncio loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _run_loop(self) -> None:
         asyncio.set_event_loop(self._loop)
@@ -418,7 +418,7 @@ class BotRunner:
         api_hash = str(config.get("api_hash") or "").strip()
 
         if not api_id or not api_hash:
-            self._log("error", "API_ID ou API_HASH inválidos ou ausentes na configuração.")
+            self._log("error", "API_ID ou API_HASH invÃ¡lidos ou ausentes na configuraÃ§Ã£o.")
             with self._lock:
                 self._status_val = "error"
             return
@@ -433,7 +433,7 @@ class BotRunner:
             try:
                 session = StringSession(session_string)
             except Exception as e:
-                self._log("warning", f"⚠️ Session string inválida ou corrompida ({str(e)[:50]}...). Iniciando nova sessão.")
+                self._log("warning", f"âš ï¸ Session string invÃ¡lida ou corrompida ({str(e)[:50]}...). Iniciando nova sessÃ£o.")
                 session = StringSession()
 
         self._client = TelegramClient(session, api_id, api_hash)
@@ -441,10 +441,10 @@ class BotRunner:
         try:
             await self._client.connect()
 
-            # ── Autenticação ──────────────────────────────────────────────────
+            # â”€â”€ AutenticaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if not await self._client.is_user_authorized():
                 if not phone:
-                    self._log("error", "Número de telefone ausente para autenticação.")
+                    self._log("error", "NÃºmero de telefone ausente para autenticaÃ§Ã£o.")
                     with self._lock:
                         self._status_val = "error"
                     return
@@ -452,11 +452,11 @@ class BotRunner:
                 with self._lock:
                     self._status_val = "waiting_code"
 
-                self._log("info", f"Sessão requer autorização. Solicitando código para {phone}...")
+                self._log("info", f"SessÃ£o requer autorizaÃ§Ã£o. Solicitando cÃ³digo para {phone}...")
                 try:
                     self._phone_hash = await self._client.send_code_request(phone)
                 except Exception as exc:
-                    self._log("error", f"Erro ao solicitar código: {exc}")
+                    self._log("error", f"Erro ao solicitar cÃ³digo: {exc}")
                     with self._lock:
                         self._status_val = "error"
                     return
@@ -466,13 +466,13 @@ class BotRunner:
                 await self._auth_event.wait()
 
                 if not self._auth_success:
-                    self._log("info", "Autenticação cancelada ou bot parado.")
+                    self._log("info", "AutenticaÃ§Ã£o cancelada ou bot parado.")
                     return
 
             with self._lock:
                 self._status_val = "running"
 
-            # ── Resolver fontes ───────────────────────────────────────────────
+            # â”€â”€ Resolver fontes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             self._log("info", f"Resolvendo {len(sources)} fontes: {sources}")
             resolved_chats = []
             for src in sources:
@@ -483,7 +483,7 @@ class BotRunner:
                     entity_input = src_clean.split('/')[-1] if '/' in src_clean else src_clean
                     
                     entity = None
-                    # Se não for numérico (com ou sem sinal de menos), tentamos forçar a resolução via API para atualizar o cache
+                    # Se nÃ£o for numÃ©rico (com ou sem sinal de menos), tentamos forÃ§ar a resoluÃ§Ã£o via API para atualizar o cache
                     is_numeric = entity_input.isdigit() or (entity_input.startswith('-') and entity_input[1:].isdigit())
                     if not is_numeric:
                         try:
@@ -494,25 +494,25 @@ class BotRunner:
                             elif res.users:
                                 entity = res.users[0]
                         except Exception as ex:
-                            self._log("warning", f"ResolveUsernameRequest falhou para '{entity_input}', tentando get_entity padrão: {ex}")
+                            self._log("warning", f"ResolveUsernameRequest falhou para '{entity_input}', tentando get_entity padrÃ£o: {ex}")
                     
                     if not entity:
                         entity = await self._client.get_entity(entity_input)
 
                     entity_name = getattr(entity, "title", None) or getattr(entity, "username", None) or src_clean
                     resolved_chats.append(entity)
-                    self._log("info", f"✅ Monitorando: {entity_name} (ID: {entity.id})")
+                    self._log("info", f"âœ… Monitorando: {entity_name} (ID: {entity.id})")
                 except Exception as e:
-                    self._log("warning", f"❌ Falha ao encontrar '{src_clean}': {e}")
+                    self._log("warning", f"âŒ Falha ao encontrar '{src_clean}': {e}")
 
             if not resolved_chats:
-                self._log("warning", "Nenhuma fonte válida encontrada para monitorar.")
+                self._log("warning", "Nenhuma fonte vÃ¡lida encontrada para monitorar.")
                 return
             else:
                 self._log("success", f"Bot conectado e monitorando {len(resolved_chats)} fontes via polling.")
 
-            # ── Seed: marca as mensagens atuais como já vistas ────────────────
-            # Assim só processa mensagens NOVAS após o bot iniciar
+            # â”€â”€ Seed: marca as mensagens atuais como jÃ¡ vistas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # Assim sÃ³ processa mensagens NOVAS apÃ³s o bot iniciar
             for entity in resolved_chats:
                 try:
                     msgs = await self._client.get_messages(entity, limit=5)
@@ -522,7 +522,7 @@ class BotRunner:
                 except Exception as exc:
                     self._log("warning", f"[Polling] Falha ao iniciar cursor de {getattr(entity, 'id', '?')}: {exc}")
 
-            # ── Processar mensagem e atualizar stats ──────────────────────────
+            # â”€â”€ Processar mensagem e atualizar stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             async def _process_and_count(message) -> tuple[bool, bool, bool, Optional[dict]]:
                 try:
                     processed, tg_ok, wp_ok, promo = await processar_mensagem(
@@ -548,7 +548,7 @@ class BotRunner:
                                 destination_text = " e ".join(destinations)
                                 total = self._stats["today_processed"]
                                 
-                                # Extrair informações do produto
+                                # Extrair informaÃ§Ãµes do produto
                                 title_text = "Produto"
                                 price_text = "N/A"
                                 store_text = ""
@@ -558,7 +558,7 @@ class BotRunner:
                                     elif promo.get("originalTitle"):
                                         title_text = promo.get("originalTitle").strip()
                                     
-                                    # Limitar tamanho do título para caber no log
+                                    # Limitar tamanho do tÃ­tulo para caber no log
                                     if len(title_text) > 60:
                                         title_text = title_text[:57] + "..."
                                         
@@ -570,16 +570,16 @@ class BotRunner:
                                     if promo.get("store"):
                                         store_text = f" [{promo.get('store')}]"
                                 
-                                # Calcular horário aproximado do próximo disparo
+                                # Calcular horÃ¡rio aproximado do prÃ³ximo disparo
                                 delay_to_use = self._delay if self._delay > 0 else 3
                                 next_dispatch = time.time() + delay_to_use
                                 tz_br = timezone(timedelta(hours=-3))
                                 next_time_str = datetime.fromtimestamp(next_dispatch, tz=tz_br).strftime("%H:%M:%S")
                                 
                                 activity_msg = (
-                                    f"📦 {title_text}{store_text} | Valor: {price_text}\n"
-                                    f"✅ Enviado para {destination_text}! Total hoje: {total}.\n"
-                                    f"⏱️ Próximo envio liberado a partir das {next_time_str}."
+                                    f"ðŸ“¦ {title_text}{store_text} | Valor: {price_text}\n"
+                                    f"âœ… Enviado para {destination_text}! Total hoje: {total}.\n"
+                                    f"â±ï¸ PrÃ³ximo envio liberado a partir das {next_time_str}."
                                 )
                                 self._activity(
                                     "success",
@@ -607,7 +607,7 @@ class BotRunner:
                 burst_count = 0  # Controla envios imediatos
                 
                 while not self._stop_event.is_set():
-                    # ✅ PASSO 1: PEGAR ITEM DA FILA (com timeout de 1s)
+                    # âœ… PASSO 1: PEGAR ITEM DA FILA (com timeout de 1s)
                     try:
                         fingerprint, message = await asyncio.wait_for(
                             self._delivery_queue.get(),
@@ -623,7 +623,7 @@ class BotRunner:
                         msg_id = getattr(message, "id", "?")
                         queue_size = self._delivery_queue.qsize()
                         
-                        # ✅ PASSO 2: VERIFICAR SE PRECISA ESPERAR COOLDOWN
+                        # âœ… PASSO 2: VERIFICAR SE PRECISA ESPERAR COOLDOWN
                         while True:
                             with self._lock:
                                 time_remaining = max(0, self._next_dispatch_at - time.time())
@@ -640,7 +640,7 @@ class BotRunner:
                             # Atualiza snapshot para o heartbeat ver o ETA correto
                             self._refresh_queue_snapshot()
                             
-                            # Espera o tempo restante (ou até o bot parar), max 30s para refresh periódico
+                            # Espera o tempo restante (ou atÃ© o bot parar), max 30s para refresh periÃ³dico
                             wait_chunk = min(time_remaining, 30)
                             try:
                                 await asyncio.wait_for(
@@ -658,7 +658,7 @@ class BotRunner:
                             self._delivery_queue.task_done()
                             break
                         
-                        # ✅ PASSO 3: PROCESSAR A MENSAGEM
+                        # âœ… PASSO 3: PROCESSAR A MENSAGEM
                         self._log(
                             "info",
                             f"[RateLimit] Processando msg {msg_id}. Fila restante: {queue_size}.",
@@ -666,17 +666,17 @@ class BotRunner:
                         
                         _processed, tg_ok, wp_ok, _promo = await self._process_and_count(message)
                         
-                        # ✅ PASSO 4: SÓ ATIVAR COOLDOWN SE REALMENTE ENVIOU PARA ALGUM CANAL
+                        # âœ… PASSO 4: SÃ“ ATIVAR COOLDOWN SE REALMENTE ENVIOU PARA ALGUM CANAL
                         actually_sent = tg_ok or wp_ok
                         if actually_sent:
                             with self._lock:
                                 delay_to_use = self._delay if self._delay > 0 else 300
                                 
-                                # Burst logic: se fila restante for >= 3 (ou seja, total era 4), e ainda não usamos o burst
+                                # Burst logic: se fila restante for >= 3 (ou seja, total era 4), e ainda nÃ£o usamos o burst
                                 if queue_size >= 3 and burst_count < 1:
                                     self._next_dispatch_at = time.time()  # Sem delay!
                                     burst_count += 1
-                                    burst_msg = " ⚡ BURST ATIVADO: próximo item imediato!"
+                                    burst_msg = " âš¡ BURST ATIVADO: prÃ³ximo item imediato!"
                                 else:
                                     self._next_dispatch_at = time.time() + delay_to_use
                                     burst_count = 0
@@ -691,23 +691,23 @@ class BotRunner:
                             
                             self._log(
                                 "info",
-                                f"[RateLimit] ✅ Msg {msg_id} enviada para {dest_text}! Próximo envio em {max(0, int(self._next_dispatch_at - time.time()))}s.{burst_msg}",
+                                f"[RateLimit] âœ… Msg {msg_id} enviada para {dest_text}! PrÃ³ximo envio em {max(0, int(self._next_dispatch_at - time.time()))}s.{burst_msg}",
                             )
                         elif _processed:
                             self._log(
                                 "info",
-                                f"[RateLimit] ⏭️  Msg {msg_id} processada mas filtrada/sem destino. Próximo item imediato.",
+                                f"[RateLimit] â­ï¸  Msg {msg_id} processada mas filtrada/sem destino. PrÃ³ximo item imediato.",
                             )
                         else:
                             self._log(
                                 "info",
-                                f"[RateLimit] ⏭️  Msg {msg_id} ignorada (não é promoção/link inválido). Próximo item imediato.",
+                                f"[RateLimit] â­ï¸  Msg {msg_id} ignorada (nÃ£o Ã© promoÃ§Ã£o/link invÃ¡lido). PrÃ³ximo item imediato.",
                             )
                         
                     except Exception as exc:
                         self._log("error", f"[RateLimit] Erro ao processar msg {msg_id}: {exc}")
                     finally:
-                        # ✅ FINALIZAR PRODUTO E MARCAR TASK COMO CONCLUÍDA
+                        # âœ… FINALIZAR PRODUTO E MARCAR TASK COMO CONCLUÃDA
                         self._finish_product(fingerprint, remember_recent=False)
                         with self._lock:
                             self._active_delivery_item = None
@@ -717,34 +717,25 @@ class BotRunner:
             self._delivery_queue = asyncio.Queue()
             self._delivery_worker_task = asyncio.create_task(_delivery_worker())
 
-            # ── Loop de polling (Tarefa Principal) ────────────────────────────
-            self._log("info", "🚀 Motor de busca (Polling) iniciado!")
+            # â”€â”€ Loop de polling (Tarefa Principal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            self._log("info", "ðŸš€ Motor de busca (Polling) iniciado!")
             
-            # Log inicial com configurações
+            # Log inicial com configuraÃ§Ãµes
             wpp_enabled = self._config.get("send_whatsapp", False)
             wpp_destinations = self._config.get("wpp_destinations", [])
             wpp_endpoint = self._config.get("whatsapp_endpoint") or "http://localhost:4000/send"
             
-            # Garantir que a config interna também seja corrigida se estiver nula
+            # Garantir que a config interna tambÃ©m seja corrigida se estiver nula
             if self._config.get("whatsapp_endpoint") is None:
                 self._config["whatsapp_endpoint"] = wpp_endpoint
             
             now = time.time()
             if now - getattr(self, "_last_config_log_time", 0) > 600:
-                self._log("info", f"⚙️ WhatsApp Config: ENABLED={wpp_enabled} | Canais={wpp_destinations} | Endpoint={wpp_endpoint}")
+                self._log("info", f"âš™ï¸ WhatsApp Config: ENABLED={wpp_enabled} | Canais={wpp_destinations} | Endpoint={wpp_endpoint}")
                 self._last_config_log_time = now
-            
-            last_heartbeat = time.time()
             
             while not self._stop_event.is_set():
                 try:
-                    # Heartbeat
-                    if time.time() - last_heartbeat > 60:
-                        now_hb = time.time()
-                        if now_hb - getattr(self, "_last_hb_log_time", 0) > 600:
-                            self._log("info", f"💓 Heartbeat: Bot monitorando {len(resolved_chats)} fontes... (WhatsApp: {'✅' if wpp_enabled else '❌'})")
-                            self._last_hb_log_time = now_hb
-                        last_heartbeat = time.time()
 
                     for entity in resolved_chats:
                         if self._stop_event.is_set(): break
@@ -792,9 +783,9 @@ class BotRunner:
                                     f"[RateLimit] Msg {message.id} enfileirada. Fila: {self._delivery_queue.qsize()} item(ns).",
                                 )
 
-                    # Se a conexão cair, o client.get_messages vai falhar e cair aqui
+                    # Se a conexÃ£o cair, o client.get_messages vai falhar e cair aqui
                     if not self._client.is_connected():
-                        self._log("warning", "Conexão perdida. Tentando reconectar...")
+                        self._log("warning", "ConexÃ£o perdida. Tentando reconectar...")
                         await self._client.connect()
                         await asyncio.sleep(5)
                     
@@ -806,7 +797,7 @@ class BotRunner:
                     await asyncio.sleep(10)
 
         except Exception as exc:
-            self._log("error", f"[BotRunner] Exceção no cliente: {exc}")
+            self._log("error", f"[BotRunner] ExceÃ§Ã£o no cliente: {exc}")
             with self._lock:
                 self._status_val = "error"
         finally:

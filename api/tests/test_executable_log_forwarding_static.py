@@ -16,3 +16,17 @@ def test_executable_uses_client_activity_queue_for_heartbeat():
     assert "_pending_remote_logs.append(entry)" not in main_py
     assert "_pending_remote_logs.popleft()" in main_py
     assert "_last_sent_log_index" not in main_py
+
+
+def test_executable_suppresses_noisy_runtime_logs_by_default():
+    root = Path(__file__).resolve().parents[2]
+    main_py = root.joinpath("executable", "main.py").read_text(encoding="utf-8")
+    config_loader = root.joinpath("executable", "config_loader.py").read_text(encoding="utf-8")
+    bot_runner = root.joinpath("executable", "bot_runner.py").read_text(encoding="utf-8")
+
+    assert '@app.route("/health")' in main_py
+    assert 'logging.getLogger("werkzeug").disabled = True' in main_py
+    assert "BLUEBOT_VERBOSE_CONFIG" in config_loader
+    assert "Config Mesclada" not in config_loader
+    assert "Heartbeat: Bot monitorando" not in bot_runner
+    assert "ML_COOKIES sincronizado" not in main_py

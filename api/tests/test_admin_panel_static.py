@@ -40,6 +40,16 @@ def test_clients_tab_loads_license_data_when_opened_empty():
     assert "await this.loadLicenses(false);" in html
 
 
+def test_license_table_headers_match_rendered_columns():
+    html = Path(__file__).resolve().parents[2].joinpath("admin", "index.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert "<th>Cliente</th>" in html
+    assert "<th>Chave</th>" in html
+    assert '<td colspan="9" class="empty-state">' in html
+
+
 def test_admin_panel_uses_clean_operational_ui_contract():
     html = Path(__file__).resolve().parents[2].joinpath("admin", "index.html").read_text(
         encoding="utf-8"

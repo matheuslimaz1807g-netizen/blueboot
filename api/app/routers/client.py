@@ -38,6 +38,8 @@ async def update_my_config(
 ):
     """Update configuration for the current license only."""
     try:
+        current = await config_service.get_or_create_config(db, lic.id)
+        body = body.model_copy(update={"whatsapp_endpoint": current.whatsapp_endpoint})
         return await config_service.update_config(db, lic.id, body)
     except Exception as e:
         logger.error(f"Erro ao atualizar config para licença {lic.id}: {str(e)}", exc_info=True)

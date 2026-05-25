@@ -81,7 +81,7 @@
 
             <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
                 <!-- Status Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                     <!-- WhatsApp Status -->
                     <div class="panel-surface p-5 rounded-lg flex items-center gap-4">
                         <div class="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -113,6 +113,27 @@
                             <p class="text-lg font-semibold text-white" x-text="fmtDate(license?.expires_at) || 'Vitalício'"></p>
                         </div>
                     </div>
+                    <!-- Bot Control -->
+                    <div class="panel-surface p-5 rounded-lg flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-4 min-w-0">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                                 :class="config.bot_enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path x-show="!config.bot_enabled" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-5.197-3.027A1 1 0 008 9.006v5.988a1 1 0 001.555.832l5.197-2.961a1 1 0 000-1.697z"/>
+                                    <path x-show="config.bot_enabled" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-slate-400 text-sm">Controle do Bot</p>
+                                <p class="text-lg font-semibold text-white" x-text="config.bot_enabled ? 'Bot ligado' : 'Bot parado'"></p>
+                            </div>
+                        </div>
+                        <button @click="toggleBot()" :disabled="loading"
+                                class="shrink-0 text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+                                :class="config.bot_enabled ? 'bg-rose-500/15 text-rose-300 hover:bg-rose-500/25' : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'">
+                            <span x-text="config.bot_enabled ? 'Stop do Bot' : 'Startar Bot'"></span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Main Content Grid -->
@@ -130,7 +151,21 @@
                             </button>
                         </div>
 
-                        <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                        <div class="space-y-4 max-h-[620px] overflow-y-auto pr-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">API ID</label>
+                                    <input type="text" x-model="config.api_id" placeholder="123456" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">API Hash</label>
+                                    <input type="password" x-model="config.api_hash" placeholder="Hash do Telegram" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Telefone Telegram</label>
+                                <input type="text" x-model="config.phone" placeholder="+5511999999999" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                            </div>
                             <div>
                                 <label class="block text-xs text-slate-400 mb-1">Destino Telegram (Canal/Grupo)</label>
                                 <input type="text" x-model="config.destination_telegram" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
@@ -147,6 +182,38 @@
                                 <label class="block text-xs text-slate-400 mb-1">Fontes Monitoradas (Separadas por vírgula)</label>
                                 <input type="text" x-model="config.sources_str" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
                             </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">Shopee Token</label>
+                                    <input type="password" x-model="config.shopee_token" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">Mercado Livre Token</label>
+                                    <input type="password" x-model="config.ml_token" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">AliExpress App Key</label>
+                                    <input type="password" x-model="config.ali_key" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">AliExpress Secret</label>
+                                    <input type="password" x-model="config.ali_secret" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">AliExpress Tracking ID</label>
+                                <input type="text" x-model="config.ali_tracking" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">ML Cookies</label>
+                                <textarea x-model="config.ml_cookies" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Minutos na fila</label>
+                                <input type="number" min="0.1" step="any" :value="(config.delay_segundos || 60) / 60" @input="config.delay_segundos = Math.max(1, Math.round(parseFloat($event.target.value || 0) * 60))" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                            </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" x-model="config.send_telegram" class="rounded border-slate-700 bg-slate-900 text-indigo-600">
@@ -155,6 +222,18 @@
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" x-model="config.send_whatsapp" class="rounded border-slate-700 bg-slate-900 text-indigo-600">
                                     <span class="text-sm">Enviar p/ WhatsApp</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" x-model="config.conv_shopee" class="rounded border-slate-700 bg-slate-900 text-indigo-600">
+                                    <span class="text-sm">Converter Shopee</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" x-model="config.conv_ali" class="rounded border-slate-700 bg-slate-900 text-indigo-600">
+                                    <span class="text-sm">Converter AliExpress</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" x-model="config.conv_ml" class="rounded border-slate-700 bg-slate-900 text-indigo-600">
+                                    <span class="text-sm">Converter Mercado Livre</span>
                                 </div>
                             </div>
                         </div>
@@ -293,6 +372,7 @@
                     }
                     this.config = { 
                         ...cfg, 
+                        bot_enabled: cfg.bot_enabled !== false,
                         sources_str: (cfg.sources || []).join(', '),
                         wpp_channels_str: channels.join(', '),
                         wpp_groups_str: groups.join(', ')
@@ -309,7 +389,7 @@
                 }
 
                 // 1. Manter apenas eventos relevantes para o cliente final
-                const allowedLevels = ['success', 'error'];
+                const allowedLevels = ['info', 'success', 'warning', 'error'];
                 logs = logs.filter(l => allowedLevels.includes(l.nivel));
 
                 // 2. Remover duplicados (mensagem + nível)
@@ -337,8 +417,9 @@
             async saveConfig() {
                 this.loading = true;
                 const body = { ...this.config };
-                body.sources = this.config.sources_str.split(',').map(s => s.trim()).filter(Boolean);
+                body.sources = (this.config.sources_str || '').split(',').map(s => s.trim()).filter(Boolean);
                 delete body.sources_str;
+                delete body.whatsapp_endpoint;
 
                 let wpp_destinations = [];
                 if (this.config.wpp_channels_str) {
@@ -356,6 +437,12 @@
                 const res = await this.fetchApi('/client/config', 'PUT', body);
                 if (res) this.showToast('Configurações salvas!', 'success');
                 this.loading = false;
+            },
+
+            async toggleBot() {
+                this.config.bot_enabled = !this.config.bot_enabled;
+                await this.saveConfig();
+                this.showToast(this.config.bot_enabled ? 'Startar Bot solicitado.' : 'Stop do Bot solicitado.', 'success');
             },
 
             async fetchApi(endpoint, method = 'GET', body = null) {

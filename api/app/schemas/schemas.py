@@ -117,6 +117,7 @@ class ConfigIn(BaseModel):
     delay_segundos: int = Field(default=3, ge=1, le=86400)
     whatsapp_endpoint: str | None = None
     wpp_destinations: list[str] = Field(default_factory=list)
+    bot_enabled: bool = True
     send_telegram: bool = True
     send_whatsapp: bool = True
     conv_shopee: bool = True
@@ -144,6 +145,7 @@ class ConfigOut(BaseModel):
     delay_segundos: int
     whatsapp_endpoint: str | None
     wpp_destinations: list[str]
+    bot_enabled: bool
     send_telegram: bool
     send_whatsapp: bool
     conv_shopee: bool

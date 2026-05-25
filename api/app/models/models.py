@@ -91,6 +91,9 @@ class ClientConfig(Base):
     whatsapp_endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True)
     wpp_destinations: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list)
 
+    # Remote bot control
+    bot_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
     # Toggles
     send_telegram: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     send_whatsapp: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
