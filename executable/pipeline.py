@@ -353,7 +353,7 @@ async def processar_mensagem(
         else:
             log_callback("info", f"[{msg_id}] Envio para Telegram desativado.")
 
-        # ── Step 6: Send to WhatsApp ──────────────────────────────────────────
+        # ── Step 6: Send to WhatsApp (canais e grupos) ───────────────────────
         wp_sent = False
         wpp_destinations = config.get("wpp_destinations", [])
         raw_endpoint = config.get("whatsapp_endpoint") or "http://localhost:4000/send"
@@ -362,8 +362,18 @@ async def processar_mensagem(
         else:
             wpp_endpoint = raw_endpoint
         
+        # Formata destinos para exibição amigável nos logs
+        targets_display = []
+        for d in wpp_destinations:
+            if d.startswith("channel:"):
+                targets_display.append(f"Canal({d.replace('channel:', '')})")
+            elif d.startswith("group:"):
+                targets_display.append(f"Grupo({d.replace('group:', '')})")
+            else:
+                targets_display.append(d)
+        
         # Log de debug para diagnosticar problemas
-        log_callback("info", f"[{msg_id}] [WhatsApp Debug] ENABLE_WHATSAPP={config.get('send_whatsapp')} | Endpoint={wpp_endpoint} | Destinos={wpp_destinations} (tipo: {type(wpp_destinations)})")
+        log_callback("info", f"[{msg_id}] [WhatsApp Debug] ENABLE_WHATSAPP={config.get('send_whatsapp')} | Endpoint={wpp_endpoint} | Destinos={', '.join(targets_display)} (tipo: {type(wpp_destinations)})")
         
         if config.get("send_whatsapp"):
             if isinstance(wpp_destinations, list) and len(wpp_destinations) > 0:
@@ -376,7 +386,7 @@ async def processar_mensagem(
                 else:
                     log_callback("info", f"[{msg_id}] [WhatsApp] Enviando apenas texto.")
                 
-                log_callback("info", f"[{msg_id}] [WhatsApp] POST para {wpp_endpoint} | Grupos: {', '.join(wpp_destinations)}")
+                log_callback("info", f"[{msg_id}] [WhatsApp] POST para {wpp_endpoint} | Destinos: {', '.join(targets_display)}")
                 try:
                     async with httpx.AsyncClient(timeout=300) as client:
                         resp = await client.post(wpp_endpoint, json=payload)

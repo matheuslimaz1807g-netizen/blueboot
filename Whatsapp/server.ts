@@ -11,8 +11,8 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Cache para armazenar os IDs encontrados (nome do grupo -> id do whatsapp)
-let allGroups: { name: string; id: string }[] = [];
+// Cache para armazenar os IDs encontrados (nome -> id do whatsapp)
+let allTargets: { name: string; id: string; type: "channel" | "group" }[] = [];
 let statusVal: "disconnected" | "qr" | "connected" = "disconnected";
 let qrCodeBase64: string = "";
 
@@ -83,7 +83,7 @@ client.on('disconnected', () => {
     qrCodeBase64 = "";
 });
 
-async function refreshGroups() {
+async function refreshTargets() {
   try {
     const chats = await client.getChats();
     let channels: any[] = [];
@@ -95,12 +95,23 @@ async function refreshGroups() {
 
     const all = [...chats, ...channels];
 
-    allGroups = all
-      .filter((c) => c.isGroup || c.isChannel || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast'))))
-      .map((c) => ({ name: c.name, id: c.id._serialized }));
+    allTargets = all
+      .filter((c) => {
+        const isChannel = c.isChannel || (c.id && c.id._serialized && (c.id._serialized.includes('@newsletter') || c.id._serialized.includes('@broadcast')));
+        const isGroup = c.isGroup || (c.id && c.id._serialized && c.id._serialized.includes('@g.us'));
+        return isChannel || isGroup;
+      })
+      .map((c) => {
+        const isGrp = c.isGroup || (c.id && c.id._serialized && c.id._serialized.includes('@g.us'));
+        return {
+          name: c.name,
+          id: c.id._serialized,
+          type: isGrp ? 'group' : 'channel' as const
+        };
+      });
 
     // Remove duplicados
-    allGroups = allGroups.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
+    allTargets = allTargets.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
   } catch (err: any) {
     throw err;
   }
@@ -110,8 +121,8 @@ client.on('ready', async () => {
   console.log('✅ WhatsApp conectado e pronto!');
   statusVal = "connected";
   try {
-    await refreshGroups();
-    console.log(`📋 Total de grupos/canais monitorados: ${allGroups.length}`);
+    await refreshTargets();
+    console.log(`📋 Total de canais/grupos monitorados: ${allTargets.length}`);
   } catch (err: any) {
     console.error("Erro ao buscar chats no start:", err.message);
   }
@@ -130,10 +141,10 @@ async function processQueue() {
 
   while (messageQueue.length > 0) {
     const item = messageQueue.shift();
-    console.log(`[Queue] Processando envio para grupos: ${item.targets.join(", ")}`);
+    console.log(`[Queue] Processando envio para destinos: ${item.targets.join(", ")}`);
     
     try {
-      await sendToGroupsInternal(item.text, item.base64Image, item.mimeType, item.targets);
+      await sendToDestinationsInternal(item.text, item.base64Image, item.mimeType, item.targets);
       console.log("[Queue] Envio concluído.");
     } catch (err: any) {
       console.error("[Queue] Erro ao processar item da fila:", err.message);
@@ -144,39 +155,61 @@ async function processQueue() {
 }
 
 /**
- * Função interna para enviar mensagens (sem delay de fila)
+ * Função interna para enviar mensagens para destinos (canais ou grupos)
  */
-async function sendToGroupsInternal(text: string, base64Image?: string, mimeType?: string, targets: string[] = []) {
+async function sendToDestinationsInternal(text: string, base64Image?: string, mimeType?: string, targets: string[] = []) {
   if (statusVal !== "connected") {
     throw new Error(`WhatsApp não está conectado.`);
   }
 
   try {
-    // Refresha a lista de grupos para garantir
-    await refreshGroups();
+    await refreshTargets();
   } catch (err: any) {
-    console.warn("Aviso: Timeout ao atualizar lista de grupos, usando versao em cache", err.message);
+    console.warn("Aviso: Timeout ao atualizar lista de chats, usando versao em cache", err.message);
   }
 
-  const matchedGroups = allGroups.filter((g) => targets.includes(g.name));
+  const matchedChats: { name: string; id: string; type: string }[] = [];
+
+  for (const target of targets) {
+    let parsedTargetName = target;
+    let expectedType: "channel" | "group" | null = null;
+
+    if (target.startsWith("channel:")) {
+      parsedTargetName = target.replace("channel:", "");
+      expectedType = "channel";
+    } else if (target.startsWith("group:")) {
+      parsedTargetName = target.replace("group:", "");
+      expectedType = "group";
+    }
+
+    const found = allTargets.find((t) => {
+      if (t.name !== parsedTargetName) return false;
+      if (expectedType !== null && t.type !== expectedType) return false;
+      return true;
+    });
+
+    if (found) {
+      matchedChats.push(found);
+    }
+  }
   
-  if (matchedGroups.length === 0) {
-    throw new Error(`Nenhum dos grupos/canais (${targets.join(', ')}) foi encontrado no seu Whatsapp!`);
+  if (matchedChats.length === 0) {
+    throw new Error(`Nenhum dos destinos (${targets.join(', ')}) foi encontrado no seu Whatsapp!`);
   }
 
-  for (const group of matchedGroups) {
+  for (const chat of matchedChats) {
     try {
       if (base64Image && (mimeType?.startsWith("image/"))) {
         const media = new MessageMedia(mimeType, base64Image);
-        await client.sendMessage(group.id, media, { caption: text });
+        await client.sendMessage(chat.id, media, { caption: text });
       } else {
-        await client.sendMessage(group.id, text);
+        await client.sendMessage(chat.id, text);
       }
-      console.log(`[Direct] Enviado para: ${group.name}`);
-      // Pequeno delay de 3s entre grupos do mesmo lote
+      console.log(`[Direct] Enviado para ${chat.type === 'group' ? 'grupo' : 'canal'}: ${chat.name}`);
+      // Pequeno delay de 3s entre destinos do mesmo lote
       await new Promise((res) => setTimeout(res, 3000));
     } catch (err: any) {
-      console.error(`[Direct] Erro em ${group.name}:`, err.message);
+      console.error(`[Direct] Erro em ${chat.name} (${chat.type}):`, err.message);
     }
   }
 }

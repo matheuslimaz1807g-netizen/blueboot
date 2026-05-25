@@ -1065,7 +1065,7 @@
           <div class="mb-6">
             <h2 class="text-xl font-semibold text-white">Conexão WhatsApp</h2>
             <p class="text-sm text-muted mt-1">
-              Conecte o robô ao WhatsApp para enviar mensagens aos grupos
+              Conecte o robô ao WhatsApp para enviar mensagens aos canais
             </p>
           </div>
           
@@ -1643,11 +1643,19 @@
               />
             </div>
             <div class="field">
-              <label>Destinos WhatsApp</label>
+              <label>Canais de Destino WhatsApp</label>
               <input
                 class="inp"
-                x-model="configData.wpp_destinations_str"
-                placeholder="Ex: Canal 1, Grupo 1 (separados por vírgula)"
+                x-model="configData.wpp_channels_str"
+                placeholder="Ex: Canal Promo 1, Ofertas 24h (separados por vírgula)"
+              />
+            </div>
+            <div class="field">
+              <label>Grupos de Destino WhatsApp</label>
+              <input
+                class="inp"
+                x-model="configData.wpp_groups_str"
+                placeholder="Ex: Grupo Promo 1, Amigos 24h (separados por vírgula)"
               />
             </div>
 
@@ -2464,14 +2472,25 @@
               });
               const d = await r.json();
               if (d && !d.detail) {
+                let destinations = d.wpp_destinations || [];
+                let channels = [];
+                let groups = [];
+                for (let dst of destinations) {
+                  if (dst.startsWith('group:')) {
+                    groups.push(dst.replace('group:', ''));
+                  } else if (dst.startsWith('channel:')) {
+                    channels.push(dst.replace('channel:', ''));
+                  } else {
+                    channels.push(dst);
+                  }
+                }
                 this.configData = {
                   ...d,
                   sources_str: Array.isArray(d.sources)
                     ? d.sources.join(",")
                     : "",
-                  wpp_destinations_str: Array.isArray(d.wpp_destinations)
-                    ? d.wpp_destinations.join(",")
-                    : "",
+                  wpp_channels_str: channels.join(","),
+                  wpp_groups_str: groups.join(","),
                 };
               } else {
                 this.configData = {
@@ -2493,7 +2512,8 @@
                   conv_ali: true,
                   conv_ml: true,
                   whatsapp_endpoint: '',
-                  wpp_destinations_str: '',
+                  wpp_channels_str: '',
+                  wpp_groups_str: '',
                 };
               }
             } catch (e) {
@@ -2513,12 +2533,18 @@
               : [];
             delete cfg.sources_str;
 
-            cfg.wpp_destinations = cfg.wpp_destinations_str
-              ? cfg.wpp_destinations_str
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-              : [];
+            let wpp_destinations = [];
+            if (cfg.wpp_channels_str) {
+              let chs = cfg.wpp_channels_str.split(",").map((s) => s.trim()).filter(Boolean);
+              wpp_destinations.push(...chs.map(c => 'channel:' + c));
+            }
+            if (cfg.wpp_groups_str) {
+              let grps = cfg.wpp_groups_str.split(",").map((s) => s.trim()).filter(Boolean);
+              wpp_destinations.push(...grps.map(g => 'group:' + g));
+            }
+            cfg.wpp_destinations = wpp_destinations;
+            delete cfg.wpp_channels_str;
+            delete cfg.wpp_groups_str;
             delete cfg.wpp_destinations_str;
 
             // Find the license ID from the key

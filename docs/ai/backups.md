@@ -20,3 +20,5 @@
 | 2026-05-20 09:56 | Antes de otimizar previsualização de itens e correção de ETA na fila | git stash push -m "BACKUP-2026-05-20-09-56" | N/A (Git retornou: No local changes to save) |
 | 2026-05-20 10:38 | Antes de implementar previsualização premium na fila (Título, Preço e Loja) | git stash push -m "BACKUP-2026-05-20-10-38" | N/A (Git retornou: No local changes to save) |
 | 2026-05-20 11:06 | Antes de remover cooldown duplicado no servidor de WhatsApp | git stash push -m "BACKUP-2026-05-20-11-06" | N/A (Git retornou: No local changes to save) |
+| 2026-05-25 19:33 | Antes de remover a funcionalidade de grupos do WhatsApp | git stash push -m "BACKUP-2026-05-25-19-33: antes-de-remover-funcionalidade-grupos-whatsapp" | stash@{0} |
+

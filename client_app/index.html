@@ -136,6 +136,14 @@
                                 <input type="text" x-model="config.destination_telegram" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
                             </div>
                             <div>
+                                <label class="block text-xs text-slate-400 mb-1">Canais de Destino no WhatsApp (Separados por vírgula)</label>
+                                <input type="text" x-model="config.wpp_channels_str" placeholder="Ex: Canal Promo 1, Ofertas 24h" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Grupos de Destino no WhatsApp (Separados por vírgula)</label>
+                                <input type="text" x-model="config.wpp_groups_str" placeholder="Ex: Grupo Promo 1, Amigos 24h" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+                            </div>
+                            <div>
                                 <label class="block text-xs text-slate-400 mb-1">Fontes Monitoradas (Separadas por vírgula)</label>
                                 <input type="text" x-model="config.sources_str" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
                             </div>
@@ -271,7 +279,24 @@
             async loadConfig() {
                 const cfg = await this.fetchApi('/client/config');
                 if (cfg) {
-                    this.config = { ...cfg, sources_str: (cfg.sources || []).join(', ') };
+                    let destinations = cfg.wpp_destinations || [];
+                    let channels = [];
+                    let groups = [];
+                    for (let d of destinations) {
+                        if (d.startsWith('group:')) {
+                            groups.push(d.replace('group:', ''));
+                        } else if (d.startsWith('channel:')) {
+                            channels.push(d.replace('channel:', ''));
+                        } else {
+                            channels.push(d);
+                        }
+                    }
+                    this.config = { 
+                        ...cfg, 
+                        sources_str: (cfg.sources || []).join(', '),
+                        wpp_channels_str: channels.join(', '),
+                        wpp_groups_str: groups.join(', ')
+                    };
                 }
             },
 
@@ -314,6 +339,19 @@
                 const body = { ...this.config };
                 body.sources = this.config.sources_str.split(',').map(s => s.trim()).filter(Boolean);
                 delete body.sources_str;
+
+                let wpp_destinations = [];
+                if (this.config.wpp_channels_str) {
+                    let chs = this.config.wpp_channels_str.split(',').map(s => s.trim()).filter(Boolean);
+                    wpp_destinations.push(...chs.map(c => 'channel:' + c));
+                }
+                if (this.config.wpp_groups_str) {
+                    let grps = this.config.wpp_groups_str.split(',').map(s => s.trim()).filter(Boolean);
+                    wpp_destinations.push(...grps.map(g => 'group:' + g));
+                }
+                body.wpp_destinations = wpp_destinations;
+                delete body.wpp_channels_str;
+                delete body.wpp_groups_str;
 
                 const res = await this.fetchApi('/client/config', 'PUT', body);
                 if (res) this.showToast('Configurações salvas!', 'success');

@@ -101,9 +101,15 @@
         <p class="text-xs text-muted mt-1">Servidor nativo embutido gerenciado automaticamente.</p>
       </div>
       <div class="field-group">
+        <label class="field-label">Canais de Destino WhatsApp <span class="text-muted font-normal">(um por
+            linha)</span></label>
+        <textarea id="cfg-wpp-channels" rows="3" placeholder="Insira os nomes idênticos aos canais"
+          class="field-input resize-none"></textarea>
+      </div>
+      <div class="field-group">
         <label class="field-label">Grupos de Destino WhatsApp <span class="text-muted font-normal">(um por
             linha)</span></label>
-        <textarea id="cfg-wpp-dest" rows="3" placeholder="Insira os nomes idênticos aos grupos"
+        <textarea id="cfg-wpp-groups" rows="3" placeholder="Insira os nomes idênticos aos grupos"
           class="field-input resize-none"></textarea>
       </div>
       <div class="toggle-group">
@@ -308,7 +314,20 @@
       if (delayValEl) {
         delayValEl.textContent = ((cfg.delay_segundos || 300) / 60) + 'm';
       }
-      document.getElementById('cfg-wpp-dest').value = (cfg.wpp_destinations || []).join('\n');
+      let destinations = cfg.wpp_destinations || [];
+      let channels = [];
+      let groups = [];
+      for (let d of destinations) {
+        if (d.startsWith('group:')) {
+          groups.push(d.replace('group:', ''));
+        } else if (d.startsWith('channel:')) {
+          channels.push(d.replace('channel:', ''));
+        } else {
+          channels.push(d);
+        }
+      }
+      document.getElementById('cfg-wpp-channels').value = channels.join('\n');
+      document.getElementById('cfg-wpp-groups').value = groups.join('\n');
       document.getElementById('cfg-shopee').value = cfg.shopee_token || '';
       document.getElementById('cfg-ali-key').value = cfg.ali_key || '';
       document.getElementById('cfg-ali-secret').value = cfg.ali_secret || '';
@@ -334,7 +353,10 @@
       sources: document.getElementById('cfg-sources').value.trim().split('\n').filter(Boolean),
       destination_telegram: document.getElementById('cfg-dest-tg').value.trim(),
       delay_segundos: Math.round(parseFloat(document.getElementById('cfg-delay').value || 0) * 60),
-      wpp_destinations: document.getElementById('cfg-wpp-dest').value.split('\n').map(s => s.trim()).filter(Boolean),
+      wpp_destinations: [
+        ...document.getElementById('cfg-wpp-channels').value.split('\n').map(s => s.trim()).filter(Boolean).map(c => 'channel:' + c),
+        ...document.getElementById('cfg-wpp-groups').value.split('\n').map(s => s.trim()).filter(Boolean).map(g => 'group:' + g)
+      ],
       shopee_token: document.getElementById('cfg-shopee').value,
       ali_key: document.getElementById('cfg-ali-key').value,
       ali_secret: document.getElementById('cfg-ali-secret').value,

@@ -731,7 +731,7 @@ class BotRunner:
             
             now = time.time()
             if now - getattr(self, "_last_config_log_time", 0) > 600:
-                self._log("info", f"⚙️ WhatsApp Config: ENABLED={wpp_enabled} | Destinos={wpp_destinations} | Endpoint={wpp_endpoint}")
+                self._log("info", f"⚙️ WhatsApp Config: ENABLED={wpp_enabled} | Canais={wpp_destinations} | Endpoint={wpp_endpoint}")
                 self._last_config_log_time = now
             
             last_heartbeat = time.time()
