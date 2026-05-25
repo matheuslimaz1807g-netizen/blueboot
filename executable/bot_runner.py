@@ -777,9 +777,9 @@ class BotRunner:
 
         self._activity(
             "success",
-            f"Produto: {title}{store} | Valor: {price}\n"
-            f"Enviado para {dest}! Total hoje: {total}.\n"
-            f"Proximo envio liberado a partir das {next_ts}.",
+            f"\U0001F4E6 {title}{store} | Valor: {price}\n"
+            f"\u2705 Enviado para {dest}! Total hoje: {total}.\n"
+            f"\u23F1\uFE0F Pr\u00f3ximo envio liberado a partir das {next_ts}.",
         )
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
