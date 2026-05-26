@@ -21,21 +21,13 @@ from utils import expandir_link_async
 
 # ── Text patterns ─────────────────────────────────────────────────────────────
 
-_ANY_URL_PATTERN = re.compile(
-    r"(https?://[^\s]+)"
-)
+_ANY_URL_PATTERN = re.compile(r"(https?://[^\s]+)")
 
-_ML_PATTERN = re.compile(
-    r"(?:mercadolivre\.com(?:\.br)?|meli\.la)"
-)
-_ALI_PATTERN = re.compile(
-    r"(?:aliexpress\.com|a\.aliexpress\.com)"
-)
-_SHOPEE_PATTERN = re.compile(
-    r"(?:shopee\.com\.br|s\.shopee\.com\.br)"
-)
+_ML_PATTERN     = re.compile(r"(?:mercadolivre\.com(?:\.br)?|meli\.la)")
+_ALI_PATTERN    = re.compile(r"(?:aliexpress\.com|a\.aliexpress\.com)")
+_SHOPEE_PATTERN = re.compile(r"(?:shopee\.com\.br|s\.shopee\.com\.br)")
 
-_PRICE_PATTERN = re.compile(r'R\$\s*([\d.,]+)', re.I)
+_PRICE_PATTERN  = re.compile(r'R\$\s*([\d.,]+)', re.I)
 _COUPON_PATTERN = re.compile(r'(?:cupom|codigo|coupon):\s*([A-Z0-9]+)', re.I)
 
 
@@ -79,7 +71,6 @@ def clean_text(text: str) -> str:
             blank_count = 0
             result.append(ln)
             if idx == 0 and len(remaining) > 1:
-                # Insert blank after the product title
                 result.append("")
 
     return "\n".join(result).strip()
@@ -87,74 +78,61 @@ def clean_text(text: str) -> str:
 
 # ── Promotion data extraction ─────────────────────────────────────────────────
 
-def extract_promotion_data(raw_text: str, cleaned_text: str, image_path: Optional[str], expanded_map: dict, converted_links: dict) -> Optional[dict]:
-    """
-    Extract promotion data from message text for web API.
-    """
+def extract_promotion_data(
+    raw_text: str,
+    cleaned_text: str,
+    image_path: Optional[str],
+    expanded_map: dict,
+    converted_links: dict,
+) -> Optional[dict]:
     lines = cleaned_text.splitlines()
     if not lines:
         return None
 
     originalTitle = raw_text.strip()
-    seoTitle = lines[0].strip()
+    seoTitle      = lines[0].strip()
 
-    # Extract prices
-    prices = _PRICE_PATTERN.findall(cleaned_text)
+    prices   = _PRICE_PATTERN.findall(cleaned_text)
     oldPrice = prices[0] if len(prices) > 1 else None
     newPrice = prices[-1] if prices else None
 
-    # Extract coupon
     coupon_match = _COUPON_PATTERN.search(cleaned_text)
-    couponCode = coupon_match.group(1) if coupon_match else None
+    couponCode   = coupon_match.group(1) if coupon_match else None
 
-    # Determine store
     store = None
     for link in expanded_map.values():
         if _ML_PATTERN.search(link):
-            store = "Mercado Livre"
-            break
+            store = "Mercado Livre"; break
         elif _ALI_PATTERN.search(link):
-            store = "AliExpress"
-            break
+            store = "AliExpress"; break
         elif _SHOPEE_PATTERN.search(link):
-            store = "Shopee"
-            break
+            store = "Shopee"; break
 
-    # Affiliate link (first converted)
     affiliateLink = list(converted_links.values())[0] if converted_links else None
 
-    # Image URL
-    imageUrl = None
+    imageUrl = "https://via.placeholder.com/400x300?text=Imagem+da+Promocao"
     if image_path and os.path.exists(image_path):
         try:
             with open(image_path, "rb") as f:
-                image_data = f.read()
-                encoded = base64.b64encode(image_data).decode()
+                encoded  = base64.b64encode(f.read()).decode()
                 imageUrl = f"data:image/jpeg;base64,{encoded}"
         except Exception:
-            imageUrl = "https://via.placeholder.com/400x300?text=Imagem+da+Promocao"
-    else:
-        imageUrl = "https://via.placeholder.com/400x300?text=Imagem+da+Promocao"
-
-    # Telegram link (placeholder)
-    telegramLink = None  # To be set later if needed
+            pass
 
     return {
         "originalTitle": originalTitle,
-        "seoTitle": seoTitle,
-        "oldPrice": oldPrice,
-        "newPrice": newPrice,
-        "couponCode": couponCode,
-        "imageUrl": imageUrl,
-        "store": store,
+        "seoTitle":      seoTitle,
+        "oldPrice":      oldPrice,
+        "newPrice":      newPrice,
+        "couponCode":    couponCode,
+        "imageUrl":      imageUrl,
+        "store":         store,
         "affiliateLink": affiliateLink,
-        "telegramLink": telegramLink,
+        "telegramLink":  None,
     }
 
-# Removido _expand_link local, importado de utils.py
 
 def _sanitize_detected_url(url: str) -> str:
-    """Remove wrappers commonly used in Telegram formatting around URLs."""
     return url.strip().strip("`'\"()[]{}<>.,;!")
 
 
@@ -165,20 +143,8 @@ async def processar_mensagem(
     config: dict,
     telegram_client,
     log_callback: Callable[[str, str], None],
-) -> bool:
-    """
-    Execute the full processing pipeline for a single Telegram message.
-
-    Args:
-        msg: Telethon Message object
-        config: Decrypted config dict from config_loader
-        telegram_client: Active TelegramClient instance
-        log_callback: Callable(nivel: str, mensagem: str) — "info"|"success"|"error"
-
-    Returns:
-        True if the message was fully delivered, False on failure.
-    """
-    msg_id = getattr(msg, "id", "?")
+) -> tuple[bool, bool, bool, Optional[dict]]:
+    msg_id: object = getattr(msg, "id", "?")
     image_path: Optional[str] = None
 
     try:
@@ -193,61 +159,52 @@ async def processar_mensagem(
             preview = preview[:177] + "..."
         log_callback("info", f"[{msg_id}] Processando mensagem. Preview: {preview}")
 
-        # ── Step 2: Convert affiliate links ───────────────────────────────────
-        text = raw_text
-        converted_links = {}
-
-        # Flag to track if AT LEAST ONE link was successfully converted
-        any_link_converted = False
-
-        # 2. Extract and expand ALL urls to check their final destination
-        raw_urls = _ANY_URL_PATTERN.findall(text)
-        expanded_map = {}
+        # ── Step 2: Expand all URLs ───────────────────────────────────────────
+        raw_urls     = _ANY_URL_PATTERN.findall(raw_text)
+        expanded_map: dict[str, str] = {}
         for r_url in raw_urls:
             sanitized = _sanitize_detected_url(r_url)
             if sanitized not in expanded_map:
                 try:
-                    exp = await expandir_link_async(sanitized)
-                    expanded_map[sanitized] = exp
-                except:
+                    expanded_map[sanitized] = await expandir_link_async(sanitized)
+                except Exception:
                     expanded_map[sanitized] = sanitized
 
-        # 2a. Mercado Livre
+        text = raw_text
+        converted_links: dict[str, str] = {}
+        any_link_converted = False
+
+        # ── Step 2a: Mercado Livre ────────────────────────────────────────────
         if config.get("conv_ml"):
             for original_link, expanded_link in expanded_map.items():
                 if _ML_PATTERN.search(expanded_link):
-                    log_callback("info", f"[{msg_id}] Link ML detectado após expansão: {expanded_link}")
+                    log_callback("info", f"[{msg_id}] Link ML detectado: {expanded_link}")
                     try:
                         aff = await mercadolivre.convert(expanded_link, config.get("ml_token", ""))
                         if aff and aff != expanded_link:
                             text = text.replace(original_link, aff)
                             converted_links[original_link] = aff
-                            log_callback("info", f"[{msg_id}] Link ML convertido via Navegador.")
                             any_link_converted = True
+                            log_callback("info", f"[{msg_id}] Link ML convertido.")
                         else:
-                            log_callback("warning", f"[{msg_id}] Link ML nao convertido. Usando link original. URL: {expanded_link}")
+                            log_callback("warning", f"[{msg_id}] Link ML não convertido. Usando original.")
                     except Exception as exc:
-                        log_callback("error", f"[{msg_id}] Erro ML ao converter {expanded_link}: {exc}. Usando link original.")
+                        log_callback("error", f"[{msg_id}] Erro ML: {exc}. Usando original.")
         else:
             log_callback("info", f"[{msg_id}] Conversão Mercado Livre desativada.")
 
-        # 2b. AliExpress
-        ali_key = config.get("ali_key")
-        ali_secret = config.get("ali_secret")
+        # ── Step 2b: AliExpress ───────────────────────────────────────────────
+        ali_key      = config.get("ali_key")
+        ali_secret   = config.get("ali_secret")
         ali_tracking = config.get("ali_tracking")
-        if config.get("conv_ali") and ali_key and ali_secret and ali_tracking:
-            ali_originals = []
-            for original_link, expanded_link in expanded_map.items():
-                if _ALI_PATTERN.search(expanded_link):
-                    ali_originals.append(original_link)
 
+        if config.get("conv_ali") and ali_key and ali_secret and ali_tracking:
+            ali_originals = [o for o, e in expanded_map.items() if _ALI_PATTERN.search(e)]
             if ali_originals:
                 log_callback("info", f"[{msg_id}] Links AliExpress detectados: {len(ali_originals)}")
                 try:
-                    # Passamos os originais ou os expandidos? A API do Ali geralmente prefere originais,
-                    # mas se for encurtador externo, melhor mandar o expandido.
                     to_convert = [expanded_map[o] for o in ali_originals]
-                    converted = await aliexpress.convert(to_convert, ali_key, ali_secret, ali_tracking)
+                    converted  = await aliexpress.convert(to_convert, ali_key, ali_secret, ali_tracking)
                     for orig, new in zip(ali_originals, converted):
                         if new:
                             text = text.replace(orig, new)
@@ -261,31 +218,48 @@ async def processar_mensagem(
         else:
             log_callback("info", f"[{msg_id}] Conversão AliExpress desativada.")
 
-        # 2c. Shopee
-        if config.get("conv_shopee") and config.get("shopee_token"):
+        # ── Step 2c: Shopee ───────────────────────────────────────────────────
+        shopee_app_id = config.get("shopee_app_id", "")
+        shopee_secret = config.get("shopee_secret", "")
+        
+        # Retrocompatibilidade com shopee_token
+        shopee_token = config.get("shopee_token", "")
+        if not shopee_app_id and shopee_token:
+            if ":" in shopee_token:
+                shopee_app_id, shopee_secret = shopee_token.split(":", 1)
+            else:
+                shopee_app_id = shopee_token
+
+        if config.get("conv_shopee") and shopee_app_id and shopee_secret:
             for original_link, expanded_link in expanded_map.items():
                 if _SHOPEE_PATTERN.search(expanded_link):
-                    log_callback("info", f"[{msg_id}] Link Shopee detectado após expansão: {expanded_link}")
+                    log_callback("info", f"[{msg_id}] Link Shopee detectado: {expanded_link}")
                     try:
-                        aff = await shopee.convert(expanded_link)
-                        if aff:
+                        aff = await shopee.convert(
+                            expanded_link,
+                            app_id=shopee_app_id,
+                            secret=shopee_secret,
+                        )
+                        if aff and aff != expanded_link:
                             text = text.replace(original_link, aff)
                             converted_links[original_link] = aff
                             any_link_converted = True
-                        log_callback("info", f"[{msg_id}] Link Shopee convertido.")
+                            log_callback("info", f"[{msg_id}] Link Shopee convertido.")
+                        else:
+                            log_callback("warning", f"[{msg_id}] Link Shopee não convertido. Usando original.")
                     except Exception as exc:
                         log_callback("error", f"[{msg_id}] Erro Shopee: {exc}")
-        elif config.get("conv_shopee"):
-            log_callback("warning", f"[{msg_id}] Conversão Shopee ativa, mas token ausente.")
+        elif config.get("conv_shopee") and not (shopee_app_id and shopee_secret):
+            log_callback("warning", f"[{msg_id}] Conversão Shopee ativa, mas shopee_app_id/shopee_secret ausentes.")
         else:
             log_callback("info", f"[{msg_id}] Conversão Shopee desativada.")
 
-        # STRICT MODE: Abort if no links were converted
+        # ── Strict mode: abort if nothing was converted ───────────────────────
         if not any_link_converted:
-            log_callback("warning", f"[{msg_id}] Nenhum link conhecido convertido (ex: Amazon/Magalu ou sem link). Mensagem ignorada.")
+            log_callback("warning", f"[{msg_id}] Nenhum link convertido. Mensagem ignorada.")
             return False, False, False, None
 
-        # Apply keyword filters (ignore message if any keyword matches)
+        # ── Keyword filter ────────────────────────────────────────────────────
         keywords: list[str] = config.get("filtros", {}).get("keywords", [])
         if any(kw.lower() in text.lower() for kw in keywords if kw):
             log_callback("info", f"[{msg_id}] Filtrada por palavra-chave.")
@@ -305,8 +279,7 @@ async def processar_mensagem(
                 log_callback("error", f"[{msg_id}] Erro ao baixar mídia: {exc}")
                 image_path = None
 
-        # ── Step 4.5: Extract promotion data and send to web API ────────────
-        # FUTURE: multi-tenant: include tenant_id in webhook payload
+        # ── Step 4.5: Send promotion data to web API ──────────────────────────
         promotion_data = extract_promotion_data(raw_text, text, image_path, expanded_map, converted_links)
         if promotion_data and config.get("send_to_web_api", True):
             web_api_url = config.get("web_api_url", "http://localhost:3000/api/promotions")
@@ -316,97 +289,85 @@ async def processar_mensagem(
                     if resp.status_code == 200:
                         log_callback("info", f"[{msg_id}] Promoção enviada para API web.")
                     else:
-                        log_callback("warning", f"[{msg_id}] Erro ao enviar para API web: {resp.status_code} - {resp.text}")
+                        log_callback("warning", f"[{msg_id}] Erro API web: {resp.status_code} — {resp.text}")
             except Exception as exc:
                 log_callback("error", f"[{msg_id}] Falha na API web: {exc}")
 
         # ── Step 5: Send to Telegram ──────────────────────────────────────────
-        tg_sent = False
+        tg_sent         = False
         raw_destination = config.get("destination_telegram")
+
         if config.get("send_telegram"):
             if raw_destination:
-                # Permite múltiplos destinos separados por vírgula
                 destinations = [d.strip() for d in raw_destination.split(",") if d.strip()]
                 for dest in destinations:
                     try:
                         dest_entity = await telegram_client.get_entity(dest)
                         if image_path and os.path.exists(image_path):
-                            # Envia como arquivo local garantindo que não use os atributos da mídia original
                             await telegram_client.send_file(
-                                dest_entity, 
-                                file=image_path, 
-                                caption=text,
-                                force_document=False
+                                dest_entity, file=image_path, caption=text, force_document=False
                             )
                         else:
-                            await telegram_client.send_message(
-                                dest_entity, 
-                                text, 
-                                link_preview=False
-                            )
+                            await telegram_client.send_message(dest_entity, text, link_preview=False)
                         log_callback("success", f"[{msg_id}] Enviado para Telegram: {dest}.")
                         tg_sent = True
                     except Exception as exc:
-                        log_callback("error", f"[{msg_id}] Erro Telegram ao enviar para {dest}: {exc}")
+                        log_callback("error", f"[{msg_id}] Erro Telegram ({dest}): {exc}")
             else:
                 log_callback("warning", f"[{msg_id}] Envio Telegram ativo, mas destino vazio.")
         else:
             log_callback("info", f"[{msg_id}] Envio para Telegram desativado.")
 
-        # ── Step 6: Send to WhatsApp (canais e grupos) ───────────────────────
-        wp_sent = False
+        # ── Step 6: Send to WhatsApp ──────────────────────────────────────────
+        wp_sent          = False
         wpp_destinations = config.get("wpp_destinations", [])
-        raw_endpoint = config.get("whatsapp_endpoint") or "http://localhost:4000/send"
-        if not raw_endpoint.endswith("/send"):
-            wpp_endpoint = f"{raw_endpoint.rstrip('/')}/send"
-        else:
-            wpp_endpoint = raw_endpoint
-        
-        # Formata destinos para exibição amigável nos logs
-        targets_display = []
-        for d in wpp_destinations:
-            if d.startswith("channel:"):
-                targets_display.append(f"Canal({d.replace('channel:', '')})")
-            elif d.startswith("group:"):
-                targets_display.append(f"Grupo({d.replace('group:', '')})")
-            else:
-                targets_display.append(d)
-        
-        # Log de debug para diagnosticar problemas
-        log_callback("info", f"[{msg_id}] [WhatsApp Debug] ENABLE_WHATSAPP={config.get('send_whatsapp')} | Endpoint={wpp_endpoint} | Destinos={', '.join(targets_display)} (tipo: {type(wpp_destinations)})")
-        
+        raw_endpoint     = config.get("whatsapp_endpoint") or "http://localhost:4000/send"
+        wpp_endpoint     = raw_endpoint if raw_endpoint.endswith("/send") else f"{raw_endpoint.rstrip('/')}/send"
+
+        targets_display = [
+            f"Canal({d.replace('channel:', '')})" if d.startswith("channel:") else
+            f"Grupo({d.replace('group:', '')})"   if d.startswith("group:")   else d
+            for d in wpp_destinations
+        ]
+
+        log_callback(
+            "info",
+            f"[{msg_id}] [WhatsApp] ENABLED={config.get('send_whatsapp')} | "
+            f"Endpoint={wpp_endpoint} | Destinos={', '.join(targets_display)}",
+        )
+
         if config.get("send_whatsapp"):
-            if isinstance(wpp_destinations, list) and len(wpp_destinations) > 0:
+            if isinstance(wpp_destinations, list) and wpp_destinations:
                 payload: dict = {"text": text, "targets": wpp_destinations}
                 if image_path and os.path.exists(image_path):
                     with open(image_path, "rb") as f:
                         payload["base64Image"] = base64.b64encode(f.read()).decode()
-                        payload["mimeType"] = "image/jpeg"
+                        payload["mimeType"]    = "image/jpeg"
                     log_callback("info", f"[{msg_id}] [WhatsApp] Enviando com imagem ({os.path.getsize(image_path)} bytes).")
                 else:
                     log_callback("info", f"[{msg_id}] [WhatsApp] Enviando apenas texto.")
-                
-                log_callback("info", f"[{msg_id}] [WhatsApp] POST para {wpp_endpoint} | Destinos: {', '.join(targets_display)}")
+
                 try:
                     async with httpx.AsyncClient(timeout=300) as client:
                         resp = await client.post(wpp_endpoint, json=payload)
                         resp.raise_for_status()
-                    log_callback("success", f"[{msg_id}] ✅ Enviado para WhatsApp com sucesso.")
+                    log_callback("success", f"[{msg_id}] Enviado para WhatsApp com sucesso.")
                     wp_sent = True
                 except httpx.HTTPStatusError as exc:
                     try:
                         err_detail = exc.response.json().get("error", exc.response.text)
-                    except:
+                    except Exception:
                         err_detail = exc.response.text
-                    log_callback("error", f"[{msg_id}] ❌ Erro WhatsApp ({exc.response.status_code}): {err_detail}")
+                    log_callback("error", f"[{msg_id}] Erro WhatsApp ({exc.response.status_code}): {err_detail}")
                 except Exception as exc:
-                    log_callback("error", f"[{msg_id}] ❌ Erro ao conectar no WhatsApp: {exc}")
+                    log_callback("error", f"[{msg_id}] Erro ao conectar no WhatsApp: {exc}")
+
             elif not isinstance(wpp_destinations, list):
-                log_callback("error", f"[{msg_id}] ❌ ERRO: wpp_destinations não é uma lista! Tipo: {type(wpp_destinations)} | Valor: {wpp_destinations}")
+                log_callback("error", f"[{msg_id}] wpp_destinations não é lista! Tipo: {type(wpp_destinations)}")
             else:
-                log_callback("warning", f"[{msg_id}] ⚠️ Envio WhatsApp ativo, mas lista de destinos está vazia.")
+                log_callback("warning", f"[{msg_id}] Envio WhatsApp ativo, mas lista de destinos vazia.")
         else:
-            log_callback("info", f"[{msg_id}] ℹ️ Envio para WhatsApp DESATIVADO no config.")
+            log_callback("info", f"[{msg_id}] Envio para WhatsApp desativado.")
 
         return True, tg_sent, wp_sent, promotion_data
 
@@ -415,7 +376,6 @@ async def processar_mensagem(
         return False, False, False, None
 
     finally:
-        # ── Step 7: Cleanup temp file ─────────────────────────────────────────
         if image_path and os.path.exists(image_path):
             try:
                 os.remove(image_path)
