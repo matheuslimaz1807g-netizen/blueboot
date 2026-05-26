@@ -685,10 +685,10 @@ class BotRunner:
                     burst_count = self._schedule_next_dispatch(queue_size, burst_count)
                     dest = " e ".join(filter(None, ["Telegram" if tg_ok else "", "WhatsApp" if wp_ok else ""]))
                     remaining = max(0, int(self._next_dispatch_at - time.time()))
-                    self._log("info", f"[RateLimit] ✅ Msg {msg_id} enviada para {dest}! Próximo envio em {remaining}s.")
+                    self._log("info", f"[RateLimit] \u2705 Msg {msg_id} enviada para {dest}! Pr\u00f3ximo envio em {remaining}s.")
                 else:
-                    label = "filtrada/sem destino" if processed else "ignorada (não é promoção/link inválido)"
-                    self._log("info", f"[RateLimit] ⭕  Msg {msg_id} {label}. Próximo item imediato.")
+                    label = "filtrada/sem destino" if processed else "ignorada (nao e promocao/link invalido)"
+                    self._log("info", f"[RateLimit] \u23ED\uFE0F  Msg {msg_id} {label}. Pr\u00f3ximo item imediato.")
 
             except Exception as exc:
                 self._log("error", f"[RateLimit] Erro ao processar msg {msg_id}: {exc}")
