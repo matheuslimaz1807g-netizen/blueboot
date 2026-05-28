@@ -34,6 +34,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         conv_shopee=cfg.conv_shopee,
         conv_ali=cfg.conv_ali,
         conv_ml=cfg.conv_ml,
+        conv_amz=cfg.conv_amz,
         filtros=cfg.filtros or {},
         shopee_token=decrypt_field(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
         ali_key=decrypt_field(cfg.ali_key_enc) if cfg.ali_key_enc else None,
@@ -41,6 +42,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         ali_tracking=decrypt_field(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
         ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
+        amz_cookies=decrypt_field(cfg.amz_cookies_enc) if cfg.amz_cookies_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
@@ -71,6 +73,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     cfg.conv_shopee = data.conv_shopee
     cfg.conv_ali = data.conv_ali
     cfg.conv_ml = data.conv_ml
+    cfg.conv_amz = data.conv_amz
     cfg.filtros = data.filtros
 
     # Update encrypted fields whenever the payload explicitly includes them.
@@ -87,6 +90,8 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         cfg.ml_token_enc = encrypt_field(data.ml_token) if data.ml_token else None
     if data.ml_cookies is not None:
         cfg.ml_cookies_enc = encrypt_field(data.ml_cookies) if data.ml_cookies else None
+    if data.amz_cookies is not None:
+        cfg.amz_cookies_enc = encrypt_field(data.amz_cookies) if data.amz_cookies else None
     if data.api_id is not None:
         cfg.api_id_enc = encrypt_field(data.api_id) if data.api_id else None
     if data.api_hash is not None:
@@ -113,6 +118,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         conv_shopee=cfg.conv_shopee,
         conv_ali=cfg.conv_ali,
         conv_ml=cfg.conv_ml,
+        conv_amz=cfg.conv_amz,
         filtros=cfg.filtros or {},
         shopee_token=decrypt_field(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
         ali_key=decrypt_field(cfg.ali_key_enc) if cfg.ali_key_enc else None,
@@ -120,6 +126,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         ali_tracking=decrypt_field(cfg.ali_tracking_enc) if cfg.ali_tracking_enc else None,
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
         ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
+        amz_cookies=decrypt_field(cfg.amz_cookies_enc) if cfg.amz_cookies_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,

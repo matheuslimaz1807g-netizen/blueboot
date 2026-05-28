@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import random
 import re
 import threading
 import time
@@ -723,7 +724,8 @@ class BotRunner:
                 self._next_dispatch_at = time.time()
                 return burst_count + 1
             else:
-                self._next_dispatch_at = time.time() + delay
+                jitter = random.randint(2, max(2, delay))
+                self._next_dispatch_at = time.time() + jitter
                 return 0
 
     # ── Message processing ────────────────────────────────────────────────────

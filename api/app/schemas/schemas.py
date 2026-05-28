@@ -123,6 +123,7 @@ class ConfigIn(BaseModel):
     conv_shopee: bool = True
     conv_ali: bool = True
     conv_ml: bool = True
+    conv_amz: bool = False
     filtros: dict[str, Any] = Field(default_factory=dict)
     # Plain-text credentials (API encrypts before storing)
     shopee_token: str | None = None
@@ -131,6 +132,7 @@ class ConfigIn(BaseModel):
     ali_tracking: str | None = None
     ml_token: str | None = None
     ml_cookies: str | None = None
+    amz_cookies: str | None = None
     api_id: str | None = None
     api_hash: str | None = None
     session_string: str | None = None
@@ -151,6 +153,7 @@ class ConfigOut(BaseModel):
     conv_shopee: bool
     conv_ali: bool
     conv_ml: bool
+    conv_amz: bool
     filtros: dict[str, Any]
     shopee_token: str | None
     ali_key: str | None
@@ -158,6 +161,7 @@ class ConfigOut(BaseModel):
     ali_tracking: str | None
     ml_token: str | None
     ml_cookies: str | None
+    amz_cookies: str | None
     api_id: str | None
     api_hash: str | None
     session_string: str | None

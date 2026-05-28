@@ -445,9 +445,15 @@
                                         <label class="block text-xs text-slate-400 mb-1.5">Mercado Livre Token</label>
                                         <input type="password" x-model="config.ml_token" class="field">
                                     </div>
-                                    <div class="col-span-1 md:col-span-2">
+                                    <div class="col-span-1 md:col-span-2 border-b border-gray-800 pb-2">
                                         <label class="block text-xs text-slate-400 mb-1.5">ML Cookies</label>
                                         <textarea x-model="config.ml_cookies" rows="2" class="field" style="resize:vertical;"></textarea>
+                                    </div>
+
+                                    <!-- Amazon -->
+                                    <div class="col-span-1 md:col-span-2">
+                                        <label class="block text-xs text-slate-400 mb-1.5">Amazon Cookies (SiteStripe)</label>
+                                        <textarea x-model="config.amz_cookies" rows="3" placeholder="Insira o cookie string obtido na Amazon..." class="field" style="resize:vertical;"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -489,6 +495,10 @@
                                     <label class="toggle-group">
                                         <input type="checkbox" x-model="config.conv_ml">
                                         <span class="text-sm text-slate-300">Converter Mercado Livre</span>
+                                    </label>
+                                    <label class="toggle-group">
+                                        <input type="checkbox" x-model="config.conv_amz">
+                                        <span class="text-sm text-slate-300">Converter Amazon</span>
                                     </label>
                                 </div>
                             </div>

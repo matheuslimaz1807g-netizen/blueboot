@@ -100,6 +100,7 @@ class ClientConfig(Base):
     conv_shopee: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     conv_ali: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     conv_ml: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    conv_amz: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Filters
     filtros: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)
@@ -111,6 +112,7 @@ class ClientConfig(Base):
     ali_tracking_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     ml_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     ml_cookies_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    amz_cookies_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Telegram API Credentials (Encrypted)
     api_id_enc: Mapped[str | None] = mapped_column(Text, nullable=True)

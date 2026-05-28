@@ -23,3 +23,6 @@
 | 2026-05-25 19:33 | Antes de remover a funcionalidade de grupos do WhatsApp | git stash push -m "BACKUP-2026-05-25-19-33: antes-de-remover-funcionalidade-grupos-whatsapp" | stash@{0} |
 | 2026-05-25 20:01 | Antes de autonomia do cliente, controle Start/Stop e ajustes de console | git stash push -u -m "BACKUP-2026-05-25-20-01: client autonomy bot control ui" seguido de git stash apply 'stash@{0}' | stash@{0} |
 | 2026-05-25 20:13 | Antes de limpar logs operacionais repetitivos do bot | git stash push -u -m "BACKUP-2026-05-25-20-13: clean bot runtime logs" seguido de git stash apply 'stash@{0}' | stash@{0} |
+| 2026-05-26 22:40 | Antes de implementar filtro inteligente de ofertas | git stash push -u -m "BACKUP-2026-05-26-22-40: filtro-inteligente-ofertas" seguido de git stash apply 'stash@{0}' | stash@{0} |
+| 2026-05-27 21:35 | Antes de iniciar a integração completa do módulo Amazon | git stash push -u -m "BACKUP-2026-05-27-21-35: antes-integracao-completa-amazon" seguido de git stash apply 'stash@{0}' | stash@{0} |
+

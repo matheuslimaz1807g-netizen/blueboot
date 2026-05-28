@@ -16,7 +16,8 @@ from typing import Callable, Optional
 import httpx
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 
-from affiliates import aliexpress, mercadolivre, shopee
+from affiliates import aliexpress, amazon, mercadolivre, shopee
+from offer_filter import should_post
 from utils import expandir_link_async
 
 # ── Text patterns ─────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ _ANY_URL_PATTERN = re.compile(r"(https?://[^\s]+)")
 _ML_PATTERN     = re.compile(r"(?:mercadolivre\.com(?:\.br)?|meli\.la)")
 _ALI_PATTERN    = re.compile(r"(?:aliexpress\.com|a\.aliexpress\.com)")
 _SHOPEE_PATTERN = re.compile(r"(?:shopee\.com\.br|s\.shopee\.com\.br)")
+_AMZ_PATTERN    = re.compile(r"(?:amazon\.com(?:\.br)?|amzn\.to)")
 
 _PRICE_PATTERN  = re.compile(r'R\$\s*([\d.,]+)', re.I)
 _COUPON_PATTERN = re.compile(r'(?:cupom|codigo|coupon):\s*([A-Z0-9]+)', re.I)
@@ -107,6 +109,8 @@ def extract_promotion_data(
             store = "AliExpress"; break
         elif _SHOPEE_PATTERN.search(link):
             store = "Shopee"; break
+        elif _AMZ_PATTERN.search(link):
+            store = "Amazon"; break
 
     affiliateLink = list(converted_links.values())[0] if converted_links else None
 
@@ -153,6 +157,15 @@ async def processar_mensagem(
         if not raw_text.strip():
             log_callback("info", f"[{msg_id}] Mensagem sem texto — ignorada.")
             return False, False, False, None
+
+        should_publish, offer = should_post(raw_text, config.get("offer_filter", {}))
+        if not should_publish:
+            log_callback(
+                "info",
+                f"[{msg_id}] Oferta filtrada: {offer.reject_reason} "
+                f"| score={offer.score}/100 | cat={offer.category}",
+            )
+            return True, False, False, None
 
         preview = " ".join(raw_text.splitlines()[:3]).strip()
         if len(preview) > 180:
@@ -254,6 +267,28 @@ async def processar_mensagem(
         else:
             log_callback("info", f"[{msg_id}] Conversão Shopee desativada.")
 
+        # ── Step 2d: Amazon ───────────────────────────────────────────────────
+        if config.get("conv_amz"):
+            for original_link, expanded_link in expanded_map.items():
+                if _AMZ_PATTERN.search(expanded_link):
+                    log_callback("info", f"[{msg_id}] Link Amazon detectado: {expanded_link}")
+                    try:
+                        aff = await amazon.convert(
+                            expanded_link,
+                            amz_cookies=config.get("amz_cookies", ""),
+                        )
+                        if aff and aff != expanded_link:
+                            text = text.replace(original_link, aff)
+                            converted_links[original_link] = aff
+                            any_link_converted = True
+                            log_callback("info", f"[{msg_id}] Link Amazon convertido.")
+                        else:
+                            log_callback("warning", f"[{msg_id}] Link Amazon não convertido. Usando original.")
+                    except Exception as exc:
+                        log_callback("error", f"[{msg_id}] Erro Amazon: {exc}. Usando original.")
+        else:
+            log_callback("info", f"[{msg_id}] Conversão Amazon desativada.")
+
         # ── Strict mode: abort if nothing was converted ───────────────────────
         if not any_link_converted:
             log_callback("warning", f"[{msg_id}] Nenhum link convertido. Mensagem ignorada.")
@@ -265,9 +300,15 @@ async def processar_mensagem(
             log_callback("info", f"[{msg_id}] Filtrada por palavra-chave.")
             return True, False, False, None
 
-        # ── Step 3: Clean text ────────────────────────────────────────────────
-        text = clean_text(text)
-        log_callback("info", f"[{msg_id}] Texto limpo.")
+        # ── Step 3: Clean text & Spintax ──────────────────────────────────────
+        if any_link_converted and offer:
+            from spintax import generate_humanized_copy
+            main_converted_link = next(iter(converted_links.values()))
+            text = generate_humanized_copy(offer.score, raw_text, main_converted_link)
+            log_callback("info", f"[{msg_id}] Texto reescrito via Spintax (Score: {offer.score}).")
+        else:
+            text = clean_text(text)
+            log_callback("info", f"[{msg_id}] Texto limpo (padrão).")
 
         # ── Step 4: Download media ────────────────────────────────────────────
         if msg.media and isinstance(msg.media, (MessageMediaPhoto, MessageMediaDocument)):
@@ -304,11 +345,36 @@ async def processar_mensagem(
                     try:
                         dest_entity = await telegram_client.get_entity(dest)
                         if image_path and os.path.exists(image_path):
-                            await telegram_client.send_file(
+                            sent_msg = await telegram_client.send_file(
                                 dest_entity, file=image_path, caption=text, force_document=False
                             )
                         else:
-                            await telegram_client.send_message(dest_entity, text, link_preview=False)
+                            sent_msg = await telegram_client.send_message(dest_entity, text, link_preview=False)
+                            
+                        # ── Quebra de Padrão (Humanização) ────────────────────
+                        import random
+                        # 1. Reações aleatórias para prova social (30% de chance)
+                        if sent_msg and random.random() < 0.3:
+                            try:
+                                from telethon.tl.functions.messages import SendReactionRequest
+                                from telethon.tl.types import ReactionEmoji
+                                await telegram_client(SendReactionRequest(
+                                    peer=dest_entity,
+                                    msg_id=sent_msg.id,
+                                    reaction=[ReactionEmoji(emoticon=random.choice(["🔥", "❤️", "👍", "👀", "👏"]))]
+                                ))
+                            except Exception:
+                                pass
+                                
+                        # 2. Mensagem de engajamento fantasma (1 em 20 envios)
+                        if random.randint(1, 20) == 1:
+                            eng_texts = [
+                                "Fiquem de olho nas mensagens com sirene 🚨, são os maiores descontos da semana!",
+                                "Vocês viram que a Amazon tá com frete grátis na madruga hoje? Fiquem ligados aqui.",
+                                "Lembrando galera: qualquer dúvida sobre as ofertas, podem avisar os admins."
+                            ]
+                            await telegram_client.send_message(dest_entity, random.choice(eng_texts))
+
                         log_callback("success", f"[{msg_id}] Enviado para Telegram: {dest}.")
                         tg_sent = True
                     except Exception as exc:

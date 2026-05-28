@@ -58,6 +58,7 @@ def load_config_from_env() -> dict:
         "conv_shopee": os.getenv("CONV_SHOPEE", "true").lower() == "true",
         "conv_ali": os.getenv("CONV_ALI", "true").lower() == "true",
         "conv_ml": os.getenv("CONV_ML", "true").lower() == "true",
+        "conv_amz": os.getenv("CONV_AMZ", "false").lower() == "true",
         "filtros": {},
         "shopee_token": os.getenv("SHOPEE_TOKEN", ""),
         "ali_key": os.getenv("ALIEXPRESS_APP_KEY", ""),
@@ -65,8 +66,19 @@ def load_config_from_env() -> dict:
         "ali_tracking": os.getenv("ALIEXPRESS_TRACKING_ID", ""),
         "ml_token": os.getenv("ML_TOKEN", ""),
         "ml_cookies": os.getenv("ML_COOKIES", ""),
+        "amz_cookies": os.getenv("AMZ_COOKIES", ""),
         "web_api_url": os.getenv("WEB_API_URL", "http://localhost:3000/api/promotions"),
         "send_to_web_api": os.getenv("SEND_TO_WEB_API", "true").lower() == "true",
+        "offer_filter": {
+            "enabled": os.getenv("OFFER_FILTER_ENABLED", "true").lower() == "true",
+            "max_posts_per_day": int(os.getenv("OFFER_FILTER_MAX_POSTS_PER_DAY", "10")),
+            "max_per_category_day": int(os.getenv("OFFER_FILTER_MAX_PER_CATEGORY_DAY", "3")),
+            "min_score": int(os.getenv("OFFER_FILTER_MIN_SCORE", "40")),
+            "min_discount_pct": float(os.getenv("OFFER_FILTER_MIN_DISCOUNT_PCT", "30")),
+            "min_price": float(os.getenv("OFFER_FILTER_MIN_PRICE", "15")),
+            "max_price": float(os.getenv("OFFER_FILTER_MAX_PRICE", "500")),
+            "db_path": os.getenv("OFFER_FILTER_DB_PATH", "data/offer_filter.sqlite3"),
+        },
     }
     
     if VERBOSE_CONFIG_LOGS:
