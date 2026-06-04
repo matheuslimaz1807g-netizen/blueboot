@@ -455,6 +455,13 @@
                                         <label class="block text-xs text-slate-400 mb-1.5">Amazon Cookies (SiteStripe)</label>
                                         <textarea x-model="config.amz_cookies" rows="3" placeholder="Insira o cookie string obtido na Amazon..." class="field" style="resize:vertical;"></textarea>
                                     </div>
+
+                                    <!-- Encurtador Bitly -->
+                                    <div class="col-span-1 md:col-span-2 border-t border-gray-800 pt-3">
+                                        <label class="block text-xs text-slate-400 mb-1.5">Bitly Token (Opcional - Rastreio CTR)</label>
+                                        <input type="text" x-model="config.bitly_token" placeholder="Insira seu Token do Bitly para usar seu próprio encurtador" class="field">
+                                        <p class="text-[10px] text-slate-500 mt-1">Se deixado em branco, será usado o TinyURL (sem analytics) por padrão.</p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -560,7 +567,7 @@
                                             ></span>
                                             <span class="text-[10px] text-slate-600 font-mono flex-shrink-0" x-text="fmtTime(log.created_at)"></span>
                                         </div>
-                                        <p class="text-xs text-slate-300 leading-relaxed break-words" x-text="sanitizeLog(log.mensagem)"></p>
+                                        <p class="text-xs text-slate-300 leading-relaxed break-words whitespace-pre-line" x-text="sanitizeLog(log.mensagem)"></p>
                                     </div>
                                 </template>
                             </div>

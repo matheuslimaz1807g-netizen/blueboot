@@ -109,6 +109,8 @@ class Offer:
     score: int = 0
     reject_reason: Optional[str] = None
     fingerprint: str = ""
+    is_price_drop: bool = False
+    previous_price: Optional[float] = None
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self) -> dict[str, Any]:
@@ -127,9 +129,14 @@ def should_post(raw_text: str, config: Optional[dict[str, Any]] = None) -> tuple
     _init_db(cfg["db_path"])
 
     if _fingerprint_seen_today(cfg["db_path"], offer.fingerprint):
-        offer.reject_reason = "duplicata"
-        _record_offer(cfg["db_path"], offer, approved=False)
-        return False, offer
+        prev_price = _get_previous_price(cfg["db_path"], offer.fingerprint)
+        if prev_price is not None and offer.price_now is not None and offer.price_now < prev_price:
+            offer.is_price_drop = True
+            offer.previous_price = prev_price
+        else:
+            offer.reject_reason = "duplicata"
+            _record_offer(cfg["db_path"], offer, approved=False)
+            return False, offer
 
     approved = _evaluate_rules(offer, cfg)
     _record_offer(cfg["db_path"], offer, approved=approved)
@@ -292,46 +299,80 @@ def _is_premium_item(text: str) -> bool:
 
 
 def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
+    """
+    Análise de Negócio Sênior.
+
+    Escala de decisão:
+      70-100 → Postar imediatamente
+      50-69  → Postar (boa oferta)
+      38-49  → Postar se houver espaço no dia
+      20-37  → Rejeitar
+      0-19   → Rejeitar
+    """
     score = 0
 
-    if offer.discount_pct is not None:
-        if offer.discount_pct >= 70:
-            score += 35
-        elif offer.discount_pct >= 60:
-            score += 28
-        elif offer.discount_pct >= 50:
-            score += 22
-        elif offer.discount_pct >= 40:
-            score += 15
-        elif offer.discount_pct >= 30:
-            score += 8
-        else:
-            score += 2
+    # ── 1. Marca reconhecida (+20) ───────────────────────────────────────────
+    # Aumenta conversão independente do desconto mostrado.
+    if offer.brand:
+        score += 20
+
+    # ── 2. Categoria de demanda contínua (+15) ────────────────────────────
+    # Higiene, suplemento, casa: vende sempre, qualquer dia.
+    CONTINUOUS_DEMAND = {"saude_beleza", "casa", "eletronicos"}
+    if offer.category in CONTINUOUS_DEMAND:
+        score += 15
     else:
+        # Outras categorias com bônus menor
+        score += CATEGORIES.get(offer.category, CATEGORIES["outros"])["score_bonus"]
+
+    # ── 3. Ticket entre R$15 e R$200: impulso, alta conversão (+20) ────────
+    if offer.price_now:
+        if 15 <= offer.price_now <= 200:
+            score += 20  # Zona de impulso puro
+        elif 200 < offer.price_now <= 500:
+            score += 12  # Consideração moderada
+        elif 500 < offer.price_now <= 1500:
+            score += 6   # Ticket alto = comissão alta, mas menor conversão
+        elif offer.price_now > 1500:
+            score += 10  # Premium: comissão alta compensa
+        elif offer.price_now < 15:
+            score += 2   # Muito barato, margem pequena
+    else:
+        # Ausência de preço (ex: ML sem "De/Por") não é rejeição
         score += 5
 
-    if offer.has_coupon:
-        score += 10
-    if offer.has_pix:
-        score += 8
-    if offer.has_free_shipping:
-        score += 7
-
-    if offer.price_now:
-        if 20 <= offer.price_now <= 150:
+    # ── 4. Desconto explícito (bônus adicional, mas não obrigatório) ───────
+    if offer.discount_pct is not None:
+        if offer.discount_pct >= 70:
+            score += 20
+        elif offer.discount_pct >= 60:
             score += 15
-        elif 150 < offer.price_now <= 300:
-            score += 10
-        elif 300 < offer.price_now <= 500:
-            score += 5
-        elif offer.price_now < 20:
-            score += 3
+        elif offer.discount_pct >= 50:
+            score += 12
+        elif offer.discount_pct >= 40:
+            score += 8
+        elif offer.discount_pct >= 30:
+            score += 4
+        elif offer.discount_pct > 0:
+            score += 1
+        # desconto zero ou negativo: 0 bônus
 
-    score += CATEGORIES.get(offer.category, CATEGORIES["outros"])["score_bonus"]
+    # ── 5. Múltiplos benefícios combinados (+bônus acumulado) ──────────────
+    # Cupom + pix + loja oficial juntos valem muito.
+    benefit_count = sum([
+        offer.has_coupon,
+        offer.has_pix,
+        offer.has_free_shipping,
+        offer.has_installment,
+    ])
+    if benefit_count >= 3:
+        score += 15  # Combo poderoso
+    elif benefit_count == 2:
+        score += 8
+    elif benefit_count == 1:
+        score += 4
 
-    if offer.brand:
-        score += 10
-
+    # ── 6. Horário de pico (+5) ─────────────────────────────────────────────
     if datetime.now().hour in cfg["peak_hours"]:
         score += 5
 
@@ -339,29 +380,39 @@ def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
 
 
 def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
+    # Preço: só rejeita se o preço existir E for claramente errado.
     if offer.price_now is not None:
         is_premium = _is_premium_item(offer.raw_text)
-        # Itens premium ignoram o max_price normal e tem um limite muito maior
         effective_max_price = 15000 if is_premium else cfg["max_price"]
 
         if offer.price_now > effective_max_price:
-            offer.reject_reason = f"preco muito alto (R${offer.price_now:.2f}) e nao premium"
+            offer.reject_reason = f"preço acima do limite (R${offer.price_now:.2f})"
             return False
         if offer.price_now < cfg["min_price"]:
-            offer.reject_reason = f"preco muito baixo (R${offer.price_now:.2f})"
+            offer.reject_reason = f"preço muito baixo (R${offer.price_now:.2f})"
             return False
 
-    if offer.discount_pct is not None and offer.discount_pct < cfg["min_discount_pct"]:
-        offer.reject_reason = f"desconto baixo ({offer.discount_pct:.1f}%)"
+    # Desconto baixo isolado NÃO é motivo de rejeição (spec sênior).
+    # Só rejeita se também não houver nenhum outro diferencial (brand, categoria, benefícios).
+    if (offer.discount_pct is not None
+            and offer.discount_pct < cfg["min_discount_pct"]
+            and not offer.brand
+            and offer.category == "outros"
+            and not offer.has_coupon
+            and not offer.has_pix
+            and not offer.has_free_shipping):
+        offer.reject_reason = f"sem diferencial: desconto baixo ({offer.discount_pct:.1f}%) e sem marca/cupom/benefício"
         return False
 
-    if offer.score < cfg["min_score"]:
-        offer.reject_reason = f"score baixo ({offer.score}/100)"
+    # Score mínimo: alinhado com escala sênior (38 = postar se houver espaço)
+    min_score = cfg.get("min_score", 38)
+    if offer.score < min_score:
+        offer.reject_reason = f"score insuficiente ({offer.score}/100, mínimo: {min_score})"
         return False
 
     status = daily_status(cfg)
     if status["postados_hoje"] >= cfg["max_posts_per_day"]:
-        offer.reject_reason = f"limite diario atingido ({cfg['max_posts_per_day']}/dia)"
+        offer.reject_reason = f"limite diário atingido ({cfg['max_posts_per_day']}/dia)"
         return False
 
     category_count = status.get("por_categoria", {}).get(offer.category, 0)
@@ -415,15 +466,28 @@ def _init_db(db_path: str) -> None:
 
 def _fingerprint_seen_today(db_path: str, fingerprint: str) -> bool:
     with sqlite3.connect(db_path) as conn:
-        row = conn.execute(
+        cursor = conn.execute(
             """
             SELECT 1 FROM offer_filter_events
-            WHERE day = ? AND fingerprint = ?
+            WHERE day = ? AND fingerprint = ? AND approved = 1
             LIMIT 1
             """,
             (str(date.today()), fingerprint),
-        ).fetchone()
-    return row is not None
+        )
+        return cursor.fetchone() is not None
+
+def _get_previous_price(db_path: str, fingerprint: str) -> Optional[float]:
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(
+            """
+            SELECT price_now FROM offer_filter_events
+            WHERE day = ? AND fingerprint = ? AND approved = 1
+            ORDER BY id DESC LIMIT 1
+            """,
+            (str(date.today()), fingerprint),
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
 
 
 def _record_offer(db_path: str, offer: Offer, approved: bool) -> None:
@@ -462,9 +526,7 @@ def _product_fingerprint(text: str) -> str:
     normalized = _normalize_text(no_urls)
     words = re.findall(r"[a-z0-9]+", normalized)
     compact = " ".join(words[:16])
-    prices = [str(_parse_brl(value)) for value in _PRICE_RE.findall(text) if _parse_brl(value)]
-    source = "|".join([compact, prices[-1] if prices else ""])
-    return hashlib.sha256(source.encode("utf-8")).hexdigest()
+    return hashlib.sha256(compact.encode("utf-8")).hexdigest()
 
 
 def _normalize_text(text: str) -> str:

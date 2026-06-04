@@ -777,11 +777,19 @@ class BotRunner:
         delay = self._delay if self._delay > 0 else 3
         next_ts = datetime.fromtimestamp(time.time() + delay, tz=_TZ_BR).strftime("%H:%M:%S")
 
+        score_info = ""
+        if promo and promo.get("offerScore") is not None:
+            emoji = promo.get("offerDecision", {}).get("emoji", "✅")
+            label = promo.get("offerDecision", {}).get("label", "Boa oferta")
+            score = promo.get("offerScore")
+            cat   = promo.get("offerCategory", "outros")
+            score_info = f"\n{emoji} Negócio Sênior: Score {score}/100 ({label}) | Cat: {cat}"
+
         self._activity(
             "success",
-            f"\U0001F4E6 {title}{store} | Valor: {price}\n"
+            f"\U0001F4E6 {title}{store} | Valor: {price}{score_info}\n"
             f"\u2705 Enviado para {dest}! Total hoje: {total}.\n"
-            f"\u23F1\uFE0F Pr\u00f3ximo envio liberado a partir das {next_ts}.",
+            f"\u23F1\uFE0F Próximo envio liberado a partir das {next_ts}.",
         )
 
     # ── Shutdown ──────────────────────────────────────────────────────────────

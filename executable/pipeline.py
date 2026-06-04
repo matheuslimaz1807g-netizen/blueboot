@@ -19,6 +19,7 @@ from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 from affiliates import aliexpress, amazon, mercadolivre, shopee
 from offer_filter import should_post
 from utils import expandir_link_async
+from shortener import shorten_url
 
 # ── Text patterns ─────────────────────────────────────────────────────────────
 
@@ -37,45 +38,10 @@ _COUPON_PATTERN = re.compile(r'(?:cupom|codigo|coupon):\s*([A-Z0-9]+)', re.I)
 
 def clean_text(text: str) -> str:
     """
-    Apply the exact cleaning rules defined in the spec:
-    1. Remove the first non-empty line (headline from the source group)
-    2. Remove all lines that start with '#'
-    3. Remove duplicate empty lines
-    4. Insert a blank line after the first remaining line (product title)
+    Apply text cleaning using the local text_cleaner module.
     """
-    lines = text.splitlines()
-
-    # Step 1: skip the first non-empty line (the "headline")
-    i = 0
-    for i, line in enumerate(lines):
-        if line.strip():
-            i += 1
-            break
-
-    # Skip blank lines immediately after the headline
-    while i < len(lines) and not lines[i].strip():
-        i += 1
-
-    remaining = lines[i:]
-
-    # Step 2: remove hashtag lines
-    remaining = [ln for ln in remaining if not ln.strip().startswith("#")]
-
-    # Step 3 + 4: collapse multiple blanks and insert one blank after first line
-    result: list[str] = []
-    blank_count = 0
-    for idx, ln in enumerate(remaining):
-        if not ln.strip():
-            blank_count += 1
-            if blank_count == 1:
-                result.append("")
-        else:
-            blank_count = 0
-            result.append(ln)
-            if idx == 0 and len(remaining) > 1:
-                result.append("")
-
-    return "\n".join(result).strip()
+    from text_cleaner import clean_offer_text
+    return clean_offer_text(text)
 
 
 # ── Promotion data extraction ─────────────────────────────────────────────────
@@ -86,6 +52,7 @@ def extract_promotion_data(
     image_path: Optional[str],
     expanded_map: dict,
     converted_links: dict,
+    offer=None,
 ) -> Optional[dict]:
     lines = cleaned_text.splitlines()
     if not lines:
@@ -133,6 +100,49 @@ def extract_promotion_data(
         "store":         store,
         "affiliateLink": affiliateLink,
         "telegramLink":  None,
+        # ── Análise de Negócio (populado em processar_mensagem) ──────────
+        "offerScore":    None,
+        "offerDecision": None,
+        "offerCategory": None,
+        "offerBrand":    None,
+        "offerPosted":   True,
+        "rejectReason":  None,
+    }
+
+
+def _score_decision(score: int) -> dict:
+    """Classifica o score segundo a escala de negócio definida."""
+    if score >= 70:
+        return {"label": "Postar imediatamente", "tier": "hot", "emoji": "🔥"}
+    elif score >= 50:
+        return {"label": "Boa oferta", "tier": "good", "emoji": "✅"}
+    elif score >= 38:
+        return {"label": "Postar se houver espaço", "tier": "ok", "emoji": "📌"}
+    elif score >= 20:
+        return {"label": "Rejeitada", "tier": "reject", "emoji": "❌"}
+    else:
+        return {"label": "Rejeitada", "tier": "reject", "emoji": "❌"}
+
+
+def _build_rejected_promo(offer) -> dict:
+    """Constrói um promo dict mínimo para ofertas rejeitadas exibirem no dashboard."""
+    decision = _score_decision(offer.score)
+    return {
+        "originalTitle": offer.raw_text[:80] if offer.raw_text else "Oferta rejeitada",
+        "seoTitle":      "Oferta rejeitada pelo filtro",
+        "oldPrice":      None,
+        "newPrice":      None,
+        "couponCode":    None,
+        "imageUrl":      None,
+        "store":         None,
+        "affiliateLink": None,
+        "telegramLink":  None,
+        "offerScore":    offer.score,
+        "offerDecision": decision,
+        "offerCategory": offer.category,
+        "offerBrand":    offer.brand,
+        "offerPosted":   False,
+        "rejectReason":  offer.reject_reason,
     }
 
 
@@ -165,7 +175,7 @@ async def processar_mensagem(
                 f"[{msg_id}] Oferta filtrada: {offer.reject_reason} "
                 f"| score={offer.score}/100 | cat={offer.category}",
             )
-            return True, False, False, None
+            return True, False, False, _build_rejected_promo(offer)
 
         preview = " ".join(raw_text.splitlines()[:3]).strip()
         if len(preview) > 180:
@@ -186,6 +196,7 @@ async def processar_mensagem(
         text = raw_text
         converted_links: dict[str, str] = {}
         any_link_converted = False
+        store_name = ""
 
         # ── Step 2a: Mercado Livre ────────────────────────────────────────────
         if config.get("conv_ml"):
@@ -198,6 +209,7 @@ async def processar_mensagem(
                             text = text.replace(original_link, aff)
                             converted_links[original_link] = aff
                             any_link_converted = True
+                            store_name = "Mercado Livre"
                             log_callback("info", f"[{msg_id}] Link ML convertido.")
                         else:
                             log_callback("warning", f"[{msg_id}] Link ML não convertido. Usando original.")
@@ -223,6 +235,7 @@ async def processar_mensagem(
                             text = text.replace(orig, new)
                             converted_links[orig] = new
                             any_link_converted = True
+                            store_name = "AliExpress"
                     log_callback("info", f"[{msg_id}] Links AliExpress convertidos.")
                 except Exception as exc:
                     log_callback("error", f"[{msg_id}] Erro AliExpress: {exc}")
@@ -257,6 +270,7 @@ async def processar_mensagem(
                             text = text.replace(original_link, aff)
                             converted_links[original_link] = aff
                             any_link_converted = True
+                            store_name = "Shopee"
                             log_callback("info", f"[{msg_id}] Link Shopee convertido.")
                         else:
                             log_callback("warning", f"[{msg_id}] Link Shopee não convertido. Usando original.")
@@ -281,6 +295,7 @@ async def processar_mensagem(
                             text = text.replace(original_link, aff)
                             converted_links[original_link] = aff
                             any_link_converted = True
+                            store_name = "Amazon"
                             log_callback("info", f"[{msg_id}] Link Amazon convertido.")
                         else:
                             log_callback("warning", f"[{msg_id}] Link Amazon não convertido. Usando original.")
@@ -300,15 +315,34 @@ async def processar_mensagem(
             log_callback("info", f"[{msg_id}] Filtrada por palavra-chave.")
             return True, False, False, None
 
-        # ── Step 3: Clean text & Spintax ──────────────────────────────────────
-        if any_link_converted and offer:
-            from spintax import generate_humanized_copy
+        # ── Step 3: Clean text & Inject Link ──────────────────────────────────
+        # Applica a curadoria inteligente (text_cleaner.py)
+        cleaned_text = clean_text(text)
+        
+        urgency_tag = ""
+        if offer:
+            if offer.is_price_drop:
+                urgency_tag = f"🚨 CAIU MAIS! De R$ {offer.previous_price:.2f} por R$ {offer.price_now:.2f}\n"
+            elif offer.score >= 70:
+                urgency_tag = "🔥 IMPERDÍVEL / ESTOQUE LIMITADO\n"
+            elif offer.score >= 50:
+                urgency_tag = "⚡ PREÇO EXCELENTE\n"
+        
+        if any_link_converted:
             main_converted_link = next(iter(converted_links.values()))
-            text = generate_humanized_copy(offer.score, raw_text, main_converted_link)
-            log_callback("info", f"[{msg_id}] Texto reescrito via Spintax (Score: {offer.score}).")
+            # Remove qualquer link original que sobrou no texto limpo
+            cleaned_text_no_url = _ANY_URL_PATTERN.sub("", cleaned_text).strip()
+            
+            bitly_token = config.get("bitly_token", "")
+            shortened_link = await shorten_url(main_converted_link, bitly_token)
+            
+            store_msg = f"🛒 Compre na {store_name}" if store_name else "🛒 Compre agora"
+            text = f"{urgency_tag}{cleaned_text_no_url}\n\n{store_msg}:\n{shortened_link}"
+            
+            log_callback("info", f"[{msg_id}] Texto limpo e link encurtado.")
         else:
-            text = clean_text(text)
-            log_callback("info", f"[{msg_id}] Texto limpo (padrão).")
+            text = f"{urgency_tag}{cleaned_text}"
+            log_callback("info", f"[{msg_id}] Texto limpo (padrão sem conversão).")
 
         # ── Step 4: Download media ────────────────────────────────────────────
         if msg.media and isinstance(msg.media, (MessageMediaPhoto, MessageMediaDocument)):
@@ -321,7 +355,17 @@ async def processar_mensagem(
                 image_path = None
 
         # ── Step 4.5: Send promotion data to web API ──────────────────────────
-        promotion_data = extract_promotion_data(raw_text, text, image_path, expanded_map, converted_links)
+        promotion_data = extract_promotion_data(raw_text, text, image_path, expanded_map, converted_links, offer)
+        
+        # Enriquece promo com dados de análise de negócio do offer_filter
+        if promotion_data and offer:
+            decision = _score_decision(offer.score)
+            promotion_data["offerScore"]    = offer.score
+            promotion_data["offerDecision"] = decision
+            promotion_data["offerCategory"] = offer.category
+            promotion_data["offerBrand"]    = offer.brand
+            promotion_data["offerPosted"]   = True
+            promotion_data["rejectReason"]  = None
         if promotion_data and config.get("send_to_web_api", True):
             web_api_url = config.get("web_api_url", "http://localhost:3000/api/promotions")
             try:

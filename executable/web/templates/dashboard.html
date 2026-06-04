@@ -307,7 +307,7 @@
       recentBox.innerHTML = recent.map(l => `
         <div class="flex items-start gap-3 py-2 border-b border-border last:border-0">
           <span class="log-badge log-${l.nivel}">${l.nivel}</span>
-          <span class="text-slate-300 text-sm flex-1">${l.mensagem}</span>
+          <span class="text-slate-300 text-sm flex-1 whitespace-pre-line">${l.mensagem}</span>
           <span class="text-muted text-xs shrink-0">${l.horario}</span>
         </div>
       `).join('');
