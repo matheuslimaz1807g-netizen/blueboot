@@ -95,7 +95,8 @@ TRUSTED_BRANDS = [
     "puma", "nike", "adidas", "kappa", "samsung", "xiaomi", "jbl",
     "anker", "logitech", "britania", "britânia", "mondial", "philips",
     "multilaser", "intelbras", "bosch", "makita", "dux", "growth",
-    "optimum", "nestle", "tramontina", "fischer",
+    "optimum", "nestle", "tramontina", "fischer", "mizuno", "asics",
+    "fila", "olympikus", "under armour", "umbro"
 ]
 
 _PRICE_RE = re.compile(r"r\$\s*([\d.,]+)", re.IGNORECASE)
@@ -112,6 +113,7 @@ class Offer:
     has_free_shipping: bool = False
     has_pix: bool = False
     has_installment: bool = False
+    has_official_store: bool = False
     brand: Optional[str] = None
     category: str = "outros"
     score: int = 0
@@ -237,10 +239,11 @@ def _parse_offer(raw_text: str) -> Offer:
     if offer.price_now and offer.price_original and offer.price_original > offer.price_now:
         offer.discount_pct = round((1 - offer.price_now / offer.price_original) * 100, 1)
 
-    offer.has_coupon = bool(re.search(r"\b(cupom|coupon|codigo|c[oó]digo)\b", text_lower))
+    offer.has_coupon = bool(re.search(r"\b(cupom|cupons|coupon|coupons|codigo|c[oó]digo)s?\b", text_lower))
     offer.has_free_shipping = bool(re.search(r"frete\s*(gratis|gr[aá]tis|free)", text_lower))
     offer.has_pix = bool(re.search(r"\bpix\b", text_lower))
-    offer.has_installment = bool(re.search(r"\d+x\s*(?:de\s*)?r\$|\bparcel", text_lower))
+    offer.has_installment = bool(re.search(r"\b\d+x\b|\bparcel", text_lower))
+    offer.has_official_store = bool(re.search(r"\bloja oficial\b", text_lower))
     offer.category = _detect_category(raw_text)
     offer.brand = _detect_brand(raw_text)
     return offer
@@ -320,10 +323,13 @@ def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
     """
     score = 0
 
-    # ── 1. Marca reconhecida (+20) ───────────────────────────────────────────
+    # ── 1. Marca reconhecida ou Loja Oficial (+20/+15) ───────────────────
     # Aumenta conversão independente do desconto mostrado.
     if offer.brand:
         score += 20
+        
+    if offer.has_official_store:
+        score += 15
 
     # ── 2. Categoria de demanda contínua (+15) ────────────────────────────
     # Higiene, suplemento, casa: vende sempre, qualquer dia.
