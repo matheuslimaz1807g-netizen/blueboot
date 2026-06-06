@@ -59,8 +59,9 @@ def test_should_post_rejects_duplicate_even_after_new_call(tmp_path):
 
 def test_should_post_rejects_by_daily_category_limit(tmp_path):
     config = make_config(tmp_path, max_posts_per_day=10, max_per_category_day=1)
-    first = "Oferta\nCarregador Anker USB-C\nDe R$ 180,00 por R$ 89,90\nhttps://example.com/a"
-    second = "Oferta\nFone Samsung Bluetooth\nDe R$ 220,00 por R$ 99,90\nhttps://example.com/b"
+    # Ofertas sem marca reconhecida (score < 55) para não acionar o bypass de limite
+    first = "Oferta\nCarregador USB-C Genérico\nDe R$ 60,00 por R$ 29,90\nhttps://example.com/a"
+    second = "Oferta\nFone Bluetooth Genérico\nDe R$ 80,00 por R$ 39,90\nhttps://example.com/b"
 
     first_ok, _ = should_post(first, config)
     second_ok, second_offer = should_post(second, config)

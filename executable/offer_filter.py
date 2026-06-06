@@ -28,13 +28,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "enabled": True,
     "max_posts_per_day": 15,
     "max_per_category_day": 3,
-    "min_score": 40,
+    "min_score": 38,
     "min_discount_pct": 30,
     "max_price": 500,
     "min_price": 15,
     "peak_hours": [7, 8, 9, 12, 13, 18, 19, 20, 21],
     "db_path": str(Path("data") / "offer_filter.sqlite3"),
-    "min_score_bypass_limit": 70,
+    "min_score_bypass_limit": 55,
 }
 
 CATEGORIES: dict[str, dict[str, Any]] = {
@@ -50,25 +50,28 @@ CATEGORIES: dict[str, dict[str, Any]] = {
         "score_bonus": 10,
     },
     "moda": {
-        "emojis": ["👟", "👕", "👖", "🧦", "👗", "👜", "🧢", "👒", "👠"],
+        "emojis": ["👟", "👖", "🧦", "👗", "👜", "🧢", "👒", "👠"],
         "keywords": [
             "tenis", "tênis", "camiseta", "calca", "calça", "meia",
             "vestido", "blusa", "jaqueta", "moletom", "shorts",
-            "sandalia", "sandália", "chinelo", "kit", "conjunto",
+            "sandalia", "sandália", "chinelo", "conjunto",
         ],
         "score_bonus": 8,
     },
     "casa": {
-        "emojis": ["🏠", "🍲", "🧹", "🛋", "🪣", "🧺", "🪴", "🛁", "🚿"],
+        "emojis": ["🏠", "🍲", "🧹", "🛋", "🪣", "🧺", "🪴", "🛁", "🚿", "👕"],
         "keywords": [
             "pote", "panela", "frigideira", "organizador", "rack",
             "estante", "tapete", "toalha", "lencol", "lençol",
             "travesseiro", "secador", "aspirador", "liquidificador",
             "airfryer", "fritadeira", "cafeteira", "chaleira", "ferro",
-            "ventilador",
+            "ventilador", "varal", "cabide", "cesto", "vassoura",
+            "rodo", "balde", "cortina", "persiana", "colchao", "colchão",
+            "almofada", "edredom", "coberta", "cobertor",
         ],
         "score_bonus": 7,
     },
+
     "saude_beleza": {
         "emojis": ["💊", "💪", "🧴", "💆", "🧼", "🪥"],
         "keywords": [
@@ -241,12 +244,19 @@ def _parse_offer(raw_text: str) -> Offer:
 
     offer.has_coupon = bool(re.search(r"\b(cupom|cupons|coupon|coupons|codigo|c[oó]digo)s?\b", text_lower))
     offer.has_free_shipping = bool(re.search(r"frete\s*(gratis|gr[aá]tis|free)", text_lower))
-    offer.has_pix = bool(re.search(r"\bpix\b", text_lower))
+    offer.has_pix = bool(re.search(r"\bpix\b|\bà vista\b|\ba vista\b", text_lower))
     offer.has_installment = bool(re.search(r"\b\d+x\b|\bparcel", text_lower))
     offer.has_official_store = bool(re.search(r"\bloja oficial\b", text_lower))
     offer.category = _detect_category(raw_text)
     offer.brand = _detect_brand(raw_text)
     return offer
+
+
+# Detecta preço sem R$: "por 59,41", "59,41 no pix", "por R$ 59,41"
+_PRICE_NO_RS_RE = re.compile(
+    r"(?:por|pagando|de)\s*([\d]{1,4}(?:[.,]\d{2})?)(?:\s*(?:no pix|à vista|a vista|reais))",
+    re.IGNORECASE,
+)
 
 
 def _extract_prices(text: str) -> tuple[Optional[float], Optional[float]]:
@@ -262,6 +272,14 @@ def _extract_prices(text: str) -> tuple[Optional[float], Optional[float]]:
         return now, original
 
     parsed = [_parse_brl(value) for value in _PRICE_RE.findall(text_lower)]
+    # Tenta capturar preço sem R$ (ex: "59,41 no pix")
+    if not parsed:
+        match = _PRICE_NO_RS_RE.search(text_lower)
+        if match:
+            price = _parse_brl(match.group(1))
+            if price:
+                return price, None
+
     prices = sorted({price for price in parsed if price is not None})
     if len(prices) >= 2:
         return prices[0], prices[-1]
@@ -282,12 +300,16 @@ def _parse_brl(value: str) -> Optional[float]:
 
 def _detect_category(text: str) -> str:
     normalized = _normalize_text(text)
+    # Prioriza keywords sobre emojis (mais precisas; evita falsos positivos como 👕 em varal)
+    for category, data in CATEGORIES.items():
+        if category == "outros":
+            continue
+        if any(_normalize_text(keyword) in normalized for keyword in data["keywords"]):
+            return category
     for category, data in CATEGORIES.items():
         if category == "outros":
             continue
         if any(emoji in text for emoji in data["emojis"]):
-            return category
-        if any(_normalize_text(keyword) in normalized for keyword in data["keywords"]):
             return category
     return "outros"
 
