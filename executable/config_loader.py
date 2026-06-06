@@ -71,7 +71,7 @@ def load_config_from_env() -> dict:
         "send_to_web_api": os.getenv("SEND_TO_WEB_API", "true").lower() == "true",
         "offer_filter": {
             "enabled": os.getenv("OFFER_FILTER_ENABLED", "true").lower() == "true",
-            "max_posts_per_day": int(os.getenv("OFFER_FILTER_MAX_POSTS_PER_DAY", "10")),
+            "max_posts_per_day": int(os.getenv("OFFER_FILTER_MAX_POSTS_PER_DAY", "15")),
             "max_per_category_day": int(os.getenv("OFFER_FILTER_MAX_PER_CATEGORY_DAY", "3")),
             "min_score": int(os.getenv("OFFER_FILTER_MIN_SCORE", "40")),
             "min_discount_pct": float(os.getenv("OFFER_FILTER_MIN_DISCOUNT_PCT", "30")),
