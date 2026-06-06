@@ -334,12 +334,21 @@ async def processar_mensagem(
             cleaned_text_no_url = _ANY_URL_PATTERN.sub("", cleaned_text).strip()
             
             bitly_token = config.get("bitly_token", "")
-            shortened_link = await shorten_url(main_converted_link, bitly_token)
+            if bitly_token:
+                shortened_link = await shorten_url(main_converted_link, bitly_token)
+            else:
+                shortened_link = main_converted_link
             
-            store_msg = f"🛒 Compre na {store_name}" if store_name else "🛒 Compre agora"
+            if store_name in ["Mercado Livre", "AliExpress"]:
+                store_msg = f"🛒 Compre no {store_name}"
+            elif store_name in ["Amazon", "Shopee"]:
+                store_msg = f"🛒 Compre na {store_name}"
+            else:
+                store_msg = "🛒 Compre agora"
+                
             text = f"{urgency_tag}{cleaned_text_no_url}\n\n{store_msg}:\n{shortened_link}"
             
-            log_callback("info", f"[{msg_id}] Texto limpo e link encurtado.")
+            log_callback("info", f"[{msg_id}] Texto limpo e formatado.")
         else:
             text = f"{urgency_tag}{cleaned_text}"
             log_callback("info", f"[{msg_id}] Texto limpo (padrão sem conversão).")
@@ -415,7 +424,7 @@ async def processar_mensagem(
                             eng_texts = [
                                 "Fiquem de olho nas mensagens com sirene 🚨, são os maiores descontos da semana!",
                                 "Vocês viram que a Amazon tá com frete grátis na madruga hoje? Fiquem ligados aqui.",
-                                "Lembrando galera: qualquer dúvida sobre as ofertas, podem avisar os admins."
+                               
                             ]
                             await telegram_client.send_message(dest_entity, random.choice(eng_texts))
 

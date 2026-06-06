@@ -12,14 +12,21 @@ import re
 import sqlite3
 import unicodedata
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
 
+TZ_BR = timezone(timedelta(hours=-3))
+
+
+def _get_today_br() -> str:
+    return datetime.now(TZ_BR).strftime("%Y-%m-%d")
+
+
 DEFAULT_CONFIG: dict[str, Any] = {
     "enabled": True,
-    "max_posts_per_day": 10,
+    "max_posts_per_day": 15,
     "max_per_category_day": 3,
     "min_score": 40,
     "min_discount_pct": 30,
@@ -27,6 +34,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "min_price": 15,
     "peak_hours": [7, 8, 9, 12, 13, 18, 19, 20, 21],
     "db_path": str(Path("data") / "offer_filter.sqlite3"),
+    "min_score_bypass_limit": 70,
 }
 
 CATEGORIES: dict[str, dict[str, Any]] = {
@@ -111,7 +119,7 @@ class Offer:
     fingerprint: str = ""
     is_price_drop: bool = False
     previous_price: Optional[float] = None
-    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(TZ_BR).isoformat())
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -145,7 +153,7 @@ def should_post(raw_text: str, config: Optional[dict[str, Any]] = None) -> tuple
 
 def daily_status(config: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     cfg = _resolve_config(config)
-    today = str(date.today())
+    today = _get_today_br()
 
     if not Path(cfg["db_path"]).exists():
         return _empty_status(today, cfg)
@@ -205,6 +213,7 @@ def _resolve_config(config: Optional[dict[str, Any]]) -> dict[str, Any]:
     cfg["min_price"] = float(cfg["min_price"])
     cfg["peak_hours"] = [int(hour) for hour in cfg.get("peak_hours", [])]
     cfg["db_path"] = str(cfg["db_path"])
+    cfg["min_score_bypass_limit"] = int(cfg.get("min_score_bypass_limit", 70))
     return cfg
 
 
@@ -411,17 +420,20 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
         return False
 
     status = daily_status(cfg)
-    if status["postados_hoje"] >= cfg["max_posts_per_day"]:
-        offer.reject_reason = f"limite diário atingido ({cfg['max_posts_per_day']}/dia)"
-        return False
+    bypass_limit = offer.score >= cfg.get("min_score_bypass_limit", 70)
 
-    category_count = status.get("por_categoria", {}).get(offer.category, 0)
-    if category_count >= cfg["max_per_category_day"]:
-        offer.reject_reason = (
-            f"limite de categoria ({offer.category}: "
-            f"{category_count}/{cfg['max_per_category_day']})"
-        )
-        return False
+    if not bypass_limit:
+        if status["postados_hoje"] >= cfg["max_posts_per_day"]:
+            offer.reject_reason = f"limite diário atingido ({cfg['max_posts_per_day']}/dia)"
+            return False
+
+        category_count = status.get("por_categoria", {}).get(offer.category, 0)
+        if category_count >= cfg["max_per_category_day"]:
+            offer.reject_reason = (
+                f"limite de categoria ({offer.category}: "
+                f"{category_count}/{cfg['max_per_category_day']})"
+            )
+            return False
 
     return True
 
@@ -472,7 +484,7 @@ def _fingerprint_seen_today(db_path: str, fingerprint: str) -> bool:
             WHERE day = ? AND fingerprint = ? AND approved = 1
             LIMIT 1
             """,
-            (str(date.today()), fingerprint),
+            (_get_today_br(), fingerprint),
         )
         return cursor.fetchone() is not None
 
@@ -484,7 +496,7 @@ def _get_previous_price(db_path: str, fingerprint: str) -> Optional[float]:
             WHERE day = ? AND fingerprint = ? AND approved = 1
             ORDER BY id DESC LIMIT 1
             """,
-            (str(date.today()), fingerprint),
+            (_get_today_br(), fingerprint),
         )
         row = cursor.fetchone()
         return row[0] if row else None
@@ -504,7 +516,7 @@ def _record_offer(db_path: str, offer: Offer, approved: bool) -> None:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                str(date.today()),
+                _get_today_br(),
                 offer.timestamp,
                 offer.fingerprint,
                 1 if approved else 0,

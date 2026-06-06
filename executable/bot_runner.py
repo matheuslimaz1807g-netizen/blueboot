@@ -65,10 +65,10 @@ class DailyStats:
     telegram:  int = 0
     whatsapp:  int = 0
     errors:    int = 0
-    day: object = field(default_factory=lambda: datetime.now(timezone.utc).date())
+    day: object = field(default_factory=lambda: datetime.now(_TZ_BR).date())
 
     def reset_if_new_day(self) -> None:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(_TZ_BR).date()
         if self.day != today:
             self.processed = self.telegram = self.whatsapp = self.errors = 0
             self.day = today
