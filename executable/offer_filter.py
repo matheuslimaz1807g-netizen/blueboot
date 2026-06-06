@@ -388,7 +388,7 @@ def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
         score += 4
 
     # ── 6. Horário de pico (+5) ─────────────────────────────────────────────
-    if datetime.now().hour in cfg["peak_hours"]:
+    if datetime.now(TZ_BR).hour in cfg["peak_hours"]:
         score += 5
 
     return min(score, 100)
