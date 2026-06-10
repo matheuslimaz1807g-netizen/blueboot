@@ -510,7 +510,8 @@ def main():
             "conv_shopee", "conv_ali", "conv_ml",
             "shopee_token", "ali_key", "ali_secret", "ali_tracking",
             "ml_token", "ml_cookies", "web_api_url", "send_to_web_api",
-            "offer_filter"
+            "offer_filter",
+            "filtros"   # ← ADDED: monitora toggle do filtro inteligente via painel
         }
         # Campos que exigem reinicialização do bot
         RESTART_FIELDS = {"phone", "api_id", "api_hash", "sources"}
