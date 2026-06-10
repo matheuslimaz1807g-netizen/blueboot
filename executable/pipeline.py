@@ -111,15 +111,13 @@ def extract_promotion_data(
 
 
 def _score_decision(score: int) -> dict:
-    """Classifica o score segundo a escala de negócio definida."""
-    if score >= 70:
-        return {"label": "Postar imediatamente", "tier": "hot", "emoji": "🔥"}
-    elif score >= 50:
+    """Classifica o score segundo a escala de negócio definida (offer_filter v2)."""
+    if score >= 80:
+        return {"label": "Imperdível 🔥", "tier": "hot", "emoji": "🔥"}
+    elif score >= 70:
+        return {"label": "Excelente oferta", "tier": "good", "emoji": "⭐"}
+    elif score >= 60:
         return {"label": "Boa oferta", "tier": "good", "emoji": "✅"}
-    elif score >= 38:
-        return {"label": "Postar se houver espaço", "tier": "ok", "emoji": "📌"}
-    elif score >= 20:
-        return {"label": "Rejeitada", "tier": "reject", "emoji": "❌"}
     else:
         return {"label": "Rejeitada", "tier": "reject", "emoji": "❌"}
 
@@ -168,7 +166,14 @@ async def processar_mensagem(
             log_callback("info", f"[{msg_id}] Mensagem sem texto — ignorada.")
             return False, False, False, None
 
-        should_publish, offer = should_post(raw_text, config.get("offer_filter", {}))
+        # Allow remote filtros.offer_filter_enabled to override local offer_filter.enabled
+        offer_filter_cfg = dict(config.get("offer_filter", {}))
+        filtros = config.get("filtros", {}) or {}
+        if isinstance(filtros, dict) and "offer_filter_enabled" in filtros:
+            if isinstance(filtros["offer_filter_enabled"], bool):
+                offer_filter_cfg["enabled"] = filtros["offer_filter_enabled"]
+
+        should_publish, offer = should_post(raw_text, offer_filter_cfg)
         if not should_publish:
             log_callback(
                 "info",

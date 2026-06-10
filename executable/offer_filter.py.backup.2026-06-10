@@ -26,18 +26,15 @@ def _get_today_br() -> str:
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "enabled": True,
-    "max_posts_per_day": 20,
-    "max_per_category_day": 4,
-    "min_score": 60,
-    "min_discount_pct": 25,
+    "max_posts_per_day": 15,
+    "max_per_category_day": 3,
+    "min_score": 38,
+    "min_discount_pct": 30,
     "max_price": 500,
     "min_price": 15,
     "peak_hours": [7, 8, 9, 12, 13, 18, 19, 20, 21],
     "db_path": str(Path("data") / "offer_filter.sqlite3"),
-
-    # IMPORTANTE
-    # Somente ofertas muito fortes ignoram os limites
-    "min_score_bypass_limit": 80,
+    "min_score_bypass_limit": 55,
 }
 
 CATEGORIES: dict[str, dict[str, Any]] = {
@@ -97,37 +94,12 @@ CATEGORIES: dict[str, dict[str, Any]] = {
     "outros": {"emojis": [], "keywords": [], "score_bonus": 0},
 }
 
-# Marcas confiáveis expandidas com marcas premium e de alta conversão
 TRUSTED_BRANDS = [
-    # Esportivo / Moda
-    "puma", "nike", "adidas", "kappa", "mizuno", "asics",
-    "fila", "olympikus", "under armour", "umbro", "vans", "all star",
-    "converse", "new balance", "reebok", "oakley", "reserva",
-    # Eletrônicos / Tecnologia
-    "samsung", "xiaomi", "apple", "jbl", "anker", "logitech",
-    "multilaser", "intelbras", "positivo", "lenovo", "dell",
-    "hp", "acer", "asus", "kingston", "sandisk", "seagate",
-    "western digital", "wd", "corsair", "redragon", "hyperx",
-    # Eletrodomésticos / Casa
-    "britania", "britânia", "mondial", "philips", "walita",
-    "oster", "electrolux", "consul", "brastempe", "lg",
-    "tramontina", "fischer", "tramontina", "rocker", "rochedo",
-    "oxford", "santorini", "utilissima",
-    # Ferramentas
-    "bosch", "makita", "dewalt", "stanley", "skil", "vonder",
-    # Beleza / Saúde
-    "growth", "optimum", "nestle", "pantene", "elseve",
-    "niely", "salon line", "loreal", "l'oreal",
-    # Premium / Luxo
-    "dyson", "sony", "bose", "marshall", "jbl", "apple",
-    "galaxy", "iphone", "ipad", "macbook", "airpods",
-    "playstation", "xbox", "nintendo", "steam",
-]
-
-# Palavras que sugerem produto genérico sem marca (baixa qualidade)
-_GENERIC_KEYWORDS = [
-    "generico", "genérico", "similar", "paralelo", "importado",
-    "sem marca", "sem nome", "alternativo", "comum", "basico", "básico",
+    "puma", "nike", "adidas", "kappa", "samsung", "xiaomi", "jbl",
+    "anker", "logitech", "britania", "britânia", "mondial", "philips",
+    "multilaser", "intelbras", "bosch", "makita", "dux", "growth",
+    "optimum", "nestle", "tramontina", "fischer", "mizuno", "asics",
+    "fila", "olympikus", "under armour", "umbro"
 ]
 
 _PRICE_RE = re.compile(r"r\$\s*([\d.,]+)", re.IGNORECASE)
@@ -246,7 +218,7 @@ def _resolve_config(config: Optional[dict[str, Any]]) -> dict[str, Any]:
     cfg["min_price"] = float(cfg["min_price"])
     cfg["peak_hours"] = [int(hour) for hour in cfg.get("peak_hours", [])]
     cfg["db_path"] = str(cfg["db_path"])
-    cfg["min_score_bypass_limit"] = int(cfg.get("min_score_bypass_limit", 80))
+    cfg["min_score_bypass_limit"] = int(cfg.get("min_score_bypass_limit", 70))
     return cfg
 
 
@@ -350,23 +322,11 @@ def _detect_brand(text: str) -> Optional[str]:
     return None
 
 
-def _is_generic_product(text: str) -> bool:
-    """Detecta se o texto sugere produto genérico/sem marca."""
-    normalized = _normalize_text(text)
-    for keyword in _GENERIC_KEYWORDS:
-        if _normalize_text(keyword) in normalized:
-            return True
-    return False
-
-
 def _is_premium_item(text: str) -> bool:
     """Verifica se o texto contém palavras-chave de produtos premium de alta conversão."""
     premium_keywords = [
-        "iphone", "tv", "smart tv", "notebook", "macbook",
-        "galaxy s", "playstation", "ps5", "ps4", "xbox",
-        "xbox series", "nintendo switch", "ipad", "airpods",
-        "apple watch", "dyson", "oled", "4k", "ultra hd",
-        "soundbar", "home theater", "apple", "mac",
+        "iphone", "tv", "smart tv", "notebook", "macbook", 
+        "galaxy s", "playstation", "ps5", "xbox"
     ]
     normalized = _normalize_text(text)
     return any(_normalize_text(kw) in normalized for kw in premium_keywords)
@@ -374,64 +334,68 @@ def _is_premium_item(text: str) -> bool:
 
 def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
     """
-    Sistema de pontuação rebalanceado para filtrar ofertas de baixa qualidade.
+    Análise de Negócio Sênior.
 
     Escala de decisão:
-       80-100  → Postar imediatamente (ignora limites diários)
-       70-79   → Postar (excelente oferta)
-       60-69   → Postar (boa oferta, respeita limites)
-       50-59   → Postar se houver diferencial forte e espaço
-       < 60    → Rejeitar (padrão: min_score = 60)
+      70-100 → Postar imediatamente
+      50-69  → Postar (boa oferta)
+      38-49  → Postar se houver espaço no dia
+      20-37  → Rejeitar
+      0-19   → Rejeitar
     """
     score = 0
 
-    # ── 1. Marca reconhecida (+20) ───────────────────────────────────────
-    # Marcas fortes = alta conversão. Essencial para qualidade.
+    # ── 1. Marca reconhecida ou Loja Oficial (+20/+15) ───────────────────
+    # Aumenta conversão independente do desconto mostrado.
     if offer.brand:
         score += 20
-
-    # ── 2. Loja oficial (+10) ────────────────────────────────────────────
-    # Loja oficial passa mais credibilidade, mas é menos valiosa que marca
+        
     if offer.has_official_store:
-        score += 10
+        score += 15
 
-    # ── 3. Categorias prioritárias (+10) ─────────────────────────────────
-    # eletronicos, casa, saude_beleza têm demanda constante e alta conversão
-    PRIORITY_CATEGORIES = {"eletronicos", "casa", "saude_beleza"}
-    if offer.category in PRIORITY_CATEGORIES:
-        score += 10
+    # ── 2. Categoria de demanda contínua (+15) ────────────────────────────
+    # Higiene, suplemento, casa: vende sempre, qualquer dia.
+    CONTINUOUS_DEMAND = {"saude_beleza", "casa", "eletronicos"}
+    if offer.category in CONTINUOUS_DEMAND:
+        score += 15
     else:
+        # Outras categorias com bônus menor
         score += CATEGORIES.get(offer.category, CATEGORIES["outros"])["score_bonus"]
 
-    # ── 4. Preço (bônus moderado — evita boost excessivo para produtos baratos) ─
+    # ── 3. Ticket entre R$15 e R$200: impulso, alta conversão (+20) ────────
     if offer.price_now:
         if 15 <= offer.price_now <= 200:
-            score += 10   # Zona de impulso, bom para conversão
+            score += 20  # Zona de impulso puro
         elif 200 < offer.price_now <= 500:
-            score += 8    # Consideração moderada
+            score += 12  # Consideração moderada
         elif 500 < offer.price_now <= 1500:
-            score += 5    # Ticket alto, comissão boa
+            score += 6   # Ticket alto = comissão alta, mas menor conversão
         elif offer.price_now > 1500:
-            score += 8    # Premium: comissão alta compensa o volume menor
-        # preço < 15: 0 pontos (margem insignificante)
+            score += 10  # Premium: comissão alta compensa
+        elif offer.price_now < 15:
+            score += 2   # Muito barato, margem pequena
+    else:
+        # Ausência de preço (ex: ML sem "De/Por") não é rejeição
+        score += 5
 
-    # ── 5. Desconto (PESO MAIOR — principal diferencial) ─────────────────
+    # ── 4. Desconto explícito (bônus adicional, mas não obrigatório) ───────
     if offer.discount_pct is not None:
         if offer.discount_pct >= 70:
-            score += 30   # Oferta explosiva! Quase de graça
+            score += 20
         elif offer.discount_pct >= 60:
-            score += 25   # Desconto agressivo, baita oferta
+            score += 15
         elif offer.discount_pct >= 50:
-            score += 20   # Meio preço, chama atenção
+            score += 12
         elif offer.discount_pct >= 40:
-            score += 15   # Desconto significativo
+            score += 8
         elif offer.discount_pct >= 30:
-            score += 10   # Desconto razoável
-        elif offer.discount_pct >= 20:
-            score += 5    # Desconto mínimo relevante
-        # abaixo de 20%: 0 pontos (desconto irrelevante)
+            score += 4
+        elif offer.discount_pct > 0:
+            score += 1
+        # desconto zero ou negativo: 0 bônus
 
-    # ── 6. Múltiplos benefícios combinados ───────────────────────────────
+    # ── 5. Múltiplos benefícios combinados (+bônus acumulado) ──────────────
+    # Cupom + pix + loja oficial juntos valem muito.
     benefit_count = sum([
         offer.has_coupon,
         offer.has_pix,
@@ -439,42 +403,21 @@ def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
         offer.has_installment,
     ])
     if benefit_count >= 3:
-        score += 10   # Combo poderoso: cupom + frete + pix
+        score += 15  # Combo poderoso
     elif benefit_count == 2:
-        score += 5    # Dupla de benefícios
+        score += 8
     elif benefit_count == 1:
-        score += 2    # Benefício isolado
+        score += 4
 
-    # ── 7. Horário de pico (+3) ──────────────────────────────────────────
+    # ── 6. Horário de pico (+5) ─────────────────────────────────────────────
     if datetime.now(TZ_BR).hour in cfg["peak_hours"]:
-        score += 3
-
-    # ── 8. Bônus premium (+5) ────────────────────────────────────────────
-    # Produtos de alto valor agregado (iPhone, Dyson, etc.)
-    if _is_premium_item(offer.raw_text):
         score += 5
 
-    # ── 9. Penalidade para produto genérico (-10) ────────────────────────
-    # Produto claramente sem marca perde pontos
-    if _is_generic_product(offer.raw_text):
-        score -= 10
-
-    # ── 10. Bônus price drop (+5) ────────────────────────────────────────
-    # Oferta que já caiu de preço HOJE (redução adicional)
-    if offer.is_price_drop:
-        score += 5
-
-    return max(min(score, 100), 0)
+    return min(score, 100)
 
 
 def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
-    """
-    Avalia regras de aprovação/rejeição em ordem de prioridade.
-
-    A ordem importa: regras mais específicas vêm primeiro.
-    """
-
-    # ── R1. Preço fora dos limites ──────────────────────────────────────
+    # Preço: só rejeita se o preço existir E for claramente errado.
     if offer.price_now is not None:
         is_premium = _is_premium_item(offer.raw_text)
         effective_max_price = 15000 if is_premium else cfg["max_price"]
@@ -486,71 +429,37 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
             offer.reject_reason = f"preço muito baixo (R${offer.price_now:.2f})"
             return False
 
-    # ── R2. Sem diferencial → REJEITAR (regra universal) ────────────────
-    # A oferta DEVE ter pelo menos UM dos seguintes diferenciais:
-    #   • desconto >= 20%
-    #   • cupom ativo
-    #   • marca reconhecida
-    #   • loja oficial
-    has_decent_discount = offer.discount_pct is not None and offer.discount_pct >= 20
-    if not (has_decent_discount or offer.has_coupon or offer.brand or offer.has_official_store):
-        offer.reject_reason = "sem diferencial: sem desconto >=20%, cupom, marca ou loja oficial"
+    # Desconto baixo isolado NÃO é motivo de rejeição (spec sênior).
+    # Só rejeita se também não houver nenhum outro diferencial (brand, categoria, benefícios).
+    if (offer.discount_pct is not None
+            and offer.discount_pct < cfg["min_discount_pct"]
+            and not offer.brand
+            and offer.category == "outros"
+            and not offer.has_coupon
+            and not offer.has_pix
+            and not offer.has_free_shipping):
+        offer.reject_reason = f"sem diferencial: desconto baixo ({offer.discount_pct:.1f}%) e sem marca/cupom/benefício"
         return False
 
-    # ── R3. Categoria "outros" com score < 70 → REJEITAR ────────────────
-    # Produtos sem categoria definida dificilmente convertem
-    if offer.category == "outros" and offer.score < 70:
-        offer.reject_reason = f"categoria 'outros' com score insuficiente ({offer.score}/100, mínimo: 70)"
+    # Score mínimo: alinhado com escala sênior (38 = postar se houver espaço)
+    min_score = cfg.get("min_score", 38)
+    if offer.score < min_score:
+        offer.reject_reason = f"score insuficiente ({offer.score}/100, mínimo: {min_score})"
         return False
 
-    # ── R4. Moda barata: moda + preço < R$80 → REJEITAR ─────────────────
-    # Camisetas genéricas, chinelos baratos, etc.
-    if offer.category == "moda" and offer.price_now is not None and offer.price_now < 80:
-        offer.reject_reason = f"moda barata (R${offer.price_now:.2f}) abaixo do mínimo de R$80"
-        return False
-
-    # ── R5. Saúde e beleza barata: preço < R$70 → REJEITAR ──────────────
-    # Cremes genéricos, perfumes baratos, etc.
-    if offer.category == "saude_beleza" and offer.price_now is not None and offer.price_now < 70:
-        offer.reject_reason = f"saúde/beleza barata (R${offer.price_now:.2f}) abaixo do mínimo de R$70"
-        return False
-
-    # ── R6. Produto genérico sem marca → REJEITAR (quando score baixo) ──
-    # Produto claramente genérico E sem marca E score < 70
-    if _is_generic_product(offer.raw_text) and not offer.brand and offer.score < 70:
-        offer.reject_reason = f"produto genérico sem marca e score insuficiente ({offer.score}/100)"
-        return False
-
-    # ── R7. Score mínimo global ─────────────────────────────────────────
-    if offer.score < cfg["min_score"]:
-        offer.reject_reason = f"score insuficiente ({offer.score}/100, mínimo: {cfg['min_score']})"
-        return False
-
-    # ── R8. Limites diários ─────────────────────────────────────────────
-    # Apenas ofertas com score >= 80 (min_score_bypass_limit) ignoram limites
     status = daily_status(cfg)
-    bypass_limit = offer.score >= cfg.get("min_score_bypass_limit", 80)
+    bypass_limit = offer.score >= cfg.get("min_score_bypass_limit", 70)
 
     if not bypass_limit:
-        # Limite diário global
         if status["postados_hoje"] >= cfg["max_posts_per_day"]:
             offer.reject_reason = f"limite diário atingido ({cfg['max_posts_per_day']}/dia)"
             return False
 
-        # Limite por categoria
         category_count = status.get("por_categoria", {}).get(offer.category, 0)
         if category_count >= cfg["max_per_category_day"]:
             offer.reject_reason = (
                 f"limite de categoria ({offer.category}: "
                 f"{category_count}/{cfg['max_per_category_day']})"
-            )
-            return False
-
-        # Anti-spam: após 2+ posts na mesma categoria, exigir score mais alto
-        if category_count >= 2 and offer.score < 75:
-            offer.reject_reason = (
-                f"anti-spam: já foram {category_count} posts em '{offer.category}' "
-                f"hoje e o score ({offer.score}) é insuficiente para nova publicação"
             )
             return False
 
@@ -606,7 +515,6 @@ def _fingerprint_seen_today(db_path: str, fingerprint: str) -> bool:
             (_get_today_br(), fingerprint),
         )
         return cursor.fetchone() is not None
-
 
 def _get_previous_price(db_path: str, fingerprint: str) -> Optional[float]:
     with sqlite3.connect(db_path) as conn:

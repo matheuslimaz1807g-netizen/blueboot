@@ -1660,6 +1660,23 @@
               />
             </div>
 
+            <hr class="border-border my-4" />
+            <!-- Filtro de Ofertas -->
+            <p class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+              Filtro Inteligente de Ofertas
+            </p>
+            <div class="grid grid-cols-3 gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  x-model="configData.offer_filter_enabled"
+                  class="rounded border-border bg-surface text-accent focus:ring-accent"
+                />
+                <span class="text-sm text-slate-300">Filtro Ativo</span>
+              </label>
+            </div>
+
             <div class="grid grid-cols-3 gap-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input
@@ -2487,6 +2504,8 @@
                 }
                 this.configData = {
                   ...d,
+                  // Extract offer_filter_enabled from filtros dict (JSONB)
+                  offer_filter_enabled: d.filtros?.offer_filter_enabled !== false,
                   sources_str: Array.isArray(d.sources)
                     ? d.sources.join(",")
                     : "",
@@ -2547,6 +2566,12 @@
             delete cfg.wpp_channels_str;
             delete cfg.wpp_groups_str;
             delete cfg.wpp_destinations_str;
+
+            // Serialize offer_filter_enabled into filtros dict (JSONB field)
+            const offerFilterEnabled = cfg.offer_filter_enabled !== false;
+            delete cfg.offer_filter_enabled;
+            cfg.filtros = cfg.filtros || {};
+            cfg.filtros.offer_filter_enabled = offerFilterEnabled;
 
             // Find the license ID from the key
             const lic = this.licenses.find((l) => l.key === this.configLicKey);
