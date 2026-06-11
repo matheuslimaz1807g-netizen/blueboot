@@ -168,8 +168,15 @@ async def processar_mensagem(
 
         # Allow remote offer_filter_enabled to override local offer_filter.enabled
         offer_filter_cfg = dict(config.get("offer_filter", {}))
-        if isinstance(config.get("offer_filter_enabled"), bool):
-            offer_filter_cfg["enabled"] = config["offer_filter_enabled"]
+        filter_enabled = config.get("offer_filter_enabled")
+        if isinstance(filter_enabled, bool):
+            offer_filter_cfg["enabled"] = filter_enabled
+
+        # ── Log do Filtro Inteligente (igual ao padrão WhatsApp/AliExpress) ───
+        log_callback(
+            "info",
+            f"[{msg_id}] [Filtro] ENABLED={offer_filter_cfg.get('enabled', True)}"
+        )
 
         should_publish, offer = should_post(raw_text, offer_filter_cfg)
         if not should_publish:
@@ -179,6 +186,9 @@ async def processar_mensagem(
                 f"| score={offer.score}/100 | cat={offer.category}",
             )
             return True, False, False, _build_rejected_promo(offer)
+        
+        if not offer_filter_cfg.get("enabled", True):
+            log_callback("info", f"[{msg_id}] [Filtro] Filtro Inteligente desativado — todas as ofertas sao publicadas.")
 
         preview = " ".join(raw_text.splitlines()[:3]).strip()
         if len(preview) > 180:
