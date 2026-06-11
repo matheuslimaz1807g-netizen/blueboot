@@ -722,8 +722,9 @@
                 try {
                     const body = { ...this.config };
 
-                    // offer_filter_enabled travels as top-level boolean like send_whatsapp
-                    // (no longer nested inside filtros JSONB)
+                    // Garante que offer_filter_enabled seja boolean puro (não proxy reativo)
+                    body.offer_filter_enabled = body.offer_filter_enabled === true;
+                    body.bot_enabled          = body.bot_enabled === true;
 
                     body.shopee_token = `${body.shopee_app_id || ''}:${body.shopee_secret || ''}`;
                     delete body.shopee_app_id;
@@ -732,6 +733,9 @@
                     body.sources = (this.config.sources_str || '').split(',').map(s => s.trim()).filter(Boolean);
                     delete body.sources_str;
                     delete body.whatsapp_endpoint;
+
+                    // Remove campos não existentes no schema ConfigIn
+                    delete body.bitly_token;
 
                     const dests = [];
                     for (const ch of (this.config.wpp_channels_str || '').split(',').map(s => s.trim()).filter(Boolean)) {
@@ -748,7 +752,6 @@
                     if (res) {
                         this.showToast('Configuracoes salvas!', 'success');
                         // Recarrega a config do servidor para confirmar o estado persistido
-                        // e evitar que o poll de 30s reverta valores não salvos no UI.
                         await this.loadConfig();
                     }
                     return !!res;
@@ -796,6 +799,14 @@
 
                     const r = await fetch(`${this.apiBase}${endpoint}`, options);
                     if (r.status === 401) { this.logout(); return null; }
+
+                    // Para respostas de erro HTTP, mostra o detalhe e retorna null
+                    if (!r.ok) {
+                        const err = await this._parseResponse(r);
+                        const msg = (err && err.detail) ? String(err.detail).slice(0, 120) : `Erro HTTP ${r.status}`;
+                        this.showToast(msg, 'error');
+                        return null;
+                    }
 
                     return await this._parseResponse(r);
                 } catch (e) {

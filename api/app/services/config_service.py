@@ -44,6 +44,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
         ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
         amz_cookies=decrypt_field(cfg.amz_cookies_enc) if cfg.amz_cookies_enc else None,
+        bitly_token=decrypt_field(cfg.bitly_token_enc) if cfg.bitly_token_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,
@@ -94,6 +95,8 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         cfg.ml_cookies_enc = encrypt_field(data.ml_cookies) if data.ml_cookies else None
     if data.amz_cookies is not None:
         cfg.amz_cookies_enc = encrypt_field(data.amz_cookies) if data.amz_cookies else None
+    if data.bitly_token is not None:
+        cfg.bitly_token_enc = encrypt_field(data.bitly_token) if data.bitly_token else None
     if data.api_id is not None:
         cfg.api_id_enc = encrypt_field(data.api_id) if data.api_id else None
     if data.api_hash is not None:
@@ -130,6 +133,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         ml_token=decrypt_field(cfg.ml_token_enc) if cfg.ml_token_enc else None,
         ml_cookies=decrypt_field(cfg.ml_cookies_enc) if cfg.ml_cookies_enc else None,
         amz_cookies=decrypt_field(cfg.amz_cookies_enc) if cfg.amz_cookies_enc else None,
+        bitly_token=decrypt_field(cfg.bitly_token_enc) if cfg.bitly_token_enc else None,
         api_id=decrypt_field(cfg.api_id_enc) if cfg.api_id_enc else None,
         api_hash=decrypt_field(cfg.api_hash_enc) if cfg.api_hash_enc else None,
         session_string=decrypt_field(cfg.session_string_enc) if cfg.session_string_enc else None,

@@ -126,6 +126,7 @@ class ConfigIn(BaseModel):
     conv_amz: bool = False
     filtros: dict[str, Any] = Field(default_factory=dict)
     offer_filter_enabled: bool = True
+    bitly_token: str | None = None
     # Plain-text credentials (API encrypts before storing)
     shopee_token: str | None = None
     ali_key: str | None = None
@@ -157,6 +158,7 @@ class ConfigOut(BaseModel):
     conv_amz: bool
     filtros: dict[str, Any]
     offer_filter_enabled: bool = True
+    bitly_token: str | None = None
     shopee_token: str | None
     ali_key: str | None
     ali_secret: str | None
