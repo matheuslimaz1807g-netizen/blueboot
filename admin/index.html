@@ -2505,7 +2505,9 @@
                 this.configData = {
                   ...d,
                   // Extract offer_filter_enabled from filtros dict (JSONB)
-                  offer_filter_enabled: d.filtros?.offer_filter_enabled !== false,
+                  offer_filter_enabled: d.filtros != null
+                    ? d.filtros.offer_filter_enabled !== false
+                    : true,
                   sources_str: Array.isArray(d.sources)
                     ? d.sources.join(",")
                     : "",
@@ -2568,10 +2570,9 @@
             delete cfg.wpp_destinations_str;
 
             // Serialize offer_filter_enabled into filtros dict (JSONB field)
-            const offerFilterEnabled = cfg.offer_filter_enabled !== false;
+            const offerFilterEnabled = this.configData.offer_filter_enabled === true;
             delete cfg.offer_filter_enabled;
-            cfg.filtros = cfg.filtros || {};
-            cfg.filtros.offer_filter_enabled = offerFilterEnabled;
+            cfg.filtros = { ...(this.configData.filtros || {}), offer_filter_enabled: offerFilterEnabled };
 
             // Find the license ID from the key
             const lic = this.licenses.find((l) => l.key === this.configLicKey);
