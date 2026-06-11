@@ -166,12 +166,10 @@ async def processar_mensagem(
             log_callback("info", f"[{msg_id}] Mensagem sem texto — ignorada.")
             return False, False, False, None
 
-        # Allow remote filtros.offer_filter_enabled to override local offer_filter.enabled
+        # Allow remote offer_filter_enabled to override local offer_filter.enabled
         offer_filter_cfg = dict(config.get("offer_filter", {}))
-        filtros = config.get("filtros", {}) or {}
-        if isinstance(filtros, dict) and "offer_filter_enabled" in filtros:
-            if isinstance(filtros["offer_filter_enabled"], bool):
-                offer_filter_cfg["enabled"] = filtros["offer_filter_enabled"]
+        if isinstance(config.get("offer_filter_enabled"), bool):
+            offer_filter_cfg["enabled"] = config["offer_filter_enabled"]
 
         should_publish, offer = should_post(raw_text, offer_filter_cfg)
         if not should_publish:

@@ -36,6 +36,7 @@ async def get_config(db: AsyncSession, license: License) -> ConfigOut | None:
         conv_ml=cfg.conv_ml,
         conv_amz=cfg.conv_amz,
         filtros=cfg.filtros or {},
+        offer_filter_enabled=cfg.offer_filter_enabled,
         shopee_token=decrypt_field(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
         ali_key=decrypt_field(cfg.ali_key_enc) if cfg.ali_key_enc else None,
         ali_secret=decrypt_field(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,
@@ -75,6 +76,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
     cfg.conv_ml = data.conv_ml
     cfg.conv_amz = data.conv_amz
     cfg.filtros = data.filtros
+    cfg.offer_filter_enabled = data.offer_filter_enabled
 
     # Update encrypted fields whenever the payload explicitly includes them.
     # Empty strings intentionally clear saved credentials.
@@ -120,6 +122,7 @@ async def upsert_config(db: AsyncSession, license: License, data: ConfigIn) -> C
         conv_ml=cfg.conv_ml,
         conv_amz=cfg.conv_amz,
         filtros=cfg.filtros or {},
+        offer_filter_enabled=cfg.offer_filter_enabled,
         shopee_token=decrypt_field(cfg.shopee_token_enc) if cfg.shopee_token_enc else None,
         ali_key=decrypt_field(cfg.ali_key_enc) if cfg.ali_key_enc else None,
         ali_secret=decrypt_field(cfg.ali_secret_enc) if cfg.ali_secret_enc else None,

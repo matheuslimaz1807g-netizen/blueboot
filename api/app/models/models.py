@@ -104,6 +104,7 @@ class ClientConfig(Base):
 
     # Filters
     filtros: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)
+    offer_filter_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Affiliate credentials (Fernet-encrypted)
     shopee_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)

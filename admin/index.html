@@ -2504,10 +2504,7 @@
                 }
                 this.configData = {
                   ...d,
-                  // Extract offer_filter_enabled from filtros dict (JSONB)
-                  offer_filter_enabled: d.filtros != null
-                    ? d.filtros.offer_filter_enabled !== false
-                    : true,
+                  offer_filter_enabled: d.offer_filter_enabled !== false,
                   sources_str: Array.isArray(d.sources)
                     ? d.sources.join(",")
                     : "",
@@ -2569,10 +2566,8 @@
             delete cfg.wpp_groups_str;
             delete cfg.wpp_destinations_str;
 
-            // Serialize offer_filter_enabled into filtros dict (JSONB field)
-            const offerFilterEnabled = this.configData.offer_filter_enabled === true;
-            delete cfg.offer_filter_enabled;
-            cfg.filtros = { ...(this.configData.filtros || {}), offer_filter_enabled: offerFilterEnabled };
+            // offer_filter_enabled travels as top-level boolean like send_whatsapp
+            // (no longer nested inside filtros JSONB)
 
             // Find the license ID from the key
             const lic = this.licenses.find((l) => l.key === this.configLicKey);

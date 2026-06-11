@@ -688,9 +688,7 @@
                     shopee_app_id,
                     shopee_secret,
                     bot_enabled:      cfg.bot_enabled !== false,
-                    offer_filter_enabled: cfg.filtros != null
-                        ? cfg.filtros.offer_filter_enabled !== false
-                        : true,
+                    offer_filter_enabled: cfg.offer_filter_enabled !== false,
                     sources_str:      (cfg.sources || []).join(', '),
                     wpp_channels_str: channels.join(', '),
                     wpp_groups_str:   groups.join(', '),
@@ -724,10 +722,8 @@
                 try {
                     const body = { ...this.config };
 
-                    // Serialize offer_filter_enabled into filtros dict (JSONB field)
-                    const offerFilterEnabled = this.config.offer_filter_enabled === true;
-                    delete body.offer_filter_enabled;
-                    body.filtros = { ...(this.config.filtros || {}), offer_filter_enabled: offerFilterEnabled };
+                    // offer_filter_enabled travels as top-level boolean like send_whatsapp
+                    // (no longer nested inside filtros JSONB)
 
                     body.shopee_token = `${body.shopee_app_id || ''}:${body.shopee_secret || ''}`;
                     delete body.shopee_app_id;

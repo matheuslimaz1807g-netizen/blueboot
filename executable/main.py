@@ -511,7 +511,8 @@ def main():
             "shopee_token", "ali_key", "ali_secret", "ali_tracking",
             "ml_token", "ml_cookies", "web_api_url", "send_to_web_api",
             "offer_filter",
-            "filtros"   # ← ADDED: monitora toggle do filtro inteligente via painel
+            "filtros",
+            "offer_filter_enabled"   # ← top-level boolean, igual send_whatsapp
         }
         # Campos que exigem reinicialização do bot
         RESTART_FIELDS = {"phone", "api_id", "api_hash", "sources"}
