@@ -73,11 +73,12 @@ def load_config_from_env() -> dict:
             "enabled": os.getenv("OFFER_FILTER_ENABLED", "true").lower() == "true",
             "max_posts_per_day": int(os.getenv("OFFER_FILTER_MAX_POSTS_PER_DAY", "15")),
             "max_per_category_day": int(os.getenv("OFFER_FILTER_MAX_PER_CATEGORY_DAY", "3")),
-            "min_score": int(os.getenv("OFFER_FILTER_MIN_SCORE", "40")),
+            "min_score": int(os.getenv("OFFER_FILTER_MIN_SCORE", "60")),
             "min_discount_pct": float(os.getenv("OFFER_FILTER_MIN_DISCOUNT_PCT", "30")),
             "min_price": float(os.getenv("OFFER_FILTER_MIN_PRICE", "15")),
             "max_price": float(os.getenv("OFFER_FILTER_MAX_PRICE", "500")),
             "db_path": os.getenv("OFFER_FILTER_DB_PATH", "data/offer_filter.sqlite3"),
+            "min_interval_minutes": int(os.getenv("OFFER_FILTER_MIN_INTERVAL_MINUTES", "10")),
         },
     }
     

@@ -338,10 +338,8 @@ async def processar_mensagem(
                 urgency_tag = f"🚨 CAIU MAIS! De R$ {offer.previous_price:.2f} por R$ {offer.price_now:.2f}\n"
             elif offer.score >= 70:
                 urgency_tag = "🔥 IMPERDÍVEL / ESTOQUE LIMITADO\n"
-            elif offer.score >= 50:
-                import random
-                if random.random() < 0.3:
-                    urgency_tag = "⚡ PREÇO EXCELENTE\n"
+            # score 60–69: sem urgency_tag — texto limpo, sem ruído
+
         
         if any_link_converted:
             main_converted_link = next(iter(converted_links.values()))

@@ -38,6 +38,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # IMPORTANTE
     # Somente ofertas muito fortes ignoram os limites
     "min_score_bypass_limit": 80,
+
+    # Anti-spam por janela de tempo
+    # Mínimo de minutos entre posts aprovados consecutivos
+    "min_interval_minutes": 10,
 }
 
 CATEGORIES: dict[str, dict[str, Any]] = {
@@ -49,15 +53,24 @@ CATEGORIES: dict[str, dict[str, Any]] = {
             "headphone", "earphone", "monitor", "teclado", "mouse",
             "ssd", "memoria", "memória", "pen drive", "hub", "bateria",
             "bluetooth", "usb", "logitech",
+            # Termos de smartphones
+            "smartphone", "iphone", "galaxy", "redmi", "poco",
+            "motorola", "moto g", "moto e", "positivo twist",
         ],
         "score_bonus": 10,
     },
     "moda": {
-        "emojis": ["👟", "👖", "🧦", "👗", "👜", "🧢", "👒", "👠"],
+        "emojis": ["👟", "👖", "🧦", "👗", "👜", "🧢", "👒", "👠", "🕶️", "👓", "🎒"],
         "keywords": [
             "tenis", "tênis", "camiseta", "calca", "calça", "meia",
             "vestido", "blusa", "jaqueta", "moletom", "shorts",
             "sandalia", "sandália", "chinelo", "conjunto",
+            # Acessórios e bolsas — frequentemente enviados por canais de moda
+            "bolsa", "mala", "mochila", "carteira", "clutch", "necessaire",
+            "oculos", "óculos", "oculos de sol", "óculos de sol",
+            "bone", "boné", "gorro", "cachecol", "luva", "cinto",
+            "kit roupa", "pijama", "agasalho", "regata",
+            "bermuda", "legging", "top",
         ],
         "score_bonus": 8,
     },
@@ -76,12 +89,17 @@ CATEGORIES: dict[str, dict[str, Any]] = {
     },
 
     "saude_beleza": {
-        "emojis": ["💊", "💪", "🧴", "💆", "🧼", "🪥"],
+        "emojis": ["💊", "💪", "🧴", "💆", "🧼", "🪥", "🫧"],
         "keywords": [
             "cafeina", "cafeína", "creatina", "whey", "suplemento",
             "vitamina", "proteina", "proteína", "colageno", "colágeno",
             "omega", "ômega", "capsulas", "cápsulas", "shampoo",
             "condicionador", "perfume", "creme", "protetor", "esmalte",
+            # Itens de higiene e corpo
+            "body splash", "body mist", "splash", "hidratante",
+            "sabonete", "gel", "desodorante", "antitranspirante",
+            "kit perfume", "kit beleza", "maquiagem", "batom",
+            "loção", "locao", "serum", "sérum", "tônico", "tonico",
         ],
         "score_bonus": 9,
     },
@@ -247,6 +265,7 @@ def _resolve_config(config: Optional[dict[str, Any]]) -> dict[str, Any]:
     cfg["peak_hours"] = [int(hour) for hour in cfg.get("peak_hours", [])]
     cfg["db_path"] = str(cfg["db_path"])
     cfg["min_score_bypass_limit"] = int(cfg.get("min_score_bypass_limit", 80))
+    cfg["min_interval_minutes"] = int(cfg.get("min_interval_minutes", 10))
     return cfg
 
 
@@ -509,10 +528,30 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
         offer.reject_reason = f"moda barata (R${offer.price_now:.2f}) abaixo do mínimo de R$80"
         return False
 
+    # ── R4.5. Moda sem marca reconhecida → REJEITAR ──────────────────────
+    # Bolsas, malas, óculos de marcas desconhecidas têm baixíssima conversão
+    # Exceção: score >= 75 (produto viral com desconto brutal)
+    if offer.category == "moda" and not offer.brand and offer.score < 75:
+        offer.reject_reason = (
+            f"moda sem marca reconhecida e score insuficiente "
+            f"({offer.score}/100, mínimo para moda sem marca: 75)"
+        )
+        return False
+
     # ── R5. Saúde e beleza barata: preço < R$70 → REJEITAR ──────────────
     # Cremes genéricos, perfumes baratos, etc.
     if offer.category == "saude_beleza" and offer.price_now is not None and offer.price_now < 70:
         offer.reject_reason = f"saúde/beleza barata (R${offer.price_now:.2f}) abaixo do mínimo de R$70"
+        return False
+
+    # ── R5.5. Saúde/beleza sem marca reconhecida → REJEITAR ─────────────
+    # Kits e produtos de marcas desconhecidas têm baixa credibilidade.
+    # Exceção: desconto brutal (>= 60%) com score >= 72 compensa a ausência de marca
+    if offer.category == "saude_beleza" and not offer.brand and offer.score < 72:
+        offer.reject_reason = (
+            f"saúde/beleza sem marca reconhecida e score insuficiente "
+            f"({offer.score}/100, mínimo para saúde/beleza sem marca: 72)"
+        )
         return False
 
     # ── R6. Produto genérico sem marca → REJEITAR (quando score baixo) ──
@@ -553,6 +592,19 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
                 f"hoje e o score ({offer.score}) é insuficiente para nova publicação"
             )
             return False
+
+        # ── R8.5. Anti-spam por janela de tempo ──────────────────────────
+        # Garante cooldown mínimo entre posts consecutivos.
+        # Evita rajadas de 3-4 produtos nos mesmos 5 minutos.
+        interval = cfg.get("min_interval_minutes", 10)
+        if interval > 0:
+            posts_recent = _posts_in_last_minutes(cfg["db_path"], interval)
+            if posts_recent > 0:
+                offer.reject_reason = (
+                    f"anti-spam: {posts_recent} post(s) nos últimos "
+                    f"{interval}min — aguarde o cooldown"
+                )
+                return False
 
     return True
 
@@ -606,6 +658,20 @@ def _fingerprint_seen_today(db_path: str, fingerprint: str) -> bool:
             (_get_today_br(), fingerprint),
         )
         return cursor.fetchone() is not None
+
+
+def _posts_in_last_minutes(db_path: str, minutes: int) -> int:
+    """Retorna quantos posts aprovados ocorreram nos últimos `minutes` minutos."""
+    cutoff = (datetime.now(TZ_BR) - timedelta(minutes=minutes)).isoformat()
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(
+            """
+            SELECT COUNT(*) FROM offer_filter_events
+            WHERE approved = 1 AND created_at >= ?
+            """,
+            (cutoff,),
+        )
+        return cursor.fetchone()[0]
 
 
 def _get_previous_price(db_path: str, fingerprint: str) -> Optional[float]:
