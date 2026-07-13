@@ -26,22 +26,20 @@ def _get_today_br() -> str:
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "enabled": True,
-    "max_posts_per_day": 20,
-    "max_per_category_day": 4,
-    "min_score": 60,
-    "min_discount_pct": 25,
+    "max_posts_per_day": 25,
+    "max_per_category_day": 6,
+    "min_score": 50,
+    "min_discount_pct": 20,
     "max_price": 500,
     "min_price": 15,
     "peak_hours": [7, 8, 9, 12, 13, 18, 19, 20, 21],
     "db_path": str(Path("data") / "offer_filter.sqlite3"),
 
-    # IMPORTANTE
-    # Somente ofertas muito fortes ignoram os limites
-    "min_score_bypass_limit": 80,
+    # Ofertas fortes ignoram limites diários (mais acessível que 80)
+    "min_score_bypass_limit": 72,
 
-    # Anti-spam por janela de tempo
-    # Mínimo de minutos entre posts aprovados consecutivos
-    "min_interval_minutes": 10,
+    # Cooldown entre posts — 5min evita rajadas sem travar o fluxo
+    "min_interval_minutes": 5,
 }
 
 CATEGORIES: dict[str, dict[str, Any]] = {
@@ -196,6 +194,7 @@ def should_post(raw_text: str, config: Optional[dict[str, Any]] = None) -> tuple
         if prev_price is not None and offer.price_now is not None and offer.price_now < prev_price:
             offer.is_price_drop = True
             offer.previous_price = prev_price
+            offer.score = _score_offer(offer, cfg)
         else:
             offer.reject_reason = "duplicata"
             _record_offer(cfg["db_path"], offer, approved=False)
@@ -365,10 +364,21 @@ def _detect_category(text: str) -> str:
     return "outros"
 
 
+def _brand_in_text(brand: str, normalized: str) -> bool:
+    """Evita falsos positivos como 'mac' dentro de 'primacial' ou 'macrilan'."""
+    brand_norm = _normalize_text(brand)
+    if not brand_norm:
+        return False
+    if " " in brand_norm:
+        return brand_norm in normalized
+    pattern = r"(?<!\w)" + re.escape(brand_norm) + r"(?!\w)"
+    return bool(re.search(pattern, normalized))
+
+
 def _detect_brand(text: str) -> Optional[str]:
     normalized = _normalize_text(text)
-    for brand in TRUSTED_BRANDS:
-        if _normalize_text(brand) in normalized:
+    for brand in sorted(TRUSTED_BRANDS, key=len, reverse=True):
+        if _brand_in_text(brand, normalized):
             return brand
     return None
 
@@ -511,56 +521,61 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
     #   • cupom ativo
     #   • marca reconhecida
     #   • loja oficial
-    has_decent_discount = offer.discount_pct is not None and offer.discount_pct >= 20
+    min_discount = float(cfg.get("min_discount_pct", 25))
+    has_decent_discount = offer.discount_pct is not None and offer.discount_pct >= min_discount
     if not (has_decent_discount or offer.has_coupon or offer.brand or offer.has_official_store):
-        offer.reject_reason = "sem diferencial: sem desconto >=20%, cupom, marca ou loja oficial"
+        offer.reject_reason = (
+            f"sem diferencial: sem desconto >={min_discount:g}%, cupom, marca ou loja oficial"
+        )
         return False
 
-    # ── R3. Categoria "outros" com score < 70 → REJEITAR ────────────────
-    # Produtos sem categoria definida dificilmente convertem
-    if offer.category == "outros" and offer.score < 70:
-        offer.reject_reason = f"categoria 'outros' com score insuficiente ({offer.score}/100, mínimo: 70)"
+    # ── R3. Categoria "outros" com score baixo → REJEITAR ───────────────
+    if offer.category == "outros" and offer.score < 55:
+        offer.reject_reason = f"categoria 'outros' com score insuficiente ({offer.score}/100, mínimo: 55)"
         return False
 
-    # ── R4. Moda barata: moda + preço < R$80 → REJEITAR ─────────────────
-    # Camisetas genéricas, chinelos baratos, etc.
-    if offer.category == "moda" and offer.price_now is not None and offer.price_now < 80:
-        # Exceção: se tiver cupom, marca reconhecida ou desconto alto (>= 35%)
-        if not (offer.has_coupon or offer.brand or offer.discount_percentage >= 35):
-            offer.reject_reason = f"moda barata genérica (R${offer.price_now:.2f}) abaixo de R$80 e sem atrativos extras"
+    # ── R4. Moda barata: moda + preço < R$40 → REJEITAR ─────────────────
+    # Chinelos baratos, acessórios genéricos de baixo valor, etc.
+    # Limite reduzido para R$40 pois kits de marca (Puma, Nike, Lupo)
+    # na faixa R$40-80 convertem bem quando têm desconto forte.
+    if offer.category == "moda" and offer.price_now is not None and offer.price_now < 40:
+        # Exceção: cupom, marca reconhecida ou desconto alto (>= 40%)
+        has_high_discount = offer.discount_pct is not None and offer.discount_pct >= 40
+        if not (offer.has_coupon or offer.brand or has_high_discount):
+            offer.reject_reason = f"moda barata genérica (R${offer.price_now:.2f}) abaixo de R$40 e sem atrativos extras"
             return False
 
     # ── R4.5. Moda sem marca reconhecida → REJEITAR ──────────────────────
-    # Roupas e acessórios genéricos têm conversão menor
-    # Exceção: Ter cupom OU score >= 50
-    if offer.category == "moda" and not offer.brand and offer.score < 50:
+    # Exceção: cupom OU score >= 40
+    if offer.category == "moda" and not offer.brand and offer.score < 40:
         if not offer.has_coupon:
             offer.reject_reason = (
                 f"moda sem marca reconhecida e score insuficiente "
-                f"({offer.score}/100, mínimo para moda sem marca sem cupom: 50)"
+                f"({offer.score}/100, mínimo para moda sem marca sem cupom: 40)"
             )
             return False
 
-    # ── R5. Saúde e beleza barata: preço < R$70 → REJEITAR ──────────────
-    # Cremes genéricos, perfumes baratos, etc.
-    if offer.category == "saude_beleza" and offer.price_now is not None and offer.price_now < 70:
-        offer.reject_reason = f"saúde/beleza barata (R${offer.price_now:.2f}) abaixo do mínimo de R$70"
-        return False
+    # ── R5. Saúde e beleza muito barata → REJEITAR ──────────────────────
+    if offer.category == "saude_beleza" and offer.price_now is not None and offer.price_now < 45:
+        has_discount = offer.discount_pct is not None and offer.discount_pct >= 30
+        if not (offer.has_coupon or offer.brand or has_discount):
+            offer.reject_reason = (
+                f"saúde/beleza muito barata (R${offer.price_now:.2f}) abaixo de R$45 sem atrativos"
+            )
+            return False
 
     # ── R5.5. Saúde/beleza sem marca reconhecida → REJEITAR ─────────────
-    # Kits e produtos de marcas desconhecidas têm baixa credibilidade.
-    # Exceção: Ter cupom OU score >= 50
-    if offer.category == "saude_beleza" and not offer.brand and offer.score < 50:
+    # Exceção: cupom OU score >= 40
+    if offer.category == "saude_beleza" and not offer.brand and offer.score < 40:
         if not offer.has_coupon:
             offer.reject_reason = (
                 f"saúde/beleza sem marca reconhecida e score insuficiente "
-                f"({offer.score}/100, mínimo para sem marca sem cupom: 50)"
+                f"({offer.score}/100, mínimo para sem marca sem cupom: 40)"
             )
             return False
 
     # ── R6. Produto genérico sem marca → REJEITAR (quando score baixo) ──
-    # Produto claramente genérico E sem marca E score < 70
-    if _is_generic_product(offer.raw_text) and not offer.brand and offer.score < 70:
+    if _is_generic_product(offer.raw_text) and not offer.brand and offer.score < 55:
         offer.reject_reason = f"produto genérico sem marca e score insuficiente ({offer.score}/100)"
         return False
 
@@ -601,8 +616,8 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
             )
             return False
 
-        # Anti-spam de limite: após 2+ posts na mesma categoria, exigir score mais alto
-        if category_count >= 2 and offer.score < 75:
+        # Anti-spam de limite: após 3+ posts na mesma categoria, exigir score mais alto
+        if category_count >= 3 and offer.score < 60:
             offer.reject_reason = (
                 f"anti-spam categoria: já foram {category_count} posts em '{offer.category}' "
                 f"hoje e o score ({offer.score}) é insuficiente para nova publicação"
@@ -722,11 +737,21 @@ def _record_offer(db_path: str, offer: Offer, approved: bool) -> None:
         )
 
 
+_FINGERPRINT_STOP_WORDS = frozenset({
+    "de", "por", "com", "no", "na", "em", "do", "da", "dos", "das",
+    "e", "o", "a", "os", "as", "um", "uma", "que", "se", "ao", "aos",
+    "para", "off", "resgate", "cupom", "cupons", "loja", "oficial",
+})
+
+
 def _product_fingerprint(text: str) -> str:
     no_urls = _URL_RE.sub(" ", text)
-    normalized = _normalize_text(no_urls)
-    words = re.findall(r"[a-z0-9]+", normalized)
-    compact = " ".join(words[:16])
+    no_prices = _PRICE_RE.sub(" ", no_urls)
+    no_prices = re.sub(r"\b\d+[.,]?\d*\b", " ", no_prices)
+    normalized = _normalize_text(no_prices)
+    words = re.findall(r"[a-z]{2,}", normalized)
+    content = [word for word in words if word not in _FINGERPRINT_STOP_WORDS][:14]
+    compact = " ".join(content) if content else normalized[:80]
     return hashlib.sha256(compact.encode("utf-8")).hexdigest()
 
 

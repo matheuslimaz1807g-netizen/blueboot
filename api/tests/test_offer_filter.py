@@ -14,12 +14,13 @@ def make_config(tmp_path: Path, **overrides):
         "db_path": str(tmp_path / "offer_filter.sqlite3"),
         "max_posts_per_day": 10,
         "max_per_category_day": 2,
-        "min_score": 60,
-        "min_discount_pct": 25,
+        "min_score": 50,
+        "min_discount_pct": 20,
         "min_price": 15,
         "max_price": 500,
         "peak_hours": [],
         "min_score_bypass_limit": 80,
+        "min_interval_minutes": 0,
     }
     config.update(overrides)
     return config
@@ -45,10 +46,10 @@ def test_should_post_approves_strong_offer_and_persists_status(tmp_path):
     #   brand(jbl)       = +20
     #   eletronicos      = +10
     #   preço 89,90      = +10
-    #   desconto 55%     = +20
-    #   beneficios(3+)   = +10 (pix + cupom + frete)
-    #   total = 70
-    assert offer.score == 70
+    #   desconto 55%     = +25 (>= 50%)
+    #   beneficios(3+)   = +30 (pix + cupom + frete)
+    #   total = 95
+    assert offer.score == 95
     assert status["postados_hoje"] == 1
     assert status["por_categoria"]["eletronicos"] == 1
 
@@ -175,8 +176,8 @@ def test_should_post_bypasses_daily_limit_for_premium_offers(tmp_path):
 
 
 def test_should_post_rejects_moda_barata(tmp_path):
-    """Moda com preço abaixo de R$80 deve ser rejeitada."""
-    text = "Oferta\nCamiseta comum\nDe R$ 59,90 por R$ 29,90\nhttps://example.com/camiseta"
+    """Moda genérica com preço abaixo de R$40 e sem atrativos deve ser rejeitada."""
+    text = "Oferta\nCamiseta comum\nDe R$ 55,00 por R$ 35,00\nhttps://example.com/camiseta"
 
     ok, offer = should_post(text, make_config(tmp_path))
     assert ok is False
@@ -184,16 +185,16 @@ def test_should_post_rejects_moda_barata(tmp_path):
 
 
 def test_should_post_rejects_saude_beleza_barata(tmp_path):
-    """Saúde e beleza com preço abaixo de R$70 deve ser rejeitada."""
-    text = "Oferta\nPerfume importado\nDe R$ 89,90 por R$ 49,90\nhttps://example.com/perfume"
+    """Saúde e beleza muito barata sem atrativos deve ser rejeitada."""
+    text = "Oferta\nPerfume importado\nDe R$ 59,90 por R$ 39,90\nhttps://example.com/perfume"
 
     ok, offer = should_post(text, make_config(tmp_path))
     assert ok is False
-    assert "saúde/beleza barata" in offer.reject_reason
+    assert "saúde/beleza" in offer.reject_reason
 
 
 def test_should_post_rejects_outros_with_low_score(tmp_path):
-    """Categoria 'outros' com score < 70 deve ser rejeitada."""
+    """Categoria 'outros' com score < 55 deve ser rejeitada."""
     text = "Oferta\nProduto diverso sem marca\nDe R$ 100,00 por R$ 59,90\nhttps://example.com/produto"
 
     ok, offer = should_post(text, make_config(tmp_path))
@@ -215,3 +216,63 @@ def test_should_post_rejects_generic_product(tmp_path):
     # Após penalidade: 25
     # Score < 60 → REJEITADO (score insuficiente)
     assert ok is False
+
+
+def test_should_post_approves_moda_with_coupon_and_discount(tmp_path):
+    """Moda sem marca mas com cupom e desconto forte deve passar."""
+    text = (
+        "PRECO EXCELENTE\n"
+        "Oculos de Sol Cacife Brand UV400\n"
+        "De R$ 149 por R$ 52\n"
+        "Resgate o cupom: SEMPREMODA\n"
+        "Loja Oficial Cacife no ML\n"
+        "https://example.com/oculos"
+    )
+
+    ok, offer = should_post(text, make_config(tmp_path))
+
+    assert ok is True
+    assert offer.category == "moda"
+
+
+def test_should_post_approves_branded_moda_kit(tmp_path):
+    """Kits de marca na faixa R$40-80 com desconto forte devem passar."""
+    text = (
+        "Kit 9 Pares Meias Puma Sapatilha Soquete Invisível Original\n"
+        "De R$ 150,00 por R$ 59,90\n"
+        "https://example.com/puma"
+    )
+
+    ok, offer = should_post(text, make_config(tmp_path))
+
+    assert ok is True
+    assert offer.brand == "puma"
+    assert offer.category == "moda"
+    assert offer.discount_pct == 60.1
+
+
+def test_detect_brand_avoids_substring_false_positives():
+    from offer_filter import _detect_brand
+
+    assert _detect_brand("Kit Body Splash Primacial 200ml") is None
+    assert _detect_brand("Furadeira Makita profissional") == "makita"
+    assert _detect_brand("Meias Puma originais") == "puma"
+
+
+def test_should_post_recalculates_score_on_price_drop(tmp_path):
+    config = make_config(tmp_path, min_score=50)
+    base = (
+        "Oferta\nFone JBL Bluetooth com frete gratis\n"
+        "De R$ 199,90 por R$ 89,90 no Pix\nCupom: AUDIO10\n"
+        "https://example.com/produto"
+    )
+
+    first_ok, first_offer = should_post(base, config)
+    cheaper = base.replace("R$ 89,90", "R$ 79,90")
+
+    second_ok, second_offer = should_post(cheaper, config)
+
+    assert first_ok is True
+    assert second_ok is True
+    assert second_offer.is_price_drop is True
+    assert second_offer.score == first_offer.score + 5
