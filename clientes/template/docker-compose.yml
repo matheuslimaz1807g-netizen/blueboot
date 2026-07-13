@@ -3,6 +3,13 @@
 # =============================================================================
 # Gerado por: scripts/novo-cliente.sh
 # Rede: bluebot_network (compartilhada com a infra central)
+#
+# LICENSE_KEY: deixe vazia no .env do cliente.
+# O bot se registra sozinho e, após você vincular no painel, salva a chave
+# em data/license_key.txt (volume) — sem editar .env.
+#
+# INSTALL_TOKEN: NÃO fica no .env do cliente. Vem de:
+#   /opt/bluebot/shared/bot-secrets.env  (gerado por scripts/sync-bot-secrets.sh)
 # =============================================================================
 
 services:
@@ -43,12 +50,16 @@ services:
     image: bluebot_bot:latest
     container_name: bot_${CLIENTE_SLUG}
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      # INSTALL_TOKEN da API central (gerado por scripts/sync-bot-secrets.sh)
+      - /opt/bluebot/shared/bot-secrets.env
+      - .env
     environment:
       CLIENTE_SLUG: ${CLIENTE_SLUG}
       APRO_API_BASE: "http://bluebot_api:8000"
       WHATSAPP_ENDPOINT: "http://whatsapp_${CLIENTE_SLUG}:4000"
       DOCKER_CONTAINER: "1"
+      # INSTALL_TOKEN vem de bot-secrets.env (infra central) — não do .env do cliente
     expose:
       - "8080"
     volumes:

@@ -276,6 +276,34 @@ def create_app(mode: str, initial_config: dict):
     return app
 
 
+_LICENSE_CACHE_PATH = Path(os.getenv("LICENSE_CACHE_PATH", "data/license_key.txt"))
+
+
+def _load_cached_license_key() -> str:
+    """Lê LICENSE_KEY salva no volume (após vínculo no painel). Não exige .env."""
+    try:
+        if _LICENSE_CACHE_PATH.exists():
+            key = _LICENSE_CACHE_PATH.read_text(encoding="utf-8").strip()
+            if key.startswith("APRO-"):
+                return key
+    except OSError:
+        pass
+    return ""
+
+
+def _save_cached_license_key(key: str) -> None:
+    """Persiste a chave autorizada para reinícios sem editar .env."""
+    try:
+        _LICENSE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _LICENSE_CACHE_PATH.write_text(key.strip() + "\n", encoding="utf-8")
+        try:
+            os.chmod(_LICENSE_CACHE_PATH, 0o600)
+        except OSError:
+            pass
+    except OSError as exc:
+        add_log("warning", f"Não foi possível salvar LICENSE_KEY em cache: {exc}")
+
+
 def main():
     global _runner
     add_log("info", f"Iniciando BlueBot v{VERSION}...")
@@ -293,28 +321,38 @@ def main():
     api_base = os.getenv("APRO_API_BASE") or os.getenv("API_BASE_URL", "http://license_api:8000")
     license_key = os.getenv("LICENSE_KEY", "").strip()
     robot_label = os.getenv("ROBOT_LABEL", "") 
-    install_token = os.getenv("INSTALL_TOKEN", "") # Senha global de segurança
+    install_token = os.getenv("INSTALL_TOKEN", "").strip()
     
     from license import get_machine_id, validate_license, start_heartbeat
     import platform
     import requests
 
     mid = get_machine_id()
-    
-    # ⚠️ MODO GERENCIADO OBRIGATÓRIO: Sempre exigir LICENSE_KEY
+
+    # LICENSE_KEY vazia no .env é o fluxo normal — usa cache do volume ou auto-descoberta
     if not license_key:
-        add_log("warning", "⏳ Nenhuma LICENSE_KEY detectada.")
+        license_key = _load_cached_license_key()
+        if license_key:
+            add_log("info", f"🔑 LICENSE_KEY carregada do cache local ({_LICENSE_CACHE_PATH})")
+    
+    if not license_key:
+        add_log("warning", "⏳ Nenhuma LICENSE_KEY detectada (env/cache).")
         add_log("info", "")
         add_log("info", "📋 INFORMAÇÕES DESTA MÁQUINA:")
         add_log("info", f"   Machine ID:  {mid}")
         add_log("info", f"   Hostname:    {platform.node()}")
         add_log("info", f"   Platform:    {platform.system()} {platform.release()}")
         add_log("info", "")
+        if not install_token:
+            add_log("error", "❌ INSTALL_TOKEN ausente!")
+            add_log("error", "   O bot precisa do token da API central para auto-descoberta.")
+            add_log("error", "   Ele deve vir do shared/bot-secrets.env (não do .env do cliente).")
+            add_log("info", "   Na VPS: ./scripts/sync-bot-secrets.sh && recrie o bot")
         add_log("info", "⚙️ Conectando ao Painel Admin para auto-descoberta...")
         add_log("info", f"   Painel: {api_base}")
         add_log("info", "")
         add_log("success", "✅ Robô aguardando aprovação no Painel Admin...")
-        add_log("info", "   📱 Vá ao Painel, localize esta máquina e clique em AUTORIZAR")
+        add_log("info", "   📱 Vá ao Painel → Pendentes → Vincular à licença ApenasPromo")
         add_log("info", "   ⏱️ Tentando a cada 10 segundos... (Ctrl+C para cancelar)")
         add_log("info", "")
         
@@ -335,7 +373,7 @@ def main():
                         "machine_id": mid,
                         "hostname": platform.node(),
                         "platform": f"{platform.system()} {platform.release()}",
-                        "label": robot_label or "BlueBot"
+                        "label": robot_label or os.getenv("CLIENTE_SLUG") or "BlueBot"
                     },
                     timeout=10,
                     verify=should_verify_ssl(discover_url)
@@ -345,8 +383,10 @@ def main():
                     data = resp.json()
                     if data.get("assigned_key"):
                         license_key = data.get("assigned_key")
+                        _save_cached_license_key(license_key)
                         add_log("success", f"🎉 LICENÇA AUTORIZADA PELO PAINEL!")
                         add_log("success", f"   Chave: {license_key[:16]}***")
+                        add_log("info", f"   Salva em {_LICENSE_CACHE_PATH} — reinício sem editar .env")
                         add_log("info", "   Iniciando sistema...")
                         failed_attempts = 0
                         break
@@ -359,8 +399,9 @@ def main():
                         failed_attempts += 1
                         
                 elif resp.status_code == 401:
-                    add_log("error", "❌ INSTALL_TOKEN inválido!")
-                    add_log("error", "   Verifique a variável INSTALL_TOKEN no .env")
+                    add_log("error", "❌ INSTALL_TOKEN inválido ou ausente!")
+                    add_log("error", "   Rode na VPS: ./scripts/sync-bot-secrets.sh")
+                    add_log("error", "   Depois: docker compose up -d --force-recreate bot_<slug>")
                     time.sleep(30)
                     continue
                     
@@ -397,6 +438,9 @@ def main():
         os.environ["APRO_API_BASE"] = api_base # Garante que o license.py use a URL certa
         lic_info = validate_license(license_key, mid)
         add_log("success", f"✅ Licença VALIDADA! Plano: {lic_info.get('plan', 'basic').upper()}")
+        # Garante cache local após 1º vínculo (máquina deixa de aparecer como "—")
+        if license_key and not _load_cached_license_key():
+            _save_cached_license_key(license_key)
         
         # 2. Iniciar Heartbeat (Batimento para o painel)
         def on_expired():

@@ -8,65 +8,71 @@
 
 ### 🎯 Fluxo Automático (Recomendado)
 
-**O robô NÃO precisa de LICENSE_KEY manual!** Ele se registra automaticamente:
+**O robô NÃO precisa de LICENSE_KEY no .env!** Fluxo automático:
 
-1. **Execute o robô** (sem LICENSE_KEY):
-   ```bash
-   # Windows
-   .\ApenasPromo.exe
-   
-   # Linux/macOS
-   ./main.py
-   ```
+1. `INSTALL_TOKEN` vem de `/opt/bluebot/shared/bot-secrets.env` (rode `./scripts/sync-bot-secrets.sh`)
+2. Execute o robô com `LICENSE_KEY=` vazia
+3. Máquina aparece em **Admin → Pendentes**
+4. Vincule à licença → bot salva a chave em `data/license_key.txt`
+5. Reinícios usam o cache — **sem editar .env**
+
+Configuração do cliente (somente isso no `.env`):
+```
+LICENSE_KEY=
+CLIENT_PASSWORD=...
+APRO_API_BASE=http://bluebot_api:8000
+```
+
+### ❌ "INSTALL_TOKEN inválido"
+
+**Causa**: Token ausente ou diferente do `.env` da API.
+
+**Solução**:
+```bash
+cd /opt/bluebot
+./scripts/sync-bot-secrets.sh
+cd clientes/<slug>
+docker compose up -d --force-recreate bot_<slug>
+```
+
+Não coloque `INSTALL_TOKEN` nem `LICENSE_KEY` no `.env` do cliente.
 
 2. **Robô se registra no Painel**:
    ```
    ⏳ Nenhuma LICENSE_KEY detectada.
    📋 INFORMAÇÕES DESTA MÁQUINA:
       Machine ID:  a1b2c3d4e5f6...
-      Hostname:    MINHA-PC
-      Platform:    Windows 11
+      Hostname:    bot_apenaspromo
+      Platform:    Linux
    
    ✅ Robô aguardando aprovação no Painel Admin...
-      📱 Vá ao Painel, localize esta máquina e clique em AUTORIZAR
+      📱 Vá ao Painel → Pendentes → Vincular
       ⏱️ Tentando a cada 10 segundos...
    ```
 
 3. **Autorize no Painel Admin**:
-   - Acesse: `https://seu-painel.com/admin`
-   - Vá em "Máquinas"
-   - Localize esta máquina pelo **Machine ID**
-   - Clique em **"AUTORIZAR"**
+   - Acesse o admin
+   - Vá em **Pendentes**
+   - Clique em **Vincular** e escolha a licença (ex: APRO-3JCL-...)
 
-4. **Robô recebe LICENSE_KEY automaticamente**:
+4. **Robô recebe LICENSE_KEY automaticamente** e salva em `data/license_key.txt`:
    ```
    🎉 LICENÇA AUTORIZADA PELO PAINEL!
-      Chave: a1b2c3d4e5f6***
-      Iniciando sistema...
+      Chave: APRO-3JCL-BYPN***
+      Salva em data/license_key.txt — reinício sem editar .env
    ```
 
 ---
 
-## ⚙️ Configuração (`.env`)
-
-Você **NÃO precisa preencher LICENSE_KEY manualmente**. Apenas configure:
+## ⚙️ Configuração (`.env` do cliente)
 
 ```env
-# ── PAINEL DE ADMINISTRAÇÃO ────────────────────────────────────────
-APRO_API_BASE=https://seu-painel.com
-
-# Token de instalação (se o painel exigir)
-INSTALL_TOKEN=
-
-# Rótulo (opcional)
-ROBOT_LABEL=Bot - Máquina Principal
-
-# ── TELEGRAM (Opcional) ────────────────────────────────────────────
-API_ID=1234567
-API_HASH=abcdef1234567890abcdef1234567890
+LICENSE_KEY=
+CLIENT_PASSWORD=sua_senha
+APRO_API_BASE=http://bluebot_api:8000
 ```
 
-**Pronto!** É só isso. O resto é gerenciado pelo Painel Admin.
+**Pronto!** `INSTALL_TOKEN` fica em `/opt/bluebot/shared/bot-secrets.env` (infra), não no cliente.
 
 ---
 
@@ -88,14 +94,13 @@ Após autorização, **TUDO** vem do Painel Admin:
 
 ### ❌ "Robô aguardando aprovação no Painel Admin..."
 
-**Significado**: Tudo OK! O robô está esperando você autorizar no painel.
+**Significado**: Tudo OK! O robô está esperando você vincular no painel.
 
 **Solução**:
-1. Acesse o Painel Admin
-2. Procure por "Máquinas" ou "Robôs Registrados"
-3. Localize a máquina pelo **Machine ID** (mostrado no log)
-4. Clique em **"AUTORIZAR"**
-5. Robô receberá a licença automaticamente em ~10 segundos
+1. Acesse o Painel Admin → **Pendentes**
+2. Localize a máquina pelo **Machine ID** (mostrado no log)
+3. Clique em **Vincular** e escolha a licença
+4. Robô recebe a licença automaticamente em ~10 segundos
 
 ### ❌ "Não conseguiu conectar ao painel"
 
@@ -106,21 +111,24 @@ Após autorização, **TUDO** vem do Painel Admin:
 
 **Solução**:
 ```bash
-# Teste a conexão
-curl https://seu-painel.com/health
-
-# Verifique a URL
-set APRO_API_BASE=https://seu-painel.com
+curl http://bluebot_api:8000/health
 ```
 
 ### ❌ "INSTALL_TOKEN inválido"
 
-**Causa**: Token de instalação está errado ou vencido.
+**Causa**: Token ausente ou diferente do `.env` da API.
 
 **Solução**:
-- Verifique o `INSTALL_TOKEN` no `.env`
-- Obtenha um novo token no Painel Admin
-- Tente novamente
+```bash
+cd /opt/bluebot
+chmod +x scripts/sync-bot-secrets.sh
+./scripts/sync-bot-secrets.sh
+cd clientes/apenaspromo
+# Atualize o docker-compose do template se ainda for antigo:
+cp ../template/docker-compose.yml ./docker-compose.yml
+sed -i "s/\${CLIENTE_SLUG}/apenaspromo/g" docker-compose.yml
+docker compose up -d --force-recreate bot_apenaspromo
+```
 
 ### ❌ "Sinal de licença perdido após 30 minutos"
 
@@ -137,50 +145,39 @@ set APRO_API_BASE=https://seu-painel.com
 
 ```
 STARTUP
-  ↓
-[1] LICENSE_KEY definida?
-  ├─ ✅ SIM → Pula para [4]
-  └─ ❌ NÃO → Vai para [2]
-
-[2] Registrar no Painel
-  ├─ Envia: Machine ID, Hostname, Platform
-  └─ Aguarda resposta a cada 10s
-
-[3] Painel envia LICENSE_KEY?
-  ├─ ✅ SIM → Continua para [4]
-  └─ ❌ NÃO → Volta para [2]
-
-[4] Validar Licença
-  └─ Se OK → Vai para [5]
-
-[5] Carregar Config Remota
-  └─ Se OK → Vai para [6]
-
-[6] Iniciar Heartbeat (ping a cada 15min)
-
-[7] Dashboard Pronto! ✅
+  │
+  ├─ LICENSE_KEY no env? ─────────────── sim ──► validar
+  │                                              │
+  ├─ cache data/license_key.txt? ─────── sim ──► validar
+  │                                              │
+  └─ não ──► POST /license/discover ─────────────┤
+               (INSTALL_TOKEN da infra)          │
+               │                                 │
+               ▼                                 ▼
+         Pendentes no painel              machine_id vinculado
+               │                                 │
+               ▼                                 ▼
+         Admin vincula ──► assigned_key ──► salva cache ──► BOT RODANDO
 ```
 
 ---
 
 ## 💾 Cache de Licença
 
-O robô pode armazenar a licença em cache local para funcionar **offline por 30 minutos** (grace period).
+Após o vínculo no painel, a chave fica em `data/license_key.txt` (volume Docker).
 
-Se o servidor ficar offline:
-- ✅ Robô continua funcionando por 30 minutos
-- ⏱️ Após 30 minutos: Encerra (requer conexão com painel)
+- ✅ Reinício do container **sem** editar `.env`
+- ✅ Cache de validação online permite grace period se a API cair
 
 ---
 
 ## 📞 Suporte
 
-- **Painel Admin**: `https://seu-painel.com`
-- **Documentação**: `https://seu-painel.com/docs`
-- **Suporte**: Entre em contato com o administrador
+- **Painel Admin**: painel BlueBot
+- **Documentação**: `executable/README_LICENCAS.md`
 
 ---
 
-**Última atualização**: Maio 2026  
+**Última atualização**: Julho 2026  
 **Versão**: BlueBot 2.0+
 

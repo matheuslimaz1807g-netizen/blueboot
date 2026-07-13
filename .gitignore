@@ -75,6 +75,9 @@ ssl/
 clientes/*/.env
 clientes/*/frontend/
 
+# Token compartilhado com os bots (gerado na VPS)
+shared/bot-secrets.env
+
 # IDEs
 .vscode/
 .idea/

@@ -126,7 +126,10 @@ prompt_secret() {
   echo "${value}"
 }
 
-LICENSE_KEY=$(prompt_required "LICENSE_KEY" "Chave de licença (APRO-XXXX-XXXX-XXXX)")
+# LICENSE_KEY fica vazia: o bot se registra sozinho e o admin vincula no painel.
+# Após vincular, a chave é salva em data/license_key.txt (não precisa .env).
+LICENSE_KEY=""
+log_info "LICENSE_KEY será vinculada automaticamente pelo painel (deixe vazia no .env)."
 CLIENT_PASSWORD=$(prompt_secret "CLIENT_PASSWORD" "Senha do cliente no painel admin")
 TELEGRAM_API_ID=$(prompt_required "TELEGRAM_API_ID" "Telegram API ID (my.telegram.org)")
 TELEGRAM_API_HASH=$(prompt_secret "TELEGRAM_API_HASH" "Telegram API Hash")
@@ -171,7 +174,9 @@ cat > "${CLIENTE_DIR}/.env" << EOF
 CLIENTE_SLUG=${SLUG}
 
 # Autenticação na API Central
-LICENSE_KEY=${LICENSE_KEY}
+# LICENSE_KEY vazia = auto-descoberta. NÃO coloque INSTALL_TOKEN aqui.
+# INSTALL_TOKEN vem de /opt/bluebot/shared/bot-secrets.env
+LICENSE_KEY=
 CLIENT_PASSWORD=${CLIENT_PASSWORD}
 DASHBOARD_PASSWORD=${CLIENT_PASSWORD}
 APRO_API_BASE=http://bluebot_api:8000
@@ -206,6 +211,12 @@ log_ok ".env criado e protegido (chmod 600)"
 # ---------------------------------------------------------------------------
 # 7. Subir os containers
 # ---------------------------------------------------------------------------
+# Garante INSTALL_TOKEN compartilhado antes de subir o bot
+if [[ -x "${BASE_DIR}/scripts/sync-bot-secrets.sh" ]]; then
+  log_info "Sincronizando INSTALL_TOKEN da infra central..."
+  "${BASE_DIR}/scripts/sync-bot-secrets.sh" || log_warn "sync-bot-secrets falhou — rode manualmente depois"
+fi
+
 log_info "Subindo containers do cliente '${SLUG}'..."
 cd "${CLIENTE_DIR}"
 docker compose up -d
@@ -255,7 +266,8 @@ echo -e "  🌐 Dashboard: ${CYAN}https://${SLUG}.${DOMAIN}${NC}"
 echo -e "  📁 Arquivos:  ${CYAN}${CLIENTE_DIR}${NC}"
 echo ""
 echo -e "  Próximos passos:"
-echo -e "  1. Acesse o painel admin → Licenças → '${SLUG}'"
-echo -e "  2. Escaneie o QR code do WhatsApp se ainda não foi feito"
-echo -e "  3. Configure DNS wildcard para *.${DOMAIN} se necessário"
+echo -e "  1. Bot sobe SEM LICENSE_KEY — aparece em Admin → Pendentes"
+echo -e "  2. Vincule à licença do cliente (ex: APRO-XXXX)"
+echo -e "  3. Bot recebe a chave sozinho e salva no volume (sem editar .env)"
+echo -e "  4. Escaneie o QR WhatsApp se necessário"
 echo ""
