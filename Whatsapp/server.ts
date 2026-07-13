@@ -56,6 +56,60 @@ const client = new Client({
   },
 });
 
+async function applyChannelMediaCompatibilityPatch() {
+  try {
+    const result = await (client as any).pupPage.evaluate(() => {
+      const webWindow = window as any;
+      const msgModelClass = webWindow.require?.('WAWebCollections')?.Msg?.modelClass;
+
+      if (!msgModelClass?.prototype) {
+        return { applied: false, reason: 'Msg model indisponivel' };
+      }
+
+      if (typeof msgModelClass.prototype.avParams === 'function') {
+        return { applied: false, reason: 'avParams ja existe' };
+      }
+
+      msgModelClass.prototype.avParams = function (this: any) {
+        const raw = typeof this.toJSON === 'function' ? this.toJSON() : {};
+        const mediaData = this.mediaData && typeof this.mediaData.toJSON === 'function'
+          ? this.mediaData.toJSON()
+          : (this.mediaData || {});
+        const mediaObject = this.mediaObject || {};
+
+        return {
+          ...raw,
+          ...mediaData,
+          type: this.type ?? raw.type,
+          mimetype: this.mimetype ?? mediaData.mimetype,
+          filehash: this.filehash ?? mediaData.filehash ?? mediaObject.filehash,
+          encFilehash: this.encFilehash ?? mediaData.encFilehash,
+          uploadhash: this.uploadhash ?? mediaData.uploadhash,
+          directPath: this.directPath ?? mediaData.directPath,
+          mediaKey: this.mediaKey ?? mediaData.mediaKey,
+          mediaKeyTimestamp: this.mediaKeyTimestamp ?? mediaData.mediaKeyTimestamp,
+          size: this.size ?? mediaData.size ?? mediaObject.size,
+          width: this.width ?? mediaData.width,
+          height: this.height ?? mediaData.height,
+          mediaHandle: this.mediaHandle ?? mediaData.mediaHandle,
+          caption: this.caption ?? mediaData.caption,
+          isGif: this.isGif ?? mediaData.isGif,
+          isPtt: this.isPtt ?? mediaData.isPtt,
+          waveform: this.waveform ?? mediaData.waveform,
+          streamingSidecar: this.streamingSidecar ?? mediaData.streamingSidecar,
+          firstFrameSidecar: this.firstFrameSidecar ?? mediaData.firstFrameSidecar,
+        };
+      };
+
+      return { applied: true, reason: 'fallback avParams instalado' };
+    });
+
+    console.log(`[Compat] Patch de midia para canais: ${result.reason}`);
+  } catch (err: any) {
+    console.warn("[Compat] Nao foi possivel aplicar patch de midia para canais:", err.message);
+  }
+}
+
 // --- EVENTOS DO WHATSAPP ---
 
 client.on('qr', async (qr: string) => {
@@ -129,6 +183,7 @@ client.on('ready', async () => {
   console.log('✅ WhatsApp conectado e pronto!');
   statusVal = "connected";
   try {
+    await applyChannelMediaCompatibilityPatch();
     await refreshTargets();
     console.log(`📋 Total de canais/grupos monitorados: ${allTargets.length}`);
   } catch (err: any) {
@@ -152,8 +207,8 @@ async function processQueue() {
     console.log(`[Queue] Processando envio para destinos: ${item.targets.join(", ")}`);
     
     try {
-      await sendToDestinationsInternal(item.text, item.base64Image, item.mimeType, item.targets);
-      console.log("[Queue] Envio concluído.");
+      const result = await sendToDestinationsInternal(item.text, item.base64Image, item.mimeType, item.targets);
+      console.log(`[Queue] Envio concluído. Sucessos: ${result.successCount}. Falhas: ${result.failureCount}.`);
     } catch (err: any) {
       console.error("[Queue] Erro ao processar item da fila:", err.message);
     }
@@ -205,21 +260,38 @@ async function sendToDestinationsInternal(text: string, base64Image?: string, mi
     throw new Error(`Nenhum dos destinos (${targets.join(', ')}) foi encontrado no seu Whatsapp!`);
   }
 
+  let successCount = 0;
+  let failureCount = 0;
+  const failures: string[] = [];
+
   for (const chat of matchedChats) {
     try {
+      let sentMessage: any;
       if (base64Image && (mimeType?.startsWith("image/"))) {
         const media = new MessageMedia(mimeType, base64Image);
-        await client.sendMessage(chat.id, media, { caption: text });
+        sentMessage = await client.sendMessage(chat.id, media, { caption: text });
       } else {
-        await client.sendMessage(chat.id, text);
+        sentMessage = await client.sendMessage(chat.id, text);
+      }
+      if (!sentMessage) {
+        throw new Error("whatsapp-web.js retornou envio vazio/null");
       }
       console.log(`[Direct] Enviado para ${chat.type === 'group' ? 'grupo' : 'canal'}: ${chat.name}`);
+      successCount += 1;
       // Pequeno delay de 3s entre destinos do mesmo lote
       await new Promise((res) => setTimeout(res, 3000));
     } catch (err: any) {
+      failureCount += 1;
+      failures.push(`${chat.name} (${chat.type}): ${err.message}`);
       console.error(`[Direct] Erro em ${chat.name} (${chat.type}):`, err.message);
     }
   }
+
+  if (successCount === 0) {
+    throw new Error(`Todos os destinos falharam: ${failures.join('; ')}`);
+  }
+
+  return { successCount, failureCount };
 }
 
 // --- ROTAS DA API ---

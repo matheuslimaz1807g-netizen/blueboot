@@ -64,6 +64,37 @@ const client = new whatsapp_web_js_1.Client({
         ],
     },
 });
+function applyChannelMediaCompatibilityPatch() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const result = yield client.pupPage.evaluate(() => {
+                var _a, _b, _c;
+                const webWindow = window;
+                const msgModelClass = (_c = (_b = (_a = webWindow.require) === null || _a === void 0 ? void 0 : _a.call(webWindow, 'WAWebCollections')) === null || _b === void 0 ? void 0 : _b.Msg) === null || _c === void 0 ? void 0 : _c.modelClass;
+                if (!(msgModelClass === null || msgModelClass === void 0 ? void 0 : msgModelClass.prototype)) {
+                    return { applied: false, reason: 'Msg model indisponivel' };
+                }
+                if (typeof msgModelClass.prototype.avParams === 'function') {
+                    return { applied: false, reason: 'avParams ja existe' };
+                }
+                msgModelClass.prototype.avParams = function () {
+                    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
+                    const raw = typeof this.toJSON === 'function' ? this.toJSON() : {};
+                    const mediaData = this.mediaData && typeof this.mediaData.toJSON === 'function'
+                        ? this.mediaData.toJSON()
+                        : (this.mediaData || {});
+                    const mediaObject = this.mediaObject || {};
+                    return Object.assign(Object.assign(Object.assign({}, raw), mediaData), { type: (_a = this.type) !== null && _a !== void 0 ? _a : raw.type, mimetype: (_b = this.mimetype) !== null && _b !== void 0 ? _b : mediaData.mimetype, filehash: (_d = (_c = this.filehash) !== null && _c !== void 0 ? _c : mediaData.filehash) !== null && _d !== void 0 ? _d : mediaObject.filehash, encFilehash: (_e = this.encFilehash) !== null && _e !== void 0 ? _e : mediaData.encFilehash, uploadhash: (_f = this.uploadhash) !== null && _f !== void 0 ? _f : mediaData.uploadhash, directPath: (_g = this.directPath) !== null && _g !== void 0 ? _g : mediaData.directPath, mediaKey: (_h = this.mediaKey) !== null && _h !== void 0 ? _h : mediaData.mediaKey, mediaKeyTimestamp: (_j = this.mediaKeyTimestamp) !== null && _j !== void 0 ? _j : mediaData.mediaKeyTimestamp, size: (_l = (_k = this.size) !== null && _k !== void 0 ? _k : mediaData.size) !== null && _l !== void 0 ? _l : mediaObject.size, width: (_m = this.width) !== null && _m !== void 0 ? _m : mediaData.width, height: (_o = this.height) !== null && _o !== void 0 ? _o : mediaData.height, mediaHandle: (_p = this.mediaHandle) !== null && _p !== void 0 ? _p : mediaData.mediaHandle, caption: (_q = this.caption) !== null && _q !== void 0 ? _q : mediaData.caption, isGif: (_r = this.isGif) !== null && _r !== void 0 ? _r : mediaData.isGif, isPtt: (_s = this.isPtt) !== null && _s !== void 0 ? _s : mediaData.isPtt, waveform: (_t = this.waveform) !== null && _t !== void 0 ? _t : mediaData.waveform, streamingSidecar: (_u = this.streamingSidecar) !== null && _u !== void 0 ? _u : mediaData.streamingSidecar, firstFrameSidecar: (_v = this.firstFrameSidecar) !== null && _v !== void 0 ? _v : mediaData.firstFrameSidecar });
+                };
+                return { applied: true, reason: 'fallback avParams instalado' };
+            });
+            console.log(`[Compat] Patch de midia para canais: ${result.reason}`);
+        }
+        catch (err) {
+            console.warn("[Compat] Nao foi possivel aplicar patch de midia para canais:", err.message);
+        }
+    });
+}
 // --- EVENTOS DO WHATSAPP ---
 client.on('qr', (qr) => __awaiter(void 0, void 0, void 0, function* () {
     statusVal = "qr";
@@ -132,6 +163,7 @@ client.on('ready', () => __awaiter(void 0, void 0, void 0, function* () {
     console.log('✅ WhatsApp conectado e pronto!');
     statusVal = "connected";
     try {
+        yield applyChannelMediaCompatibilityPatch();
         yield refreshTargets();
         console.log(`📋 Total de canais/grupos monitorados: ${allTargets.length}`);
     }
@@ -153,8 +185,8 @@ function processQueue() {
             const item = messageQueue.shift();
             console.log(`[Queue] Processando envio para destinos: ${item.targets.join(", ")}`);
             try {
-                yield sendToDestinationsInternal(item.text, item.base64Image, item.mimeType, item.targets);
-                console.log("[Queue] Envio concluído.");
+                const result = yield sendToDestinationsInternal(item.text, item.base64Image, item.mimeType, item.targets);
+                console.log(`[Queue] Envio concluído. Sucessos: ${result.successCount}. Falhas: ${result.failureCount}.`);
             }
             catch (err) {
                 console.error("[Queue] Erro ao processar item da fila:", err.message);
@@ -203,23 +235,37 @@ function sendToDestinationsInternal(text_1, base64Image_1, mimeType_1) {
         if (matchedChats.length === 0) {
             throw new Error(`Nenhum dos destinos (${targets.join(', ')}) foi encontrado no seu Whatsapp!`);
         }
+        let successCount = 0;
+        let failureCount = 0;
+        const failures = [];
         for (const chat of matchedChats) {
             try {
+                let sentMessage;
                 if (base64Image && (mimeType === null || mimeType === void 0 ? void 0 : mimeType.startsWith("image/"))) {
                     const media = new whatsapp_web_js_1.MessageMedia(mimeType, base64Image);
-                    yield client.sendMessage(chat.id, media, { caption: text });
+                    sentMessage = yield client.sendMessage(chat.id, media, { caption: text });
                 }
                 else {
-                    yield client.sendMessage(chat.id, text);
+                    sentMessage = yield client.sendMessage(chat.id, text);
+                }
+                if (!sentMessage) {
+                    throw new Error("whatsapp-web.js retornou envio vazio/null");
                 }
                 console.log(`[Direct] Enviado para ${chat.type === 'group' ? 'grupo' : 'canal'}: ${chat.name}`);
+                successCount += 1;
                 // Pequeno delay de 3s entre destinos do mesmo lote
                 yield new Promise((res) => setTimeout(res, 3000));
             }
             catch (err) {
+                failureCount += 1;
+                failures.push(`${chat.name} (${chat.type}): ${err.message}`);
                 console.error(`[Direct] Erro em ${chat.name} (${chat.type}):`, err.message);
             }
         }
+        if (successCount === 0) {
+            throw new Error(`Todos os destinos falharam: ${failures.join('; ')}`);
+        }
+        return { successCount, failureCount };
     });
 }
 // --- ROTAS DA API ---
