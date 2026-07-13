@@ -1928,10 +1928,18 @@
             <template x-if="selectedLic?.whatsapp_status === 'qr'">
                <div>
                   <p class="text-sm text-slate-300 mb-4">Aguardando escaneamento pelo cliente:</p>
-                  <div class="bg-white p-3 rounded-lg inline-block mb-4">
-                    <img :src="selectedLic.whatsapp_qr" width="200" height="200" />
+                  <div class="bg-white p-4 rounded-lg inline-block mb-4 shadow-lg">
+                    <img
+                      :src="selectedLic.whatsapp_qr"
+                      alt="WhatsApp QR Code"
+                      width="320"
+                      height="320"
+                      class="w-80 h-80 object-contain"
+                      style="image-rendering: pixelated;"
+                    />
                   </div>
-                  <p class="text-[10px] text-muted uppercase tracking-wider">O QR Code é atualizado automaticamente</p>
+                  <p class="text-[10px] text-muted uppercase tracking-wider mb-2">O QR Code é atualizado automaticamente (~20s)</p>
+                  <p class="text-xs text-amber-400/90" x-show="!selectedLic.whatsapp_qr">QR ainda não chegou do robô — aguarde o heartbeat</p>
                </div>
             </template>
             

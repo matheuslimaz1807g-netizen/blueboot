@@ -68,7 +68,14 @@ const client = new whatsapp_web_js_1.Client({
 client.on('qr', (qr) => __awaiter(void 0, void 0, void 0, function* () {
     statusVal = "qr";
     try {
-        qrCodeBase64 = yield qrcode_1.default.toDataURL(qr); // Returns data:image/png;base64,...
+        qrCodeBase64 = yield qrcode_1.default.toDataURL(qr, {
+            errorCorrectionLevel: 'M',
+            type: 'image/png',
+            margin: 2,
+            width: 400,
+            color: { dark: '#000000', light: '#FFFFFF' },
+        });
+        console.log('📱 Novo QR Code gerado (escaneie em até ~20s)');
     }
     catch (err) {
         console.error("Erro gerando QR base64:", err);

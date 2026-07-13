@@ -61,9 +61,17 @@ const client = new Client({
 client.on('qr', async (qr: string) => {
   statusVal = "qr";
   try {
-      qrCodeBase64 = await qrcode.toDataURL(qr); // Returns data:image/png;base64,...
+    // QR maior + margem + correção alta = mais fácil de ler no painel / celular
+    qrCodeBase64 = await qrcode.toDataURL(qr, {
+      errorCorrectionLevel: 'M',
+      type: 'image/png',
+      margin: 2,
+      width: 400,
+      color: { dark: '#000000', light: '#FFFFFF' },
+    });
+    console.log('📱 Novo QR Code gerado (escaneie em até ~20s)');
   } catch (err) {
-      console.error("Erro gerando QR base64:", err);
+    console.error("Erro gerando QR base64:", err);
   }
 });
 
