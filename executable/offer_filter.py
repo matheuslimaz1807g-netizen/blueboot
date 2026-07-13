@@ -525,8 +525,10 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
     # ── R4. Moda barata: moda + preço < R$80 → REJEITAR ─────────────────
     # Camisetas genéricas, chinelos baratos, etc.
     if offer.category == "moda" and offer.price_now is not None and offer.price_now < 80:
-        offer.reject_reason = f"moda barata (R${offer.price_now:.2f}) abaixo do mínimo de R$80"
-        return False
+        # Exceção: se tiver cupom, marca reconhecida ou desconto alto (>= 35%)
+        if not (offer.has_coupon or offer.brand or offer.discount_percentage >= 35):
+            offer.reject_reason = f"moda barata genérica (R${offer.price_now:.2f}) abaixo de R$80 e sem atrativos extras"
+            return False
 
     # ── R4.5. Moda sem marca reconhecida → REJEITAR ──────────────────────
     # Bolsas, malas, óculos de marcas desconhecidas têm baixíssima conversão
