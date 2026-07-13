@@ -121,6 +121,7 @@ TRUSTED_BRANDS = [
     "puma", "nike", "adidas", "kappa", "mizuno", "asics",
     "fila", "olympikus", "under armour", "umbro", "vans", "all star",
     "converse", "new balance", "reebok", "oakley", "reserva",
+    "havaianas", "lupo", "hering", "colcci", "calvin klein", "renner", "c&a",
     # Eletrônicos / Tecnologia
     "samsung", "xiaomi", "apple", "jbl", "anker", "logitech",
     "multilaser", "intelbras", "positivo", "lenovo", "dell",
@@ -129,13 +130,16 @@ TRUSTED_BRANDS = [
     # Eletrodomésticos / Casa
     "britania", "britânia", "mondial", "philips", "walita",
     "oster", "electrolux", "consul", "brastempe", "lg",
-    "tramontina", "fischer", "tramontina", "rocker", "rochedo",
-    "oxford", "santorini", "utilissima",
+    "tramontina", "fischer", "rocker", "rochedo",
+    "oxford", "santorini", "utilissima", "camesa", "karsten",
     # Ferramentas
     "bosch", "makita", "dewalt", "stanley", "skil", "vonder",
     # Beleza / Saúde
     "growth", "optimum", "nestle", "pantene", "elseve",
     "niely", "salon line", "loreal", "l'oreal",
+    "natura", "boticario", "o boticario", "boticário", "o boticário",
+    "eudora", "avon", "ruby rose", "vult", "tracta", "quem disse berenice",
+    "mac", "granado", "phebo", "oboticario", "macrilan", "carmed",
     # Premium / Luxo
     "dyson", "sony", "bose", "marshall", "jbl", "apple",
     "galaxy", "iphone", "ipad", "macbook", "airpods",
@@ -437,32 +441,28 @@ def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
     # ── 5. Desconto (PESO MAIOR — principal diferencial) ─────────────────
     if offer.discount_pct is not None:
         if offer.discount_pct >= 70:
-            score += 30   # Oferta explosiva! Quase de graça
+            score += 40   # Oferta explosiva! Quase de graça
         elif offer.discount_pct >= 60:
-            score += 25   # Desconto agressivo, baita oferta
+            score += 30   # Desconto agressivo, baita oferta
         elif offer.discount_pct >= 50:
-            score += 20   # Meio preço, chama atenção
+            score += 25   # Meio preço, chama atenção
         elif offer.discount_pct >= 40:
-            score += 15   # Desconto significativo
+            score += 20   # Desconto significativo
         elif offer.discount_pct >= 30:
-            score += 10   # Desconto razoável
+            score += 15   # Desconto razoável
         elif offer.discount_pct >= 20:
-            score += 5    # Desconto mínimo relevante
+            score += 10   # Desconto mínimo relevante
         # abaixo de 20%: 0 pontos (desconto irrelevante)
 
-    # ── 6. Múltiplos benefícios combinados ───────────────────────────────
-    benefit_count = sum([
-        offer.has_coupon,
-        offer.has_pix,
-        offer.has_free_shipping,
-        offer.has_installment,
-    ])
-    if benefit_count >= 3:
-        score += 10   # Combo poderoso: cupom + frete + pix
-    elif benefit_count == 2:
-        score += 5    # Dupla de benefícios
-    elif benefit_count == 1:
-        score += 2    # Benefício isolado
+    # ── 6. Benefícios fortes ─────────────────────────────────────────────
+    if offer.has_coupon:
+        score += 15   # Cupom converte muito, bônus agressivo
+    if offer.has_free_shipping:
+        score += 10   # Frete grátis é um atrativo enorme
+    if offer.has_pix:
+        score += 5
+    if offer.has_installment:
+        score += 2
 
     # ── 7. Horário de pico (+3) ──────────────────────────────────────────
     if datetime.now(TZ_BR).hour in cfg["peak_hours"]:
@@ -531,14 +531,15 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
             return False
 
     # ── R4.5. Moda sem marca reconhecida → REJEITAR ──────────────────────
-    # Bolsas, malas, óculos de marcas desconhecidas têm baixíssima conversão
-    # Exceção: score >= 75 (produto viral com desconto brutal)
-    if offer.category == "moda" and not offer.brand and offer.score < 75:
-        offer.reject_reason = (
-            f"moda sem marca reconhecida e score insuficiente "
-            f"({offer.score}/100, mínimo para moda sem marca: 75)"
-        )
-        return False
+    # Roupas e acessórios genéricos têm conversão menor
+    # Exceção: Ter cupom OU score >= 50
+    if offer.category == "moda" and not offer.brand and offer.score < 50:
+        if not offer.has_coupon:
+            offer.reject_reason = (
+                f"moda sem marca reconhecida e score insuficiente "
+                f"({offer.score}/100, mínimo para moda sem marca sem cupom: 50)"
+            )
+            return False
 
     # ── R5. Saúde e beleza barata: preço < R$70 → REJEITAR ──────────────
     # Cremes genéricos, perfumes baratos, etc.
@@ -548,13 +549,14 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
 
     # ── R5.5. Saúde/beleza sem marca reconhecida → REJEITAR ─────────────
     # Kits e produtos de marcas desconhecidas têm baixa credibilidade.
-    # Exceção: desconto brutal (>= 60%) com score >= 72 compensa a ausência de marca
-    if offer.category == "saude_beleza" and not offer.brand and offer.score < 72:
-        offer.reject_reason = (
-            f"saúde/beleza sem marca reconhecida e score insuficiente "
-            f"({offer.score}/100, mínimo para saúde/beleza sem marca: 72)"
-        )
-        return False
+    # Exceção: Ter cupom OU score >= 50
+    if offer.category == "saude_beleza" and not offer.brand and offer.score < 50:
+        if not offer.has_coupon:
+            offer.reject_reason = (
+                f"saúde/beleza sem marca reconhecida e score insuficiente "
+                f"({offer.score}/100, mínimo para sem marca sem cupom: 50)"
+            )
+            return False
 
     # ── R6. Produto genérico sem marca → REJEITAR (quando score baixo) ──
     # Produto claramente genérico E sem marca E score < 70
@@ -568,9 +570,21 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
         return False
 
     # ── R8. Limites diários ─────────────────────────────────────────────
-    # Apenas ofertas com score >= 80 (min_score_bypass_limit) ignoram limites
+    # Apenas ofertas com score >= 80 (min_score_bypass_limit) ignoram limites diários
     status = daily_status(cfg)
     bypass_limit = offer.score >= cfg.get("min_score_bypass_limit", 80)
+
+    # ── R8.1 Anti-spam de tempo (NUNCA ignorado, mesmo com score 100) ────
+    # Garante cooldown mínimo entre posts consecutivos. Evita rajadas.
+    interval = cfg.get("min_interval_minutes", 10)
+    if interval > 0:
+        posts_recent = _posts_in_last_minutes(cfg["db_path"], interval)
+        if posts_recent > 0:
+            offer.reject_reason = (
+                f"anti-spam: {posts_recent} post(s) nos últimos "
+                f"{interval}min — aguarde o cooldown (score {offer.score} não ignora tempo)"
+            )
+            return False
 
     if not bypass_limit:
         # Limite diário global
@@ -587,26 +601,13 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
             )
             return False
 
-        # Anti-spam: após 2+ posts na mesma categoria, exigir score mais alto
+        # Anti-spam de limite: após 2+ posts na mesma categoria, exigir score mais alto
         if category_count >= 2 and offer.score < 75:
             offer.reject_reason = (
-                f"anti-spam: já foram {category_count} posts em '{offer.category}' "
+                f"anti-spam categoria: já foram {category_count} posts em '{offer.category}' "
                 f"hoje e o score ({offer.score}) é insuficiente para nova publicação"
             )
             return False
-
-        # ── R8.5. Anti-spam por janela de tempo ──────────────────────────
-        # Garante cooldown mínimo entre posts consecutivos.
-        # Evita rajadas de 3-4 produtos nos mesmos 5 minutos.
-        interval = cfg.get("min_interval_minutes", 10)
-        if interval > 0:
-            posts_recent = _posts_in_last_minutes(cfg["db_path"], interval)
-            if posts_recent > 0:
-                offer.reject_reason = (
-                    f"anti-spam: {posts_recent} post(s) nos últimos "
-                    f"{interval}min — aguarde o cooldown"
-                )
-                return False
 
     return True
 
