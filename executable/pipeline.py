@@ -17,7 +17,7 @@ import httpx
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 
 from affiliates import aliexpress, amazon, mercadolivre, shopee
-from offer_filter import should_post
+from offer_filter import should_post, FILTER_VERSION
 from utils import expandir_link_async
 from shortener import shorten_url
 
@@ -175,7 +175,8 @@ async def processar_mensagem(
         # ── Log do Filtro Inteligente (igual ao padrão WhatsApp/AliExpress) ───
         log_callback(
             "info",
-            f"[{msg_id}] [Filtro] ENABLED={offer_filter_cfg.get('enabled', True)}"
+            f"[{msg_id}] [Filtro] ENABLED={offer_filter_cfg.get('enabled', True)} "
+            f"| v={FILTER_VERSION} min_score={offer_filter_cfg.get('min_score', 50)}",
         )
 
         should_publish, offer = should_post(raw_text, offer_filter_cfg)

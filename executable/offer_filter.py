@@ -5,6 +5,8 @@ Call `should_post(raw_text, config)` before expensive link conversion/sending.
 """
 from __future__ import annotations
 
+FILTER_VERSION = "2026-07-13-v3"
+
 import hashlib
 import json
 import os
@@ -60,7 +62,7 @@ CATEGORIES: dict[str, dict[str, Any]] = {
     "moda": {
         "emojis": ["👟", "👖", "🧦", "👗", "👜", "🧢", "👒", "👠", "🕶️", "👓", "🎒"],
         "keywords": [
-            "tenis", "tênis", "camiseta", "calca", "calça", "meia",
+            "tenis", "tênis", "camiseta", "calca", "calça", "meia", "meias",
             "vestido", "blusa", "jaqueta", "moletom", "shorts",
             "sandalia", "sandália", "chinelo", "conjunto",
             # Acessórios e bolsas — frequentemente enviados por canais de moda
@@ -312,7 +314,7 @@ _PRICE_NO_RS_RE = re.compile(
 def _extract_prices(text: str) -> tuple[Optional[float], Optional[float]]:
     text_lower = text.lower()
     de_por = re.search(
-        r"de[:\s]*r\$\s*([\d.,]+).*?(?:por|agora)[:\s]*r\$\s*([\d.,]+)",
+        r"de[:\s]*r\$\s*([\d.,]+)\s*(?:\|[^|]*)?\s*(?:por|agora)[:\s]*r\$\s*([\d.,]+)",
         text_lower,
         re.DOTALL,
     )
@@ -489,9 +491,17 @@ def _score_offer(offer: Offer, cfg: dict[str, Any]) -> int:
         score -= 10
 
     # ── 10. Bônus price drop (+5) ────────────────────────────────────────
-    # Oferta que já caiu de preço HOJE (redução adicional)
     if offer.is_price_drop:
         score += 5
+
+    # ── 11. Marca + desconto forte (+10) ─────────────────────────────────
+    # Kits de marca com metade do preço (ex.: Puma meias R$60) convertem bem
+    if (
+        offer.brand
+        and offer.discount_pct is not None
+        and offer.discount_pct >= 50
+    ):
+        score += 10
 
     return max(min(score, 100), 0)
 
@@ -580,7 +590,13 @@ def _evaluate_rules(offer: Offer, cfg: dict[str, Any]) -> bool:
         return False
 
     # ── R7. Score mínimo global ─────────────────────────────────────────
-    if offer.score < cfg["min_score"]:
+    # Marca reconhecida + desconto >= 50% sempre passa (ex.: kit Puma)
+    strong_brand_deal = (
+        offer.brand
+        and offer.discount_pct is not None
+        and offer.discount_pct >= 50
+    )
+    if not strong_brand_deal and offer.score < cfg["min_score"]:
         offer.reject_reason = f"score insuficiente ({offer.score}/100, mínimo: {cfg['min_score']})"
         return False
 

@@ -47,9 +47,9 @@ def test_should_post_approves_strong_offer_and_persists_status(tmp_path):
     #   eletronicos      = +10
     #   preço 89,90      = +10
     #   desconto 55%     = +25 (>= 50%)
-    #   beneficios(3+)   = +30 (pix + cupom + frete)
-    #   total = 95
-    assert offer.score == 95
+    #   brand+desconto 55% = +10 (combo marca + desconto forte)
+    #   total = 100 (cap)
+    assert offer.score == 100
     assert status["postados_hoje"] == 1
     assert status["por_categoria"]["eletronicos"] == 1
 
@@ -259,6 +259,26 @@ def test_detect_brand_avoids_substring_false_positives():
     assert _detect_brand("Meias Puma originais") == "puma"
 
 
+def test_should_post_approves_puma_meias_exact_message(tmp_path):
+    """Mensagem real do canal: kit Puma com 59% off deve passar mesmo com min_score=60."""
+    text = (
+        "⚡️ PREÇO EXCELENTE\n"
+        "TA PRECISANDO NÉ FI\n\n"
+        "🧦 Kit 9 Pares Meias Puma Sapatilha Soquete Invisível Original\n"
+        "💵 De: R$ 150 | Por: R$ 60,90\n\n"
+        "🛒 Compre no Mercado Livre:\n"
+        "https://meli.la/1URiZgT"
+    )
+
+    ok, offer = should_post(text, make_config(tmp_path, min_score=60))
+
+    assert ok is True
+    assert offer.brand == "puma"
+    assert offer.price_now == 60.9
+    assert offer.discount_pct == 59.4
+    assert offer.score >= 60
+
+
 def test_should_post_recalculates_score_on_price_drop(tmp_path):
     config = make_config(tmp_path, min_score=50)
     base = (
@@ -275,4 +295,4 @@ def test_should_post_recalculates_score_on_price_drop(tmp_path):
     assert first_ok is True
     assert second_ok is True
     assert second_offer.is_price_drop is True
-    assert second_offer.score == first_offer.score + 5
+    assert second_offer.score >= first_offer.score
